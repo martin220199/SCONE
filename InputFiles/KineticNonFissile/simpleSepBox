@@ -1,0 +1,90 @@
+type timeDependentPhysicsPackage;
+
+pop      50000;
+timeSteps   100;
+XSdata   ce;
+dataType ce;
+timeIncrement 1.E-07;
+cycles 50;
+combing 0;
+
+outputFormat asciiJSON;
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator { type transportOperatorDT; //currently will only support this
+                  }
+
+source {
+  type pointSource;
+  r (-7.5 0.0 0.0);
+  particle neutron;
+  E 5.0E-03;
+}
+
+tally  {
+
+  flux_time { type collisionClerk;
+    map { type multiMap; maps (map1 map2);
+    map1 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
+    map2 { type cellMap; cells (1 2); }
+    }
+    response (flux); flux {type fluxResponse;}
+    //handleVirtual 1;
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1); //boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { type box; id 1; origin (0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
+
+      boronBox { type box; id 2; origin (0.0 0.0 0.0); halfwidth (0.5 10.0 10.0); }
+
+      hydrogenBoxOne { type box; id 3; origin (-5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
+
+      hydrogenBoxTwo { type box; id 4; origin (5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
+    } 
+
+    cells
+    {
+    cellHydrogenOne { id 1; type simpleCell; surfaces (-3 2); filltype mat; material m1;} 
+    cellHydrogenTwo { id 2; type simpleCell; surfaces (-4 2); filltype mat; material m1;}
+    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material m2;}
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 1; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2 3);}
+
+    }
+}
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+    // hydrogen
+    m1 {
+      temp 12345;
+      composition {
+        1001.03   0.05803;}
+    }
+
+    // boron
+    m2 {
+      temp 12345;
+      composition {
+        5010.03   0.05;
+        5011.03   0.05;
+
+        }
+    }
+}
+}
