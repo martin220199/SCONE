@@ -8,6 +8,8 @@ timeIncrement 1.E-05;
 cycles 50;
 combing 0;
 
+useEPC 1;
+
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
 
@@ -26,7 +28,6 @@ tally  {
   flux_time { type collisionClerk;
     map { type timeMap; grid lin; min 0.0; max 1E-03; N 100;}
     response (flux); flux {type fluxResponse;}
-    //handleVirtual 1;
   }
   }
 

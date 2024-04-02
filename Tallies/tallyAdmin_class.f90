@@ -155,6 +155,8 @@ module tallyAdmin_class
 
     procedure,private :: addToReports
 
+    procedure :: processEvolutionaryParticle
+
   end type tallyAdmin
 
 contains
@@ -172,7 +174,7 @@ contains
     class(tallyAdmin), intent(inout)            :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
-    integer(shortInt)                           :: i, j, cyclesPerBatch, bootstrap, timeSteps, m
+    integer(shortInt)                           :: i, j, cyclesPerBatch
     integer(longInt)                            :: memSize, memLoc
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
@@ -214,10 +216,6 @@ contains
 
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
-
-    call dict % getOrDefault(bootstrap,'bootstrap', 0)
-    call dict % getOrDefault(timeSteps,'timeSteps', 0)
-    call dict % getOrDefault(m,'modified', 0)
 
     ! Initialise score memory
     ! Calculate required size.
@@ -821,5 +819,20 @@ contains
     end select
 
   end subroutine addToReports
+
+  subroutine processEvolutionaryParticle(self, p, timeBinIdx)
+    class(tallyAdmin),intent(inout) :: self
+    class(particle), intent(inout)  :: p
+    integer(shortInt), intent(in)   :: timeBinIdx
+    real(defReal)                   :: tallyFootprint
+    character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
+
+    tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx)
+
+    p % tallyContrib = tallyFootprint
+
+    p % FoM = tallyFootprint * p % w
+
+  end subroutine processEvolutionaryParticle
 
 end module tallyAdmin_class

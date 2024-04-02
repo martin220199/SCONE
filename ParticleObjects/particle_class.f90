@@ -60,6 +60,8 @@ module particle_class
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
+
+    real(defReal)              :: fitness, FoM, tallyContrib
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -130,6 +132,8 @@ module particle_class
     type(particleState)        :: preTransition
     type(particleState)        :: prePath
     type(particleState)        :: preCollision
+
+    real(defReal)              :: fitness, FoM, tallyContrib
 
   contains
      ! Build procedures
@@ -287,7 +291,10 @@ contains
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
     LHS % lambda                = RHS % lambda
-    LHS % fate                  = RHS % fate    
+    LHS % fate                  = RHS % fate
+    LHS % fitness               = RHS % fitness
+    LHS % FoM                   = RHS % FoM
+    LHS % tallyContrib          = RHS % tallyContrib
 
   end subroutine particle_fromParticleState
 
@@ -708,6 +715,10 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
 
+    LHS % fitness      = RHS % fitness
+    LHS % FoM          = RHS % FoM
+    LHS % tallyContrib = RHS % tallyContrib
+
   end subroutine particleState_fromParticle
 
   !!
@@ -737,6 +748,10 @@ contains
     else
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
+
+    isEqual = isEqual .and. LHS % fitness      == RHS % fitness
+    isEqual = isEqual .and. LHS % FoM          == RHS % FoM
+    isEqual = isEqual .and. LHS % tallyContrib == RHS % tallyContrib
   end function equal_particleState
 
 !  !!

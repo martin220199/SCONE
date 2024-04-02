@@ -102,6 +102,7 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: setNumBatchesPerTimeStep
+    procedure :: processEvolutionaryParticle
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -465,5 +466,18 @@ contains
     end if
 
   end function getScore
+
+  function processEvolutionaryParticle(self, timeBinIdx) result(tallyFootprint)
+    class(scoreMemory), intent(inout)  :: self
+    integer(shortInt), intent(in)      :: timeBinIdx
+    integer(shortInt)                  :: threadIdx
+    real(defReal)                      :: tallyFootprint
+    character(100),parameter :: Here = 'processEvolutionaryParticle (scoreMemory_class.f90)'
+
+    threadIdx = ompGetThreadNum() + 1
+    tallyFootprint = self % parallelBins(timeBinIdx,threadIdx)
+    self % parallelBins(timeBinIdx,threadIdx) = ZERO
+
+  end function processEvolutionaryParticle
 
 end module scoreMemory_class

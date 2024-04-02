@@ -85,7 +85,8 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useCombing
     logical(defBool)   :: usePrecursors
     logical(defBool)   :: useForcedPrecursorDecay
-    integer(shortInt), dimension(:), allocatable  :: batchPopulations
+
+    logical(defBool)   :: useEPC
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -95,7 +96,8 @@ module timeDependentPhysicsPackage_class
     type(particleDungeon), pointer, dimension(:) :: currentTime       => null()
     type(particleDungeon), pointer, dimension(:) :: nextTime          => null()
     type(particleDungeon), pointer, dimension(:) :: tempTime          => null()
-    type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null() 
+    type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null()
+    type(particleDungeon), pointer               :: fittestParticles  => null()
     real(defReal), dimension(:), allocatable :: precursorWeights
     class(source), allocatable     :: fixedSource
 
@@ -108,6 +110,7 @@ module timeDependentPhysicsPackage_class
     procedure :: init
     procedure :: printSettings
     procedure :: cycles
+    procedure :: cycles_EPC
     procedure :: collectResults
     procedure :: run
     procedure :: kill
@@ -119,12 +122,15 @@ contains
 
   subroutine run(self)
     class(timeDependentPhysicsPackage), intent(inout) :: self
-    real(defReal) :: simTime
 
     print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
-    call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
+    if (self % useEPC .eqv. .false.) then
+      call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
+    else
+      call self % cycles_EPC(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
+    end if
     call self % collectResults()
 
     print *
@@ -135,10 +141,9 @@ contains
   !!
   !!
   !!
-  subroutine cycles(self, tally, N_cycles, N_timeBins, timeIncrement, simTime)
+  subroutine cycles(self, tally, N_cycles, N_timeBins, timeIncrement)
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
-    real(defReal), intent(inout)                    :: simTime
     integer(shortInt), intent(in)                   :: N_timeBins, N_cycles
     integer(shortInt)                               :: i, t, n, nParticles, nDelayedParticles
     type(particle), save                            :: p, p_d
@@ -205,7 +210,6 @@ contains
             end if
 
             call self % geom % placeCoord(p % coords)
-            !p % timeMax = t * timeIncrement
             call p % savePreHistory()
 
             ! Transport particle untill its death
@@ -369,6 +373,163 @@ contains
   end subroutine cycles
 
   !!
+  !!
+  !!
+  subroutine cycles_EPC(self, tally, N_cycles, N_timeBins, timeIncrement)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    type(tallyAdmin), pointer,intent(inout)           :: tally
+    integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
+    integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles
+    type(particle), save                              :: p, p_pre, p_d
+    type(particleDungeon), save                       :: buffer
+    type(collisionOperator), save                     :: collOp
+    class(transportOperator), allocatable, save       :: transOp
+    type(RNG), target, save                           :: pRNG
+    real(defReal)                                     :: elapsed_T, end_T, T_toEnd, decay_T, w_d
+    real(defReal), intent(in)                         :: timeIncrement
+
+    character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
+    !$omp threadprivate(p, p_pre, p_d, buffer, collOp, transOp, pRNG)
+
+    !$omp parallel
+    ! Create particle buffer
+    call buffer % init(self % bufferSize)
+
+    ! Initialise neutron
+    p % geomIdx = self % geomIdx
+    p % k_eff = ONE
+
+    ! Create a collision + transport operator which can be made thread private
+    collOp = self % collOp
+    transOp = self % transOp
+    !$omp end parallel
+
+    ! Number of particles in each batch
+    nParticles = self % pop
+
+    ! Reset and start timer
+    call timerReset(self % timerMain)
+    call timerStart(self % timerMain)
+
+    do t = 1, N_timeBins
+      do i = 1, N_cycles
+
+        if (t == 1) then 
+          call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
+        end if
+
+        call tally % reportCycleStart(self % currentTime(i))
+        nParticles = self % currentTime(i) % popSize()
+
+        !$omp parallel do schedule(dynamic)
+        gen: do n = 1, nParticles
+          pRNG = self % pRNG
+          p % pRNG => pRNG
+          call p % pRNG % stride(n)
+          call self % currentTime(i) % copy(p, n)
+
+          !save particle pre-history state
+          p_pre = p
+
+          p % timeMax = t * timeIncrement
+          if (p % time > p % timeMax) then
+            p % fate = aged_FATE
+            call self % nextTime(i) % detain(p)
+            cycle gen
+          end if
+
+          bufferLoop: do
+
+            if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
+              p % fate = no_FATE
+              p % isdead = .false.
+            else
+              p % isdead = .true.
+            end if
+
+            call self % geom % placeCoord(p % coords)
+            call p % savePreHistory()
+
+            ! Transport particle untill its death
+            history: do
+              if(p % isDead) exit history
+              call transOp % transport(p, tally, buffer, buffer)
+              if(p % isDead) exit history
+              if(p % fate == AGED_FATE) then
+                call self % nextTime(i) % detain(p)
+                exit history
+              endif
+              if (self % usePrecursors) then
+                call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
+              else
+                call collOp % collide(p, tally, buffer, buffer)
+              end if
+              if(p % isDead) exit history
+            end do history
+
+            ! Clear out buffer
+            if (buffer % isEmpty()) then
+              exit bufferLoop
+            else
+              call buffer % release(p)
+            end if
+
+          end do bufferLoop
+
+          !now have the full tally contribution for particle. Function to extract tally array and FoM to particle
+          !inject above to pre-history particle
+          !choose wether to store in fittestParticles based on FoM
+          call self % tally % processEvolutionaryParticle(p_pre, t)
+        end do gen
+        !$omp end parallel do
+        
+        ! copy, maybe comb based on FoM!? to fill up fittestParticles dungeon.
+        ! Handle and simulate fittest particles.
+
+
+        call self % fittestParticles % cleanPop()
+
+        ! Update RNG
+        call self % pRNG % stride(self % pop + 1)
+
+        call tally % reportCycleEnd(self % currentTime(i))
+        call self % pRNG % stride(nParticles + 1)
+        call self % currentTime(i) % cleanPop()
+
+        ! Neutron population control
+        if (self % useCombing) then
+          call self % nextTime(i) % combing(self % pop, pRNG)
+        end if
+
+      end do
+
+      self % tempTime  => self % nextTime
+      self % nextTime  => self % currentTime
+      self % currentTime => self % tempTime
+
+      ! Calculate times
+      call timerStop(self % timerMain)
+      elapsed_T = timerTime(self % timerMain)
+
+      ! Predict time to end
+      end_T = real(N_timeBins,defReal) * elapsed_T / t
+      T_toEnd = max(ZERO, end_T - elapsed_T)
+
+      ! Display progress
+      call printFishLineR(t)
+      print *
+      print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
+      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+      print *, 'End time:     ', trim(secToChar(end_T))
+      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      call tally % display()
+
+      call tally % setNumBatchesPerTimeStep(N_cycles)
+    end do
+
+  end subroutine cycles_EPC
+
+  !!
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
@@ -460,6 +621,8 @@ contains
     ! Whether to implement precursors (default = yes)
     call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
 
+    call dict % getOrDefault(self % useEPC, 'useEPC', .false.)
+
     ! Whether to use analog or implicit kinetic (default = Analog)
     call dict % getOrDefault(self % useForcedPrecursorDecay, 'useForcedPrecursorDecay', .false.)
 
@@ -533,6 +696,11 @@ contains
       do i = 1, self % N_cycles
         call self % precursorDungeons(i) % init(3 * self % pop)
       end do
+    end if
+
+    if (self % useEPC .eqv. .true.) then
+      allocate(self % fittestParticles)
+      call self % fittestParticles % init(self % pop)
     end if
 
     call self % printSettings()
