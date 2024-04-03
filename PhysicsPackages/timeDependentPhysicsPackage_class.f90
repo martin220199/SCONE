@@ -388,6 +388,7 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd, decay_T, w_d
     real(defReal), intent(in)                         :: timeIncrement
 
+    integer(shortInt)                                 :: Nfittest
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
     !$omp threadprivate(p, p_pre, p_d, buffer, collOp, transOp, pRNG)
 
@@ -420,6 +421,8 @@ contains
 
         call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
+
+        Nfittest = floor(nParticles / 100)
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -476,14 +479,32 @@ contains
 
           end do bufferLoop
 
-          !now have the full tally contribution for particle. Function to extract tally array and FoM to particle
-          !inject above to pre-history particle
-          !choose wether to store in fittestParticles based on FoM
+          ! function to extract tally array and FoM to particle
           call self % tally % processEvolutionaryParticle(p_pre, t)
+
+          ! logic of sorting
+
+          !print *, self % fittestParticles % popSize()
+
+          !check if top x particles in self % fittestParticles. gen do z %
+          ! if it is, replace with whoever it is bigger than
+          !Make sure popsize == z%. If <, then detain. Try and make it sorted,
+          !So top -> lowest FoM. start looking from top.
+          !then replace, should be ok to do this logic.
+
+          !If not replaced, score as intended. E.g. do nothing.
+
+          !If replaced, retract score contribution.
         end do gen
         !$omp end parallel do
+
         
-        ! copy, maybe comb based on FoM!? to fill up fittestParticles dungeon.
+        ! copy process, maybe comb based on FoM!? to fill up fittestParticles dungeon.
+
+        ! get weighs -> score tallyContrib of fittest particles.
+        !weighs of copies.
+
+
         ! Handle and simulate fittest particles.
 
 
