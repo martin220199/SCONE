@@ -382,7 +382,8 @@ contains
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles
     type(particle), save                              :: p, p_d
     type(particle), save                              :: p_pre, p_temp
-    type(particleDungeon), save                       :: buffer, fittestParticles
+    type(particleDungeon), save                       :: buffer
+    type(particleDungeon)                             :: fittestParticles
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
     type(RNG), target, save                           :: pRNG
@@ -393,7 +394,7 @@ contains
     integer(shortInt), save                           :: k
     real(defReal)                                     :: fom1
     character(100),parameter :: Here ='cycles_EPC (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, k, p_pre, p_temp, fittestParticles)
+    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, k, p_pre, p_temp)
 
     !$omp parallel
     ! Create particle buffer
@@ -406,9 +407,9 @@ contains
     ! Create a collision + transport operator which can be made thread private
     collOp = self % collOp
     transOp = self % transOp
-    fittestParticles = self % fittestParticles
     !$omp end parallel
 
+    fittestParticles = self % fittestParticles
     ! Number of particles in each batch
     nParticles = self % pop
 
@@ -491,18 +492,19 @@ contains
           ! function to extract tally array and FoM to particle
           call self % tally % processEvolutionaryParticle(p_pre, t)
 
+          !$OMP CRITICAL
           if (Nfittest == 1) then
             if (fittestParticles % popSize() == 0) then
               call fittestParticles % detain(p_pre)
               fom1 = p_pre % FoM
-              cycle gen
+              !cycle gen
             else 
               if (p_pre % FoM <= fom1) then
-                cycle gen
+                !cycle gen
               else
                 fom1 = p_pre % FoM
                 call fittestParticles % replace(p_pre,1)
-                cycle gen
+                !cycle gen
               end if
             end if
           end if
@@ -512,7 +514,7 @@ contains
           if (fittestParticles % popSize() == 0) then
             call fittestParticles % detain(p_pre)
             fom1 = p_pre % FoM
-            cycle gen
+            !cycle gen
           end if
 
           if (fittestParticles % popSize() < Nfittest) then
@@ -534,12 +536,12 @@ contains
               end if
             end do sortLoop
             
-            cycle gen
+            !cycle gen
 
           else
 
             if (p_pre % FoM <= fom1) then
-              cycle gen
+              !cycle gen
 
             else
               k = 2
@@ -562,11 +564,12 @@ contains
 
               call fittestParticles % copy(p_temp, 1)
               fom1 = p_temp % FoM
-              cycle gen
+              !cycle gen
 
             end if
           end if
 
+          !$OMP END CRITICAL
 
           
           !print *, self % fittestParticles % popSize()
