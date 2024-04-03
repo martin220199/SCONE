@@ -380,7 +380,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles
-    type(particle), save                              :: p, p_pre, p_d
+    type(particle), save                              :: p, p_pre, p_d, p_temp
     type(particleDungeon), save                       :: buffer
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
@@ -389,8 +389,10 @@ contains
     real(defReal), intent(in)                         :: timeIncrement
 
     integer(shortInt)                                 :: Nfittest
+    integer(shortInt), save                           :: k
+    real(defReal)                                     :: fom1
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_pre, p_d, buffer, collOp, transOp, pRNG)
+    !$omp threadprivate(p, p_pre, p_d, buffer, collOp, transOp, pRNG, k)
 
     !$omp parallel
     ! Create particle buffer
@@ -422,7 +424,7 @@ contains
         call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
 
-        Nfittest = floor(nParticles / 100)
+        Nfittest = nParticles / 100
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -478,12 +480,94 @@ contains
             end if
 
           end do bufferLoop
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          if (self % fittestParticles % popSize() > Nfittest) call fatalError(Here, 'SORTING SCHEME WRONG!')
 
+          print *, 'pop', self % fittestParticles % popSize(), Nfittest
           ! function to extract tally array and FoM to particle
           call self % tally % processEvolutionaryParticle(p_pre, t)
 
           ! logic of sorting
 
+          if (self % fittestParticles % popSize() == 0) then
+            print *, 'pop is zero'
+            call self % fittestParticles % detain(p_pre)
+            fom1 = p_pre % FoM
+            cycle gen
+          end if
+
+          if (self % fittestParticles % popSize() < Nfittest) then
+            print *, 'should not print'
+            k = 1
+            sortLoop: do
+              call self % fittestParticles % copy(p_temp, k)
+              if (p_pre % FoM > p_temp % FoM) then
+                k = k + 1
+
+
+
+                if (k > self % fittestParticles % popSize()) then
+                  call self % fittestParticles % replace(p_pre, k)
+                  exit sortLoop
+                end if
+
+
+                cycle sortLoop
+              else
+                if (k == 1) fom1 = p_pre % FoM
+                call self % fittestParticles % replace(p_pre, k)
+                p_pre = p_temp
+              end if
+
+              k = k + 1
+              if (k > self % fittestParticles % popSize()) then
+                call self % fittestParticles % replace(p_pre, k)
+                exit sortLoop
+              end if
+            end do sortLoop
+            
+            cycle gen
+
+          else
+            print *, 'full size'
+            if (p_pre % FoM <= fom1) then
+              print *, 'lower FoM, skip'
+              cycle gen
+
+            else
+              print *, 'higher FoM'
+              k = self % fittestParticles % popSize()
+              sortLoopFull: do
+                call self % fittestParticles % copy(p_temp, k)
+                if (p_pre % FoM <= p_temp % FoM) then
+
+
+                  k = k - 1
+                  if (k == 0) then
+                    fom1 = p_pre % FoM
+                    exit sortLoopFull
+                  end if
+                  cycle sortLoopFull
+
+
+                  
+                else
+                  call self % fittestParticles % replace(p_pre, k)
+                  p_pre = p_temp
+                end if
+
+                k = k - 1
+                if (k == 0) then
+                  fom1 = p_pre % FoM
+                  exit sortLoopFull
+                end if
+              end do sortLoopFull
+              cycle gen
+
+            end if
+          end if
+
+          
           !print *, self % fittestParticles % popSize()
 
           !check if top x particles in self % fittestParticles. gen do z %
@@ -498,7 +582,7 @@ contains
         end do gen
         !$omp end parallel do
 
-        
+        print *, 'HEREEEE'
         ! copy process, maybe comb based on FoM!? to fill up fittestParticles dungeon.
 
         ! get weighs -> score tallyContrib of fittest particles.
