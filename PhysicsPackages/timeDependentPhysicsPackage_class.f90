@@ -571,28 +571,20 @@ contains
 
           !$OMP END CRITICAL
 
-          
-          !print *, self % fittestParticles % popSize()
-
-          !check if top x particles in self % fittestParticles. gen do z %
-          ! if it is, replace with whoever it is bigger than
-          !Make sure popsize == z%. If <, then detain. Try and make it sorted,
-          !So top -> lowest FoM. start looking from top.
-          !then replace, should be ok to do this logic.
-
           !If not replaced, score as intended. E.g. do nothing.
-
-          !If replaced, retract score contribution.
+          !If replaced, retract score contribution. Have this in tallyContrib.
+          !Can do this later after knowing the adjusted weight. e.g. tallyScore = tallyScore - tallyContrib + tallyContrib*wgt
+                                                                !tallyScore = tallyscore + tallycontrib(wgt - 1) 
         end do gen
         !$omp end parallel do
 
-        print *, 'final size', fittestParticles % popSize()
-        do k = 1, Nfittest
-          call fittestParticles % copy(p_temp, k)
-          print *, 'FOM sorted', p_temp % FoM
-        end do
+        !print *, 'final size', fittestParticles % popSize()
+        !do k = 1, Nfittest
+        !  call fittestParticles % copy(p_temp, k)
+        !  print *, 'FOM sorted', p_temp % FoM
+        !end do
 
-        call fatalError(Here, 'ligmaballs')
+        !call fatalError(Here, 'ligmaballs')
         !print *, '---------------- HEREEEE'
         ! copy process, maybe comb based on FoM!? to fill up fittestParticles dungeon.
 
