@@ -157,6 +157,8 @@ module tallyAdmin_class
 
     procedure :: processEvolutionaryParticle
 
+    procedure :: updateScore
+
   end type tallyAdmin
 
 contains
@@ -825,14 +827,26 @@ contains
     class(particle), intent(inout)  :: p
     integer(shortInt), intent(in)   :: timeBinIdx
     real(defReal)                   :: tallyFootprint
+    real(defReal)                   :: crossedTimeBoundary = ZERO
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
     tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx)
 
     p % tallyContrib = tallyFootprint
 
-    p % FoM = tallyFootprint * p % w
+    if (p % fate == AGED_FATE) crossedTimeBoundary = ONE
+    p % fitness = tallyFootprint * crossedTimeBoundary    !* p % w       ! ok but what about if aged or didnt age?
 
   end subroutine processEvolutionaryParticle
+
+  subroutine updateScore(self, score, timeBinIdx)
+    class(tallyAdmin),intent(inout) :: self
+    real(defReal), intent(in)       :: score
+    integer(shortInt), intent(in)   :: timeBinIdx
+    character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
+
+    call self % mem % updateScore(score, timeBinIdx)
+
+  end subroutine updateScore
 
 end module tallyAdmin_class

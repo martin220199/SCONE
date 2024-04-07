@@ -129,7 +129,8 @@ contains
     if (self % useEPC .eqv. .false.) then
       call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     else
-      call self % cycles_EPC(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
+      call self % cycles_EPC(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement) !on the run sorting. DO another using quicksort in the end. Is there a way to terminate early once found top x?
+      ! think this is possible for quicksort.
     end if
     call self % collectResults()
 
@@ -380,6 +381,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles
+    integer(shortInt)                                 :: nParticlesFittest2, nParticlesFittest
     type(particle), save                              :: p, p_d
     type(particle), save                              :: p_pre, p_temp
     type(particleDungeon), save                       :: buffer
@@ -392,9 +394,10 @@ contains
 
     integer(shortInt)                                 :: Nfittest
     integer(shortInt), save                           :: k
-    real(defReal)                                     :: fom1
+    real(defReal), save                               :: score
+    real(defReal)                                     :: fitness1
     character(100),parameter :: Here ='cycles_EPC (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, k, p_pre, p_temp)
+    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, k, p_pre, p_temp, score)
 
     !$omp parallel
     ! Create particle buffer
@@ -409,7 +412,6 @@ contains
     transOp = self % transOp
     !$omp end parallel
 
-    fittestParticles = self % fittestParticles
     ! Number of particles in each batch
     nParticles = self % pop
 
@@ -427,7 +429,7 @@ contains
         call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
 
-        Nfittest = nParticles / 100
+        Nfittest = nParticles / 10 !/ 100
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -437,7 +439,8 @@ contains
           call self % currentTime(i) % copy(p, n)
 
           !save particle pre-history state
-          p_pre = p
+          !p_pre = p
+
 
           p % timeMax = t * timeIncrement
           if (p % time > p % timeMax) then
@@ -457,6 +460,8 @@ contains
 
             call self % geom % placeCoord(p % coords)
             call p % savePreHistory()
+            call p % savePreEvolution()
+            
 
             ! Transport particle untill its death
             history: do
@@ -464,7 +469,8 @@ contains
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                call self % nextTime(i) % detain(p)
+                !p_pre % fate = AGED_FATE
+                !call self % nextTime(i) % detain(p)
                 exit history
               endif
               if (self % usePrecursors) then
@@ -486,52 +492,69 @@ contains
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           !collapse down into single fn and make atomic
 
-
           !if (self % fittestParticles % popSize() > Nfittest) call fatalError(Here, 'SORTING SCHEME WRONG!')
 
-          ! function to extract tally array and FoM to particle
+          ! function to extract tally array and fitness to particle
+          p_pre = p
+
           call self % tally % processEvolutionaryParticle(p_pre, t)
 
+
           !$OMP CRITICAL
-          if (Nfittest == 1) then
-            if (fittestParticles % popSize() == 0) then
-              call fittestParticles % detain(p_pre)
-              fom1 = p_pre % FoM
+          if ((Nfittest == 0)) then
+            if (p_pre % fate == aged_fate) then
+              p_pre % isDead = .false.
+              call self % nextTime(i) % detain(p_pre)
+            end if
+
+          else if (Nfittest == 1) then
+            if (self % fittestParticles % popSize() == 0) then
+              call self % fittestParticles % detain(p_pre)
+              fitness1 = p_pre % fitness
               !cycle gen
             else 
-              if (p_pre % FoM <= fom1) then
-                !cycle gen
+              if (p_pre % fitness <= fitness1) then
+                if (p_pre % fate == aged_fate) then
+                  p_pre % isDead = .false.
+                  call self % nextTime(i) % detain(p_pre)
+                end if
               else
-                fom1 = p_pre % FoM
-                call fittestParticles % replace(p_pre,1)
+                fitness1 = p_pre % fitness
+
+                call self % fittestParticles % copy(p_temp, 1)
+                if (p_temp % fate == aged_fate) then
+                  p_temp % isDead = .false.
+                  call self % nextTime(i) % detain(p_temp)
+                end if
+
+                call self % fittestParticles % replace(p_pre,1)
                 !cycle gen
               end if
             end if
-          end if
 
           ! logic of sorting
 
-          if (fittestParticles % popSize() == 0) then
-            call fittestParticles % detain(p_pre)
-            fom1 = p_pre % FoM
+          else if (self % fittestParticles % popSize() == 0) then
+            call self % fittestParticles % detain(p_pre)
+            fitness1 = p_pre % fitness
             !cycle gen
-          end if
+          !end if
 
-          if (fittestParticles % popSize() < Nfittest) then
+          else if (self % fittestParticles % popSize() < Nfittest) then
             k = 1
             sortLoop: do
-              call fittestParticles % copy(p_temp, k)
+              call self % fittestParticles % copy(p_temp, k)
 
-              if (p_pre % FoM <= p_temp % FoM) then
-                if (k == 1) fom1 = p_pre % FoM
-                call fittestParticles % replace(p_pre, k)
+              if (p_pre % fitness <= p_temp % fitness) then
+                if (k == 1) fitness1 = p_pre % fitness
+                call self % fittestParticles % replace(p_pre, k)
                 p_pre = p_temp
               end if
 
               k = k + 1
 
-              if (k > fittestParticles % popSize()) then
-                call fittestParticles % detain(p_pre)
+              if (k > self % fittestParticles % popSize()) then
+                call self % fittestParticles % detain(p_pre)
                 exit sortLoop
               end if
             end do sortLoop
@@ -539,31 +562,41 @@ contains
             !cycle gen
 
           else
-
-            if (p_pre % FoM <= fom1) then
+            if (p_pre % fitness <= fitness1) then
+              if (p_pre % fate == aged_fate) then
+                p_pre % isDead = .false.
+                call self % nextTime(i) % detain(p_pre)
+              end if
               !cycle gen
 
             else
+              !score exit particle
+              call self % fittestParticles % copy(p_temp, 1)
+              if (p_temp % fate == aged_fate) then
+                p_temp % isDead = .false.
+                call self % nextTime(i) % detain(p_temp)
+              end if
+  
               k = 2
               sortLoopFull: do
-                call fittestParticles % copy(p_temp, k)
-                if (p_pre % FoM > p_temp % FoM) then
-                  call fittestParticles % replace(p_temp, k-1)
+                call self % fittestParticles % copy(p_temp, k)
+                if (p_pre % fitness > p_temp % fitness) then
+                  call self % fittestParticles % replace(p_temp, k-1)
                   k = k + 1
 
                 else
-                  call fittestParticles % replace(p_pre, k-1)
+                  call self % fittestParticles % replace(p_pre, k-1)
                   exit sortLoopFull
                 end if
 
-                if (k > fittestParticles % popSize()) then
-                  call fittestParticles % replace(p_pre, k-1)
+                if (k > self % fittestParticles % popSize()) then
+                  call self % fittestParticles % replace(p_pre, k-1)
                   exit sortLoopFull
                 end if
               end do sortLoopFull
 
-              call fittestParticles % copy(p_temp, 1)
-              fom1 = p_temp % FoM
+              call self % fittestParticles % copy(p_temp, 1)
+              fitness1 = p_temp % fitness
               !cycle gen
 
             end if
@@ -571,31 +604,140 @@ contains
 
           !$OMP END CRITICAL
 
-          !If not replaced, score as intended. E.g. do nothing.
-          !If replaced, retract score contribution. Have this in tallyContrib.
-          !Can do this later after knowing the adjusted weight. e.g. tallyScore = tallyScore - tallyContrib + tallyContrib*wgt
-                                                                !tallyScore = tallyscore + tallycontrib(wgt - 1) 
         end do gen
         !$omp end parallel do
 
-        !print *, 'final size', fittestParticles % popSize()
+
+
+        nParticlesFittest = self % fittestParticles % popSize()
+        !print *, 'size', self % fittestParticles % popSize(), Nfittest
+        !print *, 'size2', self % currentTime(i) % popSize()
         !do k = 1, Nfittest
-        !  call fittestParticles % copy(p_temp, k)
-        !  print *, 'FOM sorted', p_temp % FoM
+        !  call self % fittestParticles % copy(p_temp, k)
         !end do
 
-        !call fatalError(Here, 'ligmaballs')
-        !print *, '---------------- HEREEEE'
-        ! copy process, maybe comb based on FoM!? to fill up fittestParticles dungeon.
-
-        ! get weighs -> score tallyContrib of fittest particles.
-        !weighs of copies.
+        call self % currentTime(i) % cleanPop()
+        !$omp parallel do schedule(dynamic)
+        do n = 1, nParticlesFittest
+          call self % fittestParticles % copy(p_temp, n)
 
 
-        ! Handle and simulate fittest particles.
+          p_temp % w = p_temp % w / 2
+          score = -p_temp % tallyContrib / 2 
+          call tally % updateScore(score, t)
 
 
+
+          if (p_temp % fate == aged_fate) then
+            p_temp % isDead = .false.
+            call self % nextTime(i) % detain(p_temp)
+          end if
+
+          call p_temp % loadPreEvolution()
+          p_temp % preHistory % fate = no_fate
+          p_temp % preHistory % wgt = p_temp % preHistory % wgt / 2  
+          !print *, p_temp % preEvolutionState % E, p_temp % preEvolutionState % time
+          call self % currentTime(i) % detain(p_temp % preHistory)
+        end do
+        !$omp end parallel do
         call self % fittestParticles % cleanPop()
+
+
+
+
+
+
+
+
+        nParticlesFittest2 = self % currentTime(i) % popSize()
+        !print *, 'HERE', nParticles
+
+        !$omp parallel do schedule(dynamic)
+        genEPC: do n = 1, nParticlesFittest2
+
+          pRNG = self % pRNG
+          p % pRNG => pRNG
+          call p % pRNG % stride(n)
+          call self % currentTime(i) % copy(p, n)
+          !print *, 'time', p % time, p % E, p % fate, p % w
+
+          p % timeMax = t * timeIncrement
+          if (p % time > p % timeMax) then
+            p % fate = aged_FATE
+            call self % nextTime(i) % detain(p)
+            cycle genEPC
+          end if
+
+          bufferLoopEPC: do
+
+            if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
+              p % fate = no_FATE
+              p % isdead = .false.
+            else
+              p % isdead = .true.
+            end if
+
+            call self % geom % placeCoord(p % coords)
+            call p % savePreHistory()
+
+            ! Transport particle untill its death
+            historyEPC: do
+              if(p % isDead) exit historyEPC
+              call transOp % transport(p, tally, buffer, buffer)
+              if(p % isDead) exit historyEPC
+              if(p % fate == AGED_FATE) then
+                call self % nextTime(i) % detain(p)
+                exit historyEPC
+              endif
+              if (self % usePrecursors) then
+                call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
+              else
+                call collOp % collide(p, tally, buffer, buffer)
+              end if
+              if(p % isDead) exit historyEPC
+            end do historyEPC
+
+            ! Clear out buffer
+            if (buffer % isEmpty()) then
+              exit bufferLoopEPC
+            else
+              call buffer % release(p)
+            end if
+
+          end do bufferLoopEPC
+        end do genEPC
+        !$omp end parallel do
+
+
+        call self % currentTime(i) % cleanPop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        !combing
+        !call self % currentTime(i) % combing(self % pop, pRNG)
+
+        !run sim
+
+        !call fatalError(Here, 'ligmaballs')
+
+
 
         ! Update RNG
         call self % pRNG % stride(self % pop + 1)

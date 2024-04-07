@@ -1,11 +1,11 @@
 type timeDependentPhysicsPackage;
 
-pop      50000; //5000
-timeSteps   100;
+pop      500; //50000
+timeSteps   100; //100
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-05;
-cycles 50; //50
+timeIncrement 1.E-05;   //1.E-05
+cycles 10; //50
 combing 0;
 
 useEPC 1;

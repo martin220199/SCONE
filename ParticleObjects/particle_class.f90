@@ -10,6 +10,17 @@ module particle_class
   implicit none
   private
 
+
+  type, public :: stateInfo
+    real(defReal)              :: E    = ZERO
+    real(defReal)              :: wgt  = ZERO
+    real(defReal),dimension(3) :: r    = ZERO
+    real(defReal),dimension(3) :: dir  = ZERO
+    real(defReal)              :: time = ZERO        
+    integer(shortInt)          :: matIdx   = -1 
+    integer(shortInt)          :: cellIdx  = -1 
+    integer(shortInt)          :: uniqueID = -1 
+  end type stateInfo
   !!
   !! Particle types paramethers
   !!
@@ -61,7 +72,8 @@ module particle_class
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
 
-    real(defReal)              :: fitness, FoM, tallyContrib
+    real(defReal)              :: fitness, tallyContrib
+    type(stateInfo)            :: preEvolutionState
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -133,7 +145,8 @@ module particle_class
     type(particleState)        :: prePath
     type(particleState)        :: preCollision
 
-    real(defReal)              :: fitness, FoM, tallyContrib
+    real(defReal)              :: fitness, tallyContrib   
+    type(stateInfo)            :: preEvolutionState
 
   contains
      ! Build procedures
@@ -170,6 +183,8 @@ module particle_class
     procedure, non_overridable  :: savePreTransition
     procedure, non_overridable  :: savePrePath
     procedure, non_overridable  :: savePreCollision
+    procedure, non_overridable  :: savePreEvolution
+    procedure, non_overridable  :: loadPreEvolution
 
     ! Debug procedures
     procedure            :: display => display_particle
@@ -293,8 +308,8 @@ contains
     LHS % lambda                = RHS % lambda
     LHS % fate                  = RHS % fate
     LHS % fitness               = RHS % fitness
-    LHS % FoM                   = RHS % FoM
     LHS % tallyContrib          = RHS % tallyContrib
+    LHS % preEvolutionState     = RHS % preEvolutionState
 
   end subroutine particle_fromParticleState
 
@@ -652,6 +667,36 @@ contains
 
   end subroutine savePreCollision
 
+  !!
+  !! Save state of the particle at the beginning of history
+  !!
+  subroutine savePreEvolution(self)
+    class(particle), intent(inout) :: self
+
+    self % preEvolutionState % wgt      = self % preHistory % wgt
+    self % preEvolutionState % r        = self % preHistory % r
+    self % preEvolutionState % dir      = self % preHistory % dir
+    self % preEvolutionState % E        = self % preHistory % E
+    self % preEvolutionState % time     = self % preHistory % time
+    self % preEvolutionState % matIdx   = self % preHistory % matIdx
+    self % preEvolutionState % cellIdx  = self % preHistory % cellIdx
+    self % preEvolutionState % uniqueID = self % preHistory % uniqueID
+
+  end subroutine savePreEvolution
+
+  subroutine LoadPreEvolution(self)
+    class(particle), intent(inout) :: self
+
+    self % preHistory % wgt      = self % preEvolutionState % wgt        
+    self % preHistory % r        = self % preEvolutionState % r          
+    self % preHistory % dir      = self % preEvolutionState % dir     
+    self % preHistory % E        = self % preEvolutionState % E        
+    self % preHistory % time     = self % preEvolutionState % time     
+    self % preHistory % matIdx   = self % preEvolutionState % matIdx    
+    self % preHistory % cellIdx  = self % preEvolutionState % cellIdx 
+    self % preHistory % uniqueID = self % preEvolutionState % uniqueID
+
+  end subroutine LoadPreEvolution
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle debug procedures
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -715,9 +760,9 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
 
-    LHS % fitness      = RHS % fitness
-    LHS % FoM          = RHS % FoM
-    LHS % tallyContrib = RHS % tallyContrib
+    LHS % fitness           = RHS % fitness
+    LHS % tallyContrib      = RHS % tallyContrib
+    LHS % preEvolutionState = RHS % preEvolutionState
 
   end subroutine particleState_fromParticle
 
@@ -749,9 +794,15 @@ contains
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
 
-    isEqual = isEqual .and. LHS % fitness      == RHS % fitness
-    isEqual = isEqual .and. LHS % FoM          == RHS % FoM
-    isEqual = isEqual .and. LHS % tallyContrib == RHS % tallyContrib
+    isEqual = isEqual .and. LHS % fitness           == RHS % fitness
+    isEqual = isEqual .and. LHS % tallyContrib      == RHS % tallyContrib
+
+    isEqual = isEqual .and. LHS % preEvolutionState % E        == RHS % preEvolutionState % E
+    isEqual = isEqual .and. LHS % preEvolutionState % wgt      == RHS % preEvolutionState % wgt
+    isEqual = isEqual .and. LHS % preEvolutionState % time     == RHS % preEvolutionState % time
+    isEqual = isEqual .and. LHS % preEvolutionState % matIdx   == RHS % preEvolutionState % matIdx
+    isEqual = isEqual .and. LHS % preEvolutionState % cellIdx  == RHS % preEvolutionState % cellIdx
+    isEqual = isEqual .and. LHS % preEvolutionState % uniqueID == RHS % preEvolutionState % uniqueID
   end function equal_particleState
 
 !  !!
