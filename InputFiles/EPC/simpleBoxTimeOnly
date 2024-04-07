@@ -6,11 +6,11 @@ XSdata   ce;
 dataType ce;
 timeIncrement 1.E-05;   //1.E-05
 cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
-combing 1;
 
-useEPC 1;
+combing 1;
+useEPC 0;
 fittestFactor 0.01;
-nReproductions 5;
+nReproductions 10;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
