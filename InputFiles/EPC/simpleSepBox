@@ -1,12 +1,14 @@
 type timeDependentPhysicsPackage;
 
-pop      50000;
+pop      5000; //50000
 timeSteps   100;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-07;
-cycles 50;
+cycles 50; //50
 combing 0;
+
+useEPC 1;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -16,7 +18,7 @@ transportOperator { type transportOperatorDT; //currently will only support this
 
 source {
   type pointSource;
-  r (-7.5 0.0 0.0);
+  r (-7.5 0.0 0.0); //r (-7.5 0.0 0.0);
   particle neutron;
   E 5.0E-03;
 }

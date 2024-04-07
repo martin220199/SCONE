@@ -831,11 +831,9 @@ contains
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
     tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx)
-
     p % tallyContrib = tallyFootprint
-
     if (p % fate == AGED_FATE) crossedTimeBoundary = ONE
-    p % fitness = tallyFootprint * crossedTimeBoundary    !* p % w       ! ok but what about if aged or didnt age?
+    p % fitness = tallyFootprint * crossedTimeBoundary
 
   end subroutine processEvolutionaryParticle
 

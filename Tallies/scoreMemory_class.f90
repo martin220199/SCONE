@@ -487,7 +487,6 @@ contains
     threadIdx = ompGetThreadNum() + 1
     tallyFootprint = self % parallelBinsEPC(timeBinIdx,threadIdx)
     self % parallelBinsEPC(timeBinIdx,threadIdx) = ZERO
-    !self % parallelBinsEPC(:,:) = ZERO
 
   end function processEvolutionaryParticle
 

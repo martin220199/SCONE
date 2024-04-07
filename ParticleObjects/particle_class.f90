@@ -10,7 +10,9 @@ module particle_class
   implicit none
   private
 
-
+  !!
+  !! Particle Information for Evolutionary Population Control
+  !!
   type, public :: stateInfo
     real(defReal)              :: E    = ZERO
     real(defReal)              :: wgt  = ZERO

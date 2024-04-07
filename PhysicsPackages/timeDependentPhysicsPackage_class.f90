@@ -87,6 +87,8 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useForcedPrecursorDecay
 
     logical(defBool)   :: useEPC
+    real(defReal)      :: fittestFactor
+    integer(shortInt)  :: nReproductions
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -380,24 +382,22 @@ contains
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
-    integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles
-    integer(shortInt)                                 :: nParticlesFittest2, nParticlesFittest
-    type(particle), save                              :: p, p_d
+    integer(shortInt)                                 :: i, t, n, nParticles, j
+    integer(shortInt)                                 :: nParticlesFittest
+    type(particle), save                              :: p
     type(particle), save                              :: p_pre, p_temp
     type(particleDungeon), save                       :: buffer
-    type(particleDungeon)                             :: fittestParticles
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
     type(RNG), target, save                           :: pRNG
-    real(defReal)                                     :: elapsed_T, end_T, T_toEnd, decay_T, w_d
+    real(defReal)                                     :: elapsed_T, end_T, T_toEnd
     real(defReal), intent(in)                         :: timeIncrement
-
     integer(shortInt)                                 :: Nfittest
     integer(shortInt), save                           :: k
     real(defReal), save                               :: score
     real(defReal)                                     :: fitness1
     character(100),parameter :: Here ='cycles_EPC (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, k, p_pre, p_temp, score)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, k, p_pre, p_temp, score)
 
     !$omp parallel
     ! Create particle buffer
@@ -429,7 +429,7 @@ contains
         call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
 
-        Nfittest = nParticles / 10 !/ 100
+        Nfittest = int(nParticles * self % fittestFactor)
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -437,10 +437,6 @@ contains
           p % pRNG => pRNG
           call p % pRNG % stride(n)
           call self % currentTime(i) % copy(p, n)
-
-          !save particle pre-history state
-          !p_pre = p
-
 
           p % timeMax = t * timeIncrement
           if (p % time > p % timeMax) then
@@ -461,7 +457,6 @@ contains
             call self % geom % placeCoord(p % coords)
             call p % savePreHistory()
             call p % savePreEvolution()
-            
 
             ! Transport particle untill its death
             history: do
@@ -469,8 +464,6 @@ contains
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                !p_pre % fate = AGED_FATE
-                !call self % nextTime(i) % detain(p)
                 exit history
               endif
               if (self % usePrecursors) then
@@ -489,16 +482,11 @@ contains
             end if
 
           end do bufferLoop
-          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-          !collapse down into single fn and make atomic
 
-          !if (self % fittestParticles % popSize() > Nfittest) call fatalError(Here, 'SORTING SCHEME WRONG!')
-
-          ! function to extract tally array and fitness to particle
           p_pre = p
-
           call self % tally % processEvolutionaryParticle(p_pre, t)
 
+          !TODO: FUNCTION FOR SORTING INSIDE OMP CRITICAL
 
           !$OMP CRITICAL
           if ((Nfittest == 0)) then
@@ -511,7 +499,6 @@ contains
             if (self % fittestParticles % popSize() == 0) then
               call self % fittestParticles % detain(p_pre)
               fitness1 = p_pre % fitness
-              !cycle gen
             else 
               if (p_pre % fitness <= fitness1) then
                 if (p_pre % fate == aged_fate) then
@@ -528,23 +515,18 @@ contains
                 end if
 
                 call self % fittestParticles % replace(p_pre,1)
-                !cycle gen
               end if
             end if
 
           ! logic of sorting
-
           else if (self % fittestParticles % popSize() == 0) then
             call self % fittestParticles % detain(p_pre)
             fitness1 = p_pre % fitness
-            !cycle gen
-          !end if
 
           else if (self % fittestParticles % popSize() < Nfittest) then
             k = 1
             sortLoop: do
               call self % fittestParticles % copy(p_temp, k)
-
               if (p_pre % fitness <= p_temp % fitness) then
                 if (k == 1) fitness1 = p_pre % fitness
                 call self % fittestParticles % replace(p_pre, k)
@@ -558,8 +540,6 @@ contains
                 exit sortLoop
               end if
             end do sortLoop
-            
-            !cycle gen
 
           else
             if (p_pre % fitness <= fitness1) then
@@ -567,8 +547,6 @@ contains
                 p_pre % isDead = .false.
                 call self % nextTime(i) % detain(p_pre)
               end if
-              !cycle gen
-
             else
               !score exit particle
               call self % fittestParticles % copy(p_temp, 1)
@@ -597,7 +575,6 @@ contains
 
               call self % fittestParticles % copy(p_temp, 1)
               fitness1 = p_temp % fitness
-              !cycle gen
 
             end if
           end if
@@ -607,26 +584,16 @@ contains
         end do gen
         !$omp end parallel do
 
-
-
         nParticlesFittest = self % fittestParticles % popSize()
-        !print *, 'size', self % fittestParticles % popSize(), Nfittest
-        !print *, 'size2', self % currentTime(i) % popSize()
-        !do k = 1, Nfittest
-        !  call self % fittestParticles % copy(p_temp, k)
-        !end do
 
         call self % currentTime(i) % cleanPop()
         !$omp parallel do schedule(dynamic)
-        do n = 1, nParticlesFittest
+        do n = 1, nParticlesFittest  !TODO: genEPC here
           call self % fittestParticles % copy(p_temp, n)
-
 
           p_temp % w = p_temp % w / 2
           score = -p_temp % tallyContrib / 2 
           call tally % updateScore(score, t)
-
-
 
           if (p_temp % fate == aged_fate) then
             p_temp % isDead = .false.
@@ -635,31 +602,33 @@ contains
 
           call p_temp % loadPreEvolution()
           p_temp % preHistory % fate = no_fate
-          p_temp % preHistory % wgt = p_temp % preHistory % wgt / 2  
-          !print *, p_temp % preEvolutionState % E, p_temp % preEvolutionState % time
-          call self % currentTime(i) % detain(p_temp % preHistory)
+          p_temp % preHistory % wgt = p_temp % preHistory % wgt / (2*self % nReproductions)
+
+
+
+          do k = 1, self % nReproductions
+            call self % currentTime(i) % detain(p_temp % preHistory)
+
+
+            
+          end do
+
+
+          !TODO simulate particle right away?? save time
+
         end do
         !$omp end parallel do
         call self % fittestParticles % cleanPop()
 
-
-
-
-
-
-
-
-        nParticlesFittest2 = self % currentTime(i) % popSize()
-        !print *, 'HERE', nParticles
+        nParticlesFittest = self % currentTime(i) % popSize()
 
         !$omp parallel do schedule(dynamic)
-        genEPC: do n = 1, nParticlesFittest2
+        genEPC: do n = 1, nParticlesFittest
 
           pRNG = self % pRNG
           p % pRNG => pRNG
           call p % pRNG % stride(n)
           call self % currentTime(i) % copy(p, n)
-          !print *, 'time', p % time, p % E, p % fate, p % w
 
           p % timeMax = t * timeIncrement
           if (p % time > p % timeMax) then
@@ -708,36 +677,7 @@ contains
         end do genEPC
         !$omp end parallel do
 
-
         call self % currentTime(i) % cleanPop()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        !combing
-        !call self % currentTime(i) % combing(self % pop, pRNG)
-
-        !run sim
-
-        !call fatalError(Here, 'ligmaballs')
-
-
 
         ! Update RNG
         call self % pRNG % stride(self % pop + 1)
@@ -750,7 +690,6 @@ contains
         if (self % useCombing) then
           call self % nextTime(i) % combing(self % pop, pRNG)
         end if
-
       end do
 
       self % tempTime  => self % nextTime
@@ -936,8 +875,8 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(3 * self % pop)
-      call self % nextTime(i) % init(3 * self % pop)
+      call self % currentTime(i) % init(50 * self % pop)
+      call self % nextTime(i) % init(50 * self % pop)
     end do
 
     ! Size precursor dungeon
@@ -951,6 +890,8 @@ contains
     if (self % useEPC .eqv. .true.) then
       allocate(self % fittestParticles)
       call self % fittestParticles % init(self % pop)
+      call dict % get(self % fittestFactor, 'fittestFactor')
+      call dict % get(self % nReproductions, 'nReproductions')
     end if
 
     call self % printSettings()
