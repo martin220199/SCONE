@@ -87,6 +87,7 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useForcedPrecursorDecay
 
     logical(defBool)   :: useEPC
+    logical(defBool)   :: useQuickSort
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
 
@@ -118,6 +119,7 @@ module timeDependentPhysicsPackage_class
     procedure :: kill
     procedure :: russianRoulette
     procedure :: sortFittest
+    procedure :: quickSort
 
   end type timeDependentPhysicsPackage
 
@@ -132,8 +134,7 @@ contains
     if (self % useEPC .eqv. .false.) then
       call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     else
-      call self % cycles_EPC(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement) !on the run sorting. DO another using quicksort in the end. Is there a way to terminate early once found top x?
-      ! think this is possible for quicksort.
+      call self % cycles_EPC(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     end if
     call self % collectResults()
 
@@ -394,11 +395,10 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd
     real(defReal), intent(in)                         :: timeIncrement
     integer(shortInt)                                 :: Nfittest
-    integer(shortInt), save                           :: k
     real(defReal), save                               :: score
     real(defReal)                                     :: fitness1
     character(100),parameter :: Here ='cycles_EPC (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, k, p_pre, p_temp, score)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, p_pre, p_temp, score)
 
     !$omp parallel
     ! Create particle buffer
@@ -487,18 +487,34 @@ contains
           p_pre = p
           call self % tally % processEvolutionaryParticle(p_pre, t)
 
-          !$OMP CRITICAL
-          call self % sortFittest(p_pre, Nfittest, i, fitness1)
-          !$OMP END CRITICAL
+          if (self % useQuickSort .eqv. .true.) then
+            call self % fittestParticles % detain(p_pre)
+          else
+            !$OMP CRITICAL
+            call self % sortFittest(p_pre, Nfittest, i, fitness1)
+            !$OMP END CRITICAL
+          end if
 
         end do gen
         !$omp end parallel do
 
         nParticlesFittest = self % fittestParticles % popSize()
 
+        if (self % useQuickSort .eqv. .true.) then
+          call self % quickSort(self % fittestParticles, 1, nParticlesFittest)
+        end if
+
         !$omp parallel do schedule(dynamic)
         genEPC:do n = 1, nParticlesFittest
           call self % fittestParticles % copy(p_temp, n)
+
+          if (n > Nfittest) then
+            if (p_temp % fate == aged_fate) then
+              p_temp % isDead = .false.
+              call self % nextTime(i) % detain(p_temp)
+            end if
+            cycle genEPC
+          end if
 
           p_temp % w = p_temp % w / 2
           score = -p_temp % tallyContrib / 2 
@@ -571,8 +587,6 @@ contains
         end do genEPC
         !$omp end parallel do
         call self % fittestParticles % cleanPop()
-
-
         call self % currentTime(i) % cleanPop()
 
         ! Update RNG
@@ -785,9 +799,10 @@ contains
 
     if (self % useEPC .eqv. .true.) then
       allocate(self % fittestParticles)
-      call self % fittestParticles % init(self % pop)
+      call self % fittestParticles % init(3 * self % pop)
       call dict % get(self % fittestFactor, 'fittestFactor')
       call dict % get(self % nReproductions, 'nReproductions')
+      call dict % get(self % useQuickSort, 'useQuickSort')
     end if
 
     call self % printSettings()
@@ -938,4 +953,58 @@ contains
 
   end subroutine sortFittest
 
+  recursive subroutine quickSort(self, fittestParticles, first, last)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    type(particleDungeon), intent(inout)              :: fittestParticles
+    integer(shortInt), intent(in)                     :: first, last
+    real(defReal)                                     :: x, t, statement1, statement2
+    integer(shortInt)                                 :: i, j, size
+    type(particle)                                    :: p, p_temp
+
+    !TODO MAKE PARALLELL
+
+    !x = a( (first+last) / 2 )
+    call fittestParticles % copy(p, (first+last)/2)
+    x = p % fitness
+
+    i = first
+    j = last
+    do
+      call fittestParticles % copy(p, i) !a(i)
+      statement1 = p % fitness
+      size = fittestParticles % popSize()
+      do while (statement1 > x)
+          i=i+1
+
+          call fittestParticles % copy(p, i) !a(i)
+          statement1 = p % fitness
+      end do
+      call fittestParticles % copy(p, j) !a(j)
+      statement2 = p % fitness
+
+      do while (x > statement2)
+          j=j-1
+          call fittestParticles % copy(p, j) !a(j)
+          statement2 = p % fitness
+      end do
+
+      if (i >= j) exit
+
+      call fittestParticles % copy(p, i)
+      !t = p % fitness !a(i)
+
+      call fittestParticles % copy(p_temp, j)
+      call fittestParticles % replace(p_temp, i)
+      !a(i) = a(j)
+      
+      call fittestParticles % replace(p, j)
+      !a(j) = t
+
+      i=i+1
+      j=j-1
+    end do
+    if (first < i-1) call self % quickSort(fittestParticles, first, i-1)
+    if (j+1 < last)  call self % quickSort(fittestParticles, j+1, last)
+
+  end subroutine quickSort
 end module timeDependentPhysicsPackage_class
