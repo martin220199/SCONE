@@ -120,6 +120,13 @@ module timeDependentPhysicsPackage_class
     procedure :: russianRoulette
     procedure :: sortFittest
     procedure :: quickSort
+    procedure :: swap
+    procedure :: partition
+    procedure :: parallelQuickSort
+
+    procedure :: merge_sort
+    procedure :: merge
+
 
   end type timeDependentPhysicsPackage
 
@@ -502,6 +509,13 @@ contains
 
         if (self % useQuickSort .eqv. .true.) then
           call self % quickSort(self % fittestParticles, 1, nParticlesFittest)
+
+          !$omp parallel
+          !$omp single
+          !call self % ParallelQuickSort(self % fittestParticles, 1, nParticlesFittest)
+          !call self % merge_sort(self % fittestParticles, 1, nParticlesFittest)
+          !$omp end single
+          !$omp end parallel
         end if
 
         !$omp parallel do schedule(dynamic)
@@ -958,47 +972,39 @@ contains
     type(particleDungeon), intent(inout)              :: fittestParticles
     integer(shortInt), intent(in)                     :: first, last
     real(defReal)                                     :: x, t, statement1, statement2
-    integer(shortInt)                                 :: i, j, size
+    integer(shortInt)                                 :: i, j
     type(particle)                                    :: p, p_temp
 
-    !TODO MAKE PARALLELL
-
-    !x = a( (first+last) / 2 )
     call fittestParticles % copy(p, (first+last)/2)
     x = p % fitness
 
     i = first
     j = last
+
     do
-      call fittestParticles % copy(p, i) !a(i)
+      call fittestParticles % copy(p, i)
       statement1 = p % fitness
-      size = fittestParticles % popSize()
-      do while (statement1 > x)
+      do while (statement1 > x)     !> for descending
           i=i+1
 
-          call fittestParticles % copy(p, i) !a(i)
+          call fittestParticles % copy(p, i)
           statement1 = p % fitness
       end do
-      call fittestParticles % copy(p, j) !a(j)
+
+      call fittestParticles % copy(p, j)
       statement2 = p % fitness
 
-      do while (x > statement2)
+      do while (x > statement2)          !> for descending
           j=j-1
-          call fittestParticles % copy(p, j) !a(j)
+          call fittestParticles % copy(p, j)
           statement2 = p % fitness
       end do
 
       if (i >= j) exit
-
       call fittestParticles % copy(p, i)
-      !t = p % fitness !a(i)
-
       call fittestParticles % copy(p_temp, j)
       call fittestParticles % replace(p_temp, i)
-      !a(i) = a(j)
-      
       call fittestParticles % replace(p, j)
-      !a(j) = t
 
       i=i+1
       j=j-1
@@ -1007,4 +1013,155 @@ contains
     if (j+1 < last)  call self % quickSort(fittestParticles, j+1, last)
 
   end subroutine quickSort
+
+
+subroutine swap(self, fittestParticles, i, j)
+  class(timeDependentPhysicsPackage), intent(inout) :: self
+  type(particleDungeon), intent(inout)              :: fittestParticles
+  integer(shortInt), intent(in)                     :: i, j
+  type(particle)                                    :: p, p_temp
+
+  call fittestParticles % copy(p_temp, i)
+  call fittestParticles % copy(p, j)
+  call fittestParticles % replace(p, i)
+  call fittestParticles % replace(p_temp, j)
+
+end subroutine swap
+
+function partition(self, fittestParticles, low, high) result(pivot)
+  class(timeDependentPhysicsPackage), intent(inout) :: self
+  type(particleDungeon), intent(inout)              :: fittestParticles
+  integer(shortInt), intent(in)                     :: low, high
+  integer(shortInt)                                 :: pivot, i, j
+  type(particle)                                    :: p, p_temp
+
+  pivot = low
+  i = low
+  j = high
+
+  call fittestParticles % copy(p_temp, pivot)
+
+  do while (i < j)
+    call fittestParticles % copy(p, i)
+    do while (p % fitness >= p_temp % fitness .and. i < high) !>= for descending
+      i = i + 1
+      call fittestParticles % copy(p, i)
+    end do
+
+    call fittestParticles % copy(p, j)
+    do while (p % fitness < p_temp % fitness) ! < for descending
+      j = j - 1
+      call fittestParticles % copy(p, j)
+    end do
+
+    if (i < j) then
+      call self % swap(fittestParticles, i, j)
+    end if
+  end do
+
+  call self % swap(fittestParticles, pivot, j)
+  pivot = j
+end function partition
+
+
+
+  recursive subroutine ParallelQuickSort(self, fittestParticles, low, high)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    type(particleDungeon), intent(inout)              :: fittestParticles
+    integer(shortInt), intent(in)                     :: low, high
+    integer(shortInt)                                 :: pivot
+    type(particle)                                    :: p, p_temp
+
+    if (low < high) then
+      pivot = self % partition(fittestParticles, low, high)
+
+      !$OMP PARALLEL SECTIONS
+      !$OMP SECTION
+      call self % ParallelQuickSort(fittestParticles, low, pivot - 1)
+
+
+      !$OMP SECTION
+      call self % ParallelQuickSort(fittestParticles, pivot + 1, high)
+      !$OMP END PARALLEL SECTIONS
+    end if
+
+  end subroutine ParallelQuickSort
+
+
+
+
+  subroutine merge_sort(self, fittestParticles, low, high)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    type(particleDungeon), intent(inout)              :: fittestParticles
+    integer(shortInt), intent(in)                     :: low, high
+    integer(shortInt)                                 :: mid
+
+    if (low < high) then
+      mid = (low + high) / 2
+
+      !$omp parallel sections
+      !$omp section
+      call self % merge_sort(fittestParticles, low, mid)
+      !$omp section
+      call self % merge_sort(fittestParticles, mid + 1, high)
+      !$omp end parallel sections
+
+      call self % merge(fittestParticles, low, mid, high)
+
+    end if
+  end subroutine merge_sort
+
+  subroutine merge(self, fittestParticles, low, mid, high)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    type(particleDungeon), intent(inout)              :: fittestParticles
+    integer(shortInt), intent(in)                     :: low, mid, high
+    integer(shortInt)                                 :: i, j, k
+    type(particle), allocatable                       :: temp(:)
+    type(particle)                                    :: p, p_temp
+
+    allocate(temp(low:high))
+
+    i = low
+    j = mid + 1
+    k = low
+
+    do while (i <= mid .and. j <= high)
+
+      call fittestParticles % copy(p, i)
+      call fittestParticles % copy(p_temp, j)
+      if (p % fitness >= p_temp % fitness) then
+        temp(k) = p
+        i = i + 1
+      else
+        temp(k) = p_temp
+        j = j + 1
+      end if
+      k = k + 1
+
+    end do
+
+    do while (i <= mid)
+      call fittestParticles % copy(p, i)
+      temp(k) = p
+      i = i + 1
+      k = k + 1
+    end do
+
+    do while (j <= high)
+      call fittestParticles % copy(p, j)
+      temp(k) = p
+      j = j + 1
+      k = k + 1
+    end do
+
+    do i = low, high
+      call fittestParticles % replace (temp(i), i)
+    end do
+
+    deallocate(temp)
+
+  end subroutine merge
+
+
+
 end module timeDependentPhysicsPackage_class

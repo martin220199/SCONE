@@ -1,16 +1,17 @@
 type timeDependentPhysicsPackage;
 
-pop      1000; //500 !good parameter for EPC
+pop      100000; //10000 1000       500 also good parameter for EPC
 timeSteps   100; //100
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-05;   //1.E-05
-cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
+cycles 3; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
-combing 1;
-useEPC 0;
-fittestFactor 0.01;
-nReproductions 10;
+combing 0;
+useEPC 1;
+fittestFactor 0.01; //0.01; //0.01
+nReproductions 10; // 10
+useQuickSort 1;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
