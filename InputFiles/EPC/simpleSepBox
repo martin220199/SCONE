@@ -1,14 +1,17 @@
 type timeDependentPhysicsPackage;
 
-pop      5000; //50000
-timeSteps   100;
+pop      5000; //5000
+timeSteps   100; //100
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-07;
-cycles 50; //50
-combing 0;
+timeIncrement 1.E-07; //1.E-07
+cycles 10; //50
+combing 1;
 
-useEPC 1;
+useEPC 0;
+fittestFactor 0.01; //0.01; //0.01
+nReproductions 2; // 10
+useQuickSort 0;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -18,7 +21,7 @@ transportOperator { type transportOperatorDT; //currently will only support this
 
 source {
   type pointSource;
-  r (-7.5 0.0 0.0); //r (-7.5 0.0 0.0);
+  r (-5.0 0.0 0.0); //r (-7.5 0.0 0.0);
   particle neutron;
   E 5.0E-03;
 }
@@ -27,8 +30,8 @@ tally  {
 
   flux_time { type collisionClerk;
     map { type multiMap; maps (map1 map2);
-    map1 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
-    map2 { type cellMap; cells (1 2); }
+    map1 { type cellMap; cells (1 2); }
+    map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;} //100
     }
     response (flux); flux {type fluxResponse;}
     //handleVirtual 1;
@@ -83,8 +86,8 @@ nuclearData {
     m2 {
       temp 12345;
       composition {
-        5010.03   0.05;
-        5011.03   0.05;
+        5010.03   0.05; // 0.05
+        5011.03   0.05; // 0.05
 
         }
     }

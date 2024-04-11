@@ -74,8 +74,9 @@ module particle_class
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
 
-    real(defReal)              :: fitness, tallyContrib
-    type(stateInfo)            :: preEvolutionState
+    real(defReal)                :: fitness
+    real(defReal), dimension(:), allocatable  :: tallyContrib
+    type(stateInfo)              :: preEvolutionState
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -147,7 +148,8 @@ module particle_class
     type(particleState)        :: prePath
     type(particleState)        :: preCollision
 
-    real(defReal)              :: fitness, tallyContrib   
+    real(defReal)              :: fitness
+    real(defReal), dimension(:), allocatable  :: tallyContrib  
     type(stateInfo)            :: preEvolutionState
 
   contains
@@ -196,6 +198,8 @@ module particle_class
     procedure,private                   :: buildCE
     procedure,private                   :: buildMG
     procedure,non_overridable,private   :: particle_fromParticleState
+
+    procedure :: initEPC
 
   end type particle
 
@@ -310,11 +314,32 @@ contains
     LHS % lambda                = RHS % lambda
     LHS % fate                  = RHS % fate
     LHS % fitness               = RHS % fitness
-    LHS % tallyContrib          = RHS % tallyContrib
+
+    if (allocated(RHS % tallyContrib)) then
+      if (allocated(LHS % tallyContrib)) then
+        LHS % tallyContrib      = RHS % tallyContrib
+      else
+        allocate(LHS % tallyContrib(size(RHS % tallyContrib)))
+        LHS % tallyContrib      = RHS % tallyContrib
+      end if
+    end if
     LHS % preEvolutionState     = RHS % preEvolutionState
 
   end subroutine particle_fromParticleState
 
+  subroutine initEPC(self, tallyContrib, tallyContribSize)
+    class(particle), intent(inout) :: self
+    integer(shortInt), intent(in) :: tallyContribSize
+    real(defReal), dimension(tallyContribSize), intent(in) :: tallyContrib
+
+    if (allocated(self % tallyContrib)) then
+      self % tallyContrib = tallyContrib
+    else
+      allocate(self % tallyContrib(tallyContribSize))
+      self % tallyContrib = tallyContrib
+    end if
+
+  end subroutine initEPC
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle coordinates inquiry procedures
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -763,7 +788,14 @@ contains
     LHS % cellIdx  = RHS % coords % cell()
 
     LHS % fitness           = RHS % fitness
-    LHS % tallyContrib      = RHS % tallyContrib
+    if (allocated(RHS % tallyContrib)) then
+      if (allocated(LHS % tallyContrib)) then
+        LHS % tallyContrib      = RHS % tallyContrib
+      else
+        allocate(LHS % tallyContrib(size(RHS % tallyContrib)))
+        LHS % tallyContrib      = RHS % tallyContrib
+      end if
+    end if
     LHS % preEvolutionState = RHS % preEvolutionState
 
   end subroutine particleState_fromParticle
@@ -797,7 +829,7 @@ contains
     end if
 
     isEqual = isEqual .and. LHS % fitness           == RHS % fitness
-    isEqual = isEqual .and. LHS % tallyContrib      == RHS % tallyContrib
+    isEqual = isEqual .and. all(LHS % tallyContrib      == RHS % tallyContrib)
 
     isEqual = isEqual .and. LHS % preEvolutionState % E        == RHS % preEvolutionState % E
     isEqual = isEqual .and. LHS % preEvolutionState % wgt      == RHS % preEvolutionState % wgt

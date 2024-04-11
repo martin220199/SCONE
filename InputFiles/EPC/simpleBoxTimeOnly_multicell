@@ -1,16 +1,16 @@
 type timeDependentPhysicsPackage;
 
-pop      10000; //100000 1000       500 also good parameter for EPC
+pop      10000; //10000 1000       500 also good parameter for EPC
 timeSteps   100; //100
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-05;   //1.E-05
 cycles 3; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
-combing 1;
-useEPC 0;
-fittestFactor 0.01; //0.01; //0.01
-nReproductions 10; // 10
+combing 0;
+useEPC 1;
+fittestFactor 0.001; //0.01; //0.01
+nReproductions 100; // 10
 useQuickSort 1;
 
 outputFormat asciiJSON;
@@ -29,9 +29,15 @@ source {
 tally  {
 
   flux_time { type collisionClerk;
-    map { type timeMap; grid lin; min 0.0; max 1E-03; N 100;}
+    map { type multiMap; maps (map1 map2);
+
+    map1 { type timeMap; grid lin; min 0.0; max 1E-03; N 100;}  //Always have time first
+    map2 { type cellMap; cells (1 2); }
+    }
     response (flux); flux {type fluxResponse;}
   }
+
+
   }
 
 geometry {
@@ -43,17 +49,22 @@ geometry {
     {
       universeBox { type box; id 1; origin (0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
 
+      innerBox { type box; id 2; origin (0.0 0.0 0.0); halfwidth (5.0 5.0 5.0); }
+
     } 
 
     cells
     {
+      cellOne{ id 1; type simpleCell; surfaces (-2); filltype mat; material m1;} 
+      cellTwo{ id 2; type simpleCell; surfaces (2 -1); filltype mat; material m1;} 
 
     }
 
     universes
     {
 
-      root{id 1; type rootUniverse; border 1; fill m1;}
+      root{id 1; type rootUniverse; border 1; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2);}
 
     }
 }

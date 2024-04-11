@@ -118,6 +118,9 @@ module tallyAdmin_class
 
     ! Score memory
     type(scoreMemory)  :: mem
+
+    integer(shortInt)  :: nTimeBinsEPC = 0_shortInt
+    integer(shortInt)  :: tallyContribSizeEPC = 0_shortInt
   contains
 
     ! Build procedures
@@ -158,6 +161,8 @@ module tallyAdmin_class
     procedure :: processEvolutionaryParticle
 
     procedure :: updateScore
+
+    procedure :: setNtimeBinsEPC
 
   end type tallyAdmin
 
@@ -826,25 +831,39 @@ contains
     class(tallyAdmin),intent(inout) :: self
     class(particle), intent(inout)  :: p
     integer(shortInt), intent(in)   :: timeBinIdx
-    real(defReal)                   :: tallyFootprint
+    real(defReal), dimension(self % tallyContribSizeEPC)     :: tallyFootprint
     real(defReal)                   :: crossedTimeBoundary = ZERO
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
-    tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx)
-    p % tallyContrib = tallyFootprint
+    !self % tallyContribSizeEPC
+    !print *, '------------', p % preEvolutionState % cellIdx, p % getcellIdx(), timeBinIdx
+    tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
+    !allocate(p % tallyContrib(self % tallyContribSizeEPC))
+    call p % initEPC(tallyFootprint, self % tallyContribSizeEPC)
+    !p % tallyContrib = tallyFootprint
     if (p % fate == AGED_FATE) crossedTimeBoundary = ONE
-    p % fitness = tallyFootprint * crossedTimeBoundary
-
+    p % fitness = tallyFootprint(2) * crossedTimeBoundary !sum(tallyFootprint) * crossedTimeBoundary
+    !print *,  tallyFootprint(:), p % preEvolutionState % cellIdx, p % getcellIdx(), timeBinIdx
   end subroutine processEvolutionaryParticle
 
   subroutine updateScore(self, score, timeBinIdx)
     class(tallyAdmin),intent(inout) :: self
-    real(defReal), intent(in)       :: score
+    real(defReal), dimension(self % tallyContribSizeEPC), intent(in)       :: score
     integer(shortInt), intent(in)   :: timeBinIdx
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
-    call self % mem % updateScore(score, timeBinIdx)
+    call self % mem % updateScore(score, timeBinIdx, self % tallyContribSizeEPC)
 
   end subroutine updateScore
+
+  subroutine setNtimeBinsEPC(self, N_timeBins)
+    class(tallyAdmin),intent(inout) :: self
+    integer(shortInt), intent(in)   :: N_timeBins
+    character(100),parameter :: Here = 'setNtimeBinsEPC (tallyAdmin_class.f90)'
+
+    self % nTimeBinsEPC = N_timeBins
+    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
+
+  end subroutine setNtimeBinsEPC
 
 end module tallyAdmin_class

@@ -477,28 +477,33 @@ contains
 
   end function getScore
 
-  function processEvolutionaryParticle(self, timeBinIdx) result(tallyFootprint)
+  function processEvolutionaryParticle(self, timeBinIdx, tallyContribSizeEPC) result(tallyFootprint)
     class(scoreMemory), intent(inout)  :: self
-    integer(shortInt), intent(in)      :: timeBinIdx
-    integer(shortInt)                  :: threadIdx
-    real(defReal)                      :: tallyFootprint
+    integer(shortInt), intent(in)      :: timeBinIdx, tallyContribSizeEPC
+    integer(shortInt)                  :: threadIdx, something
+    real(defReal), dimension(tallyContribSizeEPC)        :: tallyFootprint
     character(100),parameter :: Here = 'processEvolutionaryParticle (scoreMemory_class.f90)'
 
     threadIdx = ompGetThreadNum() + 1
-    tallyFootprint = self % parallelBinsEPC(timeBinIdx,threadIdx)
-    self % parallelBinsEPC(timeBinIdx,threadIdx) = ZERO
+    something = timeBinIdx*tallyContribSizeEPC
+    tallyFootprint = self % parallelBinsEPC(something-1:something-1+tallyContribSizeEPC -1,threadIdx)
+    !print *, '1', tallyFootprint(:), timeBinIdx
+    !print *, 'memory at time', timeBinIdx,':', self % parallelBinsEPC(:self % N,threadIdx)
+    self % parallelBinsEPC(something-1:something-1+tallyContribSizeEPC -1,threadIdx) = ZERO
 
   end function processEvolutionaryParticle
 
-  subroutine updateScore(self, score, timeBinIdx)
+  subroutine updateScore(self, score, timeBinIdx, tallyContribSizeEPC)
     class(scoreMemory), intent(inout)  :: self
-    integer(shortInt), intent(in)      :: timeBinIdx
-    real(defReal)                      :: score
-    integer(shortInt)                  :: threadIdx
+    integer(shortInt), intent(in)      :: timeBinIdx, tallyContribSizeEPC
+    real(defReal), dimension(tallyContribSizeEPC), intent(in)  :: score
+    integer(shortInt)                  :: threadIdx, something
     character(100),parameter :: Here = 'updateScore (scoreMemory_class.f90)'
 
+    something = timeBinIdx*tallyContribSizeEPC
     threadIdx = ompGetThreadNum() + 1
-    self % parallelBins(timeBinIdx,threadIdx) = self % parallelBins(timeBinIdx,threadIdx) + score
+    self % parallelBins(something-1:something-1+tallyContribSizeEPC -1, threadIdx) = & 
+                        self % parallelBins(something-1:something-1+tallyContribSizeEPC -1, threadIdx) + score
 
   end subroutine updateScore
 

@@ -402,10 +402,10 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd
     real(defReal), intent(in)                         :: timeIncrement
     integer(shortInt)                                 :: Nfittest
-    real(defReal), save                               :: score
+    real(defReal), dimension(self % N_timeBins)   :: score !, save
     real(defReal)                                     :: fitness1
     character(100),parameter :: Here ='cycles_EPC (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, p_pre, p_temp, score)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, p_pre, p_temp)
 
     !$omp parallel
     ! Create particle buffer
@@ -437,7 +437,7 @@ contains
         call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
 
-        Nfittest = int(nParticles * self % fittestFactor)
+        Nfittest =  int(self % pop * self % fittestFactor)!int(nParticles * self % fittestFactor)
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -522,6 +522,8 @@ contains
         genEPC:do n = 1, nParticlesFittest
           call self % fittestParticles % copy(p_temp, n)
 
+          !print *, p_temp % tallycontrib(:)
+
           if (n > Nfittest) then
             if (p_temp % fate == aged_fate) then
               p_temp % isDead = .false.
@@ -531,8 +533,8 @@ contains
           end if
 
           p_temp % w = p_temp % w / 2
-          score = -p_temp % tallyContrib / 2 
-          call tally % updateScore(score, t)
+          !score = -p_temp % tallyContrib(:) / 2 
+          call tally % updateScore(-p_temp % tallyContrib(:) / 2, t)
 
           if (p_temp % fate == aged_fate) then
             p_temp % isDead = .false.
@@ -547,6 +549,7 @@ contains
           genReproduction:do j = 1, self % nReproductions
 
             p = p_temp % preHistory
+            !print *, 'here', p % w, p_temp % preHistory % wgt
             pRNG = self % pRNG
             p % pRNG => pRNG
             call p % pRNG % stride(n)
@@ -799,24 +802,26 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(50 * self % pop)
-      call self % nextTime(i) % init(50 * self % pop)
+      call self % currentTime(i) % init(5 * self % pop)
+      call self % nextTime(i) % init(15 * self % pop)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(3 * self % pop)
+        call self % precursorDungeons(i) % init(2 * self % pop)
       end do
     end if
 
+    ! Initialise EPC
     if (self % useEPC .eqv. .true.) then
       allocate(self % fittestParticles)
-      call self % fittestParticles % init(3 * self % pop)
+      call self % fittestParticles % init(15 * self % pop)
       call dict % get(self % fittestFactor, 'fittestFactor')
       call dict % get(self % nReproductions, 'nReproductions')
       call dict % get(self % useQuickSort, 'useQuickSort')
+      call self % tally % setNtimeBinsEPC(self % N_timeBins)
     end if
 
     call self % printSettings()
