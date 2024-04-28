@@ -131,12 +131,14 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
-    !!!!!!!call self % cycles_efficient_2(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
+    !!!!!!!!!!!!!call self % cycles_efficient_2(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
     call self % cycles_efficient(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
     !call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
     call self % tally % setSimTime(simTime)
     call self % collectResults()
     !call self % collectResults(self % N_timeBins)
+
+    !cycles_efficient with collectResults()
 
     print *
     print *, "\/\/ END OF TIME DEPENDENT CALCULATION \/\/"
@@ -554,12 +556,13 @@ contains
     !$omp threadprivate(p, buffer, collOp, transOp, pRNG)
 
     ! Size particle dungeon
-    allocate(self % currentTimeInterval)
-    allocate(self % nextTimeInterval)
-    allocate(self % batchPopulations(N_cycles))
+    allocate(self % currentTime(N_cycles))
+    allocate(self % nextTime(N_cycles))
 
-    call self % currentTimeInterval % init(self % pop)
-    call self % nextTimeInterval % init(self % pop)
+    do i = 1, self % N_cycles
+      call self % currentTime(i) % init(self % pop)
+      call self % nextTime(i) % init(self % pop)
+    end do
 
     !$omp parallel
     ! Create particle buffer
@@ -583,31 +586,33 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    hyperparam = 100 !5,100,1000?
+    !hyperparam = 5 !5,100,1000?
 
     print *, 'TIME = 1'
     ! First time iteration, fixed source treatment. TODO: add treatment of converged stationary initial source
-    call self % fixedSource % generate(self % currentTimeInterval, nParticles, self % pRNG)
+    !call self % fixedSource % generate(self % currentTimeInterval, nParticles, self % pRNG)
 
-    particleBatchTracker = 1
+    !particleBatchTracker = 1
 
-    numParticlesPerBatch = nParticles / hyperparam ! /10
-    numBatches = nParticles / numParticlesPerBatch !tune this hyperparameter
+    !numParticlesPerBatch = nParticles / hyperparam ! /10
+    !numBatches = nParticles / numParticlesPerBatch !tune this hyperparameter
 
 
-    call tally % initScoreBootstrap(numBatches)
+    call tally % initScoreBootstrap(N_cycles)
 
-    do k = 1, numBatches
-
+    do k = 1, N_cycles
+      call self % fixedSource % generate(self % currentTime(k), nParticles, self % pRNG)
+      call tally % reportCycleStart(self % currentTime(k))
+      !print *, '---', self % currentTimeInterval % popSize(), particleBatchTracker, particleBatchTracker - 1 + numParticlesPerBatch
       !$omp parallel do schedule(dynamic)
-      gen_t0: do n = particleBatchTracker, particleBatchTracker - 1 + numParticlesPerBatch
-        call tally % reportCycleStart(self % currentTimeInterval)
+      gen_t0: do n = 1, nParticles
+        !call tally % reportCycleStart(self % currentTimeInterval)
 
         pRNG = self % pRNG
         p % pRNG => pRNG
         call p % pRNG % stride(n)
 
-        call self % currentTimeInterval % copy(p, n)
+        call self % currentTime(k)% copy(p, n)
 
         bufferLoop_t0: do
           p % fate = 0
@@ -618,7 +623,7 @@ contains
             call transOp % transport(p, tally, buffer, buffer)
             if(p % isDead) exit history_t0
             if(p % fate == AGED_FATE) then
-              call self % nextTimeInterval % detain(p)
+              call self % nextTime(k) % detain(p)
 
               exit history_t0
             endif
@@ -638,18 +643,19 @@ contains
       end do gen_t0
       !$omp end parallel do
 
-      particleBatchTracker = particleBatchTracker + numParticlesPerBatch
+      !particleBatchTracker = particleBatchTracker + numParticlesPerBatch
       call tally % closePlugInCycleModified(k,1)
+      call self % currentTime(k) % cleanPop()
+      call self % pRNG % stride(nParticles)
     end do
 
     call tally % bootstrapPlugIn(nBootstraps, pRNG, N_timeBins,1)
 
-    call self % pRNG % stride(nParticles)
 
-    call self % currentTimeInterval % cleanPop()
-    self % tempTimeInterval  => self % nextTimeInterval
-    self % nextTimeInterval  => self % currentTimeInterval
-    self % currentTimeInterval => self % tempTimeInterval
+    !call self % currentTimeInterval % cleanPop()
+    self % tempTime  => self % nextTime
+    self % nextTime  => self % currentTime
+    self % currentTime => self % tempTime
 
     ! Predict time to end
     call timerStop(self % timerMain)
@@ -672,36 +678,36 @@ contains
     do t = 2, N_timeBins
       print *, 'time', t
 
-      if (self % useCombing) then
-        call self % currentTimeInterval % normCombing(self % pop, pRNG)
-      end if
+      !numParticlesPerBatch = nParticles / hyperparam ! /10
+      !numBatches = nParticles / numParticlesPerBatch !tune this hyperparameter
+      !print *, 'nParticles', nParticles, numBatches
 
-      !if no combing need to modify p weight
-      if (self % currentTimeInterval % popSize() == 0) then
-        call fatalError(Here,"EMPTY TIME SOURCE")
-        cycle
-      end if
+      !particleBatchTracker = 1
 
-      nParticles = self % currentTimeInterval % popSize()
+      call tally % initScoreBootstrap(N_cycles)
 
-      numParticlesPerBatch = nParticles / hyperparam ! /10
-      numBatches = nParticles / numParticlesPerBatch !tune this hyperparameter
-      print *, 'nParticles', nParticles, numBatches
+      do k = 1, N_cycles
 
-      particleBatchTracker = 1
+        if (self % useCombing) then
+          call self % currentTime(k) % normCombing(self % pop, pRNG)
+        end if
 
-      call tally % initScoreBootstrap(numBatches)
+        !if no combing need to modify p weight
+        if (self % currentTime(k) % popSize() == 0) then
+          call fatalError(Here,"EMPTY TIME SOURCE")
+          cycle
+        end if
 
-      do k = 1, numBatches
+        call tally % reportCycleStart(self % currentTime(k))
+        nParticles = self % currentTime(k) % popSize()
 
         !$omp parallel do schedule(dynamic)
-        gen: do n = particleBatchTracker, particleBatchTracker - 1 + numParticlesPerBatch
-          call tally % reportCycleStart(self % currentTimeInterval)
+        gen: do n = 1, nParticles
           pRNG = self % pRNG
           p % pRNG => pRNG
           call p % pRNG % stride(n)
 
-          call self % currentTimeInterval % copy(p, n)
+          call self % currentTime(k) % copy(p, n)
 
           bufferLoop: do
             p % fate = 0
@@ -713,7 +719,7 @@ contains
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                call self % nextTimeInterval % detain(p)
+                call self % nextTime(k) % detain(p)
                 exit history
               endif
               call collOp % collide(p, tally, buffer, buffer)
@@ -732,18 +738,20 @@ contains
         end do gen
         !$omp end parallel do
 
-        particleBatchTracker = particleBatchTracker + numParticlesPerBatch
+        !particleBatchTracker = particleBatchTracker + numParticlesPerBatch
         call tally % closePlugInCycleModified(k,t)
+        call self % pRNG % stride(nParticles)
+        call self % currentTime(k) % cleanPop()
       end do
       call tally % bootstrapPlugIn(nBootstraps, pRNG, N_timeBins,t)
 
-      call self % pRNG % stride(nParticles)
+      !call self % pRNG % stride(nParticles)
 
 
-      call self % currentTimeInterval % cleanPop()
-      self % tempTimeInterval  => self % nextTimeInterval
-      self % nextTimeInterval  => self % currentTimeInterval
-      self % currentTimeInterval => self % tempTimeInterval
+      !call self % currentTimeInterval % cleanPop()
+      self % tempTime  => self % nextTime
+      self % nextTime  => self % currentTime
+      self % currentTime => self % tempTime
 
       ! Calculate times
       call timerStop(self % timerMain)

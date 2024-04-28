@@ -1,6 +1,6 @@
 type timeDependentPhysicsPackage;
 
-pop     10000; // 1000
+pop     1000000; // 1000
 timeSteps   50; //70
 XSdata   ce;
 dataType ce;
@@ -27,12 +27,19 @@ source {
 }
 
 tally  {
-  //bootstrap 1000; //100
-  //timeSteps  50;
+  bootstrap 100; //100
+  timeSteps  50;
   /////modified 1; //uncomment for modified
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     //map { type timeMap; grid lin; min 0.0; max 7E-04; N 70;}
-    map { type timeMap; grid lin; min 0.0; max 5E-03; N 50;}
+    map { type multiMap; maps (map1 map2 map3 map4);
+
+    map1 { type timeMap; grid lin; min 0.0; max 5E-03; N 50;}
+    map2 {type spaceMap;  axis x;  grid lin; min -20; max 20; N 3;} //3
+    map3 {type spaceMap;  axis y;  grid lin; min -20; max 20; N 3;}
+    map4 {type spaceMap;  axis z;  grid lin; min -20; max 20; N 3;}
+    }
+
     response (flux); flux {type fluxResponse;}
     handleVirtual 1;
   }

@@ -397,13 +397,13 @@ contains
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
-
       !$omp parallel do
       do i = 1, self % N
 
         ! Normalise scores
         self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
         res = sum(self % parallelBins(i,:))
+        !print *, 'res', res, i
 
         ! Zero all score bins
         self % parallelBins(i,:) = ZERO
@@ -699,7 +699,9 @@ end subroutine closeBootstrap
     type(RNG), target, save     :: pRNG1
     integer(longInt)            :: scoreLoc
     !$omp threadprivate(pRNG1)
-
+    !print *, 'bootstrapPlugIn', binIdx
+    !print *, 'Ntallies', self % Ntallies
+    !print *, 'plug-in samples', self % plugInSamples(:,1)
     !$omp parallel
     pRNG1 = pRNG
     !$omp end parallel
@@ -722,7 +724,7 @@ end subroutine closeBootstrap
       biasedMean = plugInMean
       biasedVar = plugInMean * plugInMean
 
-      !print *, 'nBootstraps', nBootstraps
+      !print *, 'plug-in mean', plugInMean, ', '
 
       do i = 1, nBootstraps - 1
 
@@ -747,6 +749,7 @@ end subroutine closeBootstrap
 
         bootstrapMean = sum(self % bootstrapAccumulator)
         biasedMean = biasedMean + bootstrapMean / N
+        !print *, 'bootstrap mean', bootstrapMean / N, ', '
 
         biasedVar = biasedVar + (bootstrapMean / N) * (bootstrapMean / N)
       end do
@@ -767,6 +770,8 @@ end subroutine closeBootstrap
 
       !print *, 'accum var', biasedVar, inv_Nm1, N
       VAR = biasedVar * inv_Nm1 - biasedMean * biasedMean * inv_Nm1 * N
+      !print *, 'BIASED MEAN, VAR', biasedMean, VAR
+
       self % unbiasedVars(scoreLoc) = TWO * TWO * plugInVar + VAR !-4cov(pluginmean, bootstrapmean)
 
       self % biasedMeans(scoreLoc) = biasedMean

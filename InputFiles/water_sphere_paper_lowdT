@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000; //1000000
+pop      10000; //10000
 timeSteps   500; //70
 XSdata   ce;
 dataType ce;
 //baseline: timeIncrement 1.E-04; map { type timeMap; grid lin; min 0.0; max 5E-03; N 50;}
 timeIncrement 1.E-05;
-cycles 5; //10 worked well, try 25
+cycles 2; //2
 //buffer 1000000;
 combing 1; //toggle on or off
 //precursors 0; //toggle on or off
@@ -27,9 +27,9 @@ source {
 }
 
 tally  {
-  bootstrap 100;
+  bootstrap 100; //100
   timeSteps  500;
-  modified 1; //uncomment for modified
+  //////modified 1; //uncomment for modified
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     //map { type timeMap; grid lin; min 0.0; max 7E-04; N 70;}
     map { type timeMap; grid lin; min 0.0; max 5E-03; N 500;} //5E-03, 500
