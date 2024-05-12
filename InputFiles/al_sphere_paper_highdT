@@ -1,6 +1,6 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000; //1000000
+pop      3000000; //1000000
 timeSteps   70; //70
 XSdata   ce;
 dataType ce;
@@ -26,8 +26,8 @@ source {
 }
 
 tally  {
-  //bootstrap 100;
-  //timeSteps  70;
+  bootstrap 100;
+  timeSteps  70;
   //////modified 1;
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     //map { type timeMap; grid lin; min 0.0; max 7E-04; N 70;}

@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      10000; //10000
+pop      1000000; //10000
 timeSteps   500; //70
 XSdata   ce;
 dataType ce;
 //baseline: timeIncrement 1.E-04; map { type timeMap; grid lin; min 0.0; max 5E-03; N 50;}
 timeIncrement 1.E-05;
-cycles 2; //2
+cycles 3; //2
 //buffer 1000000;
 combing 1; //toggle on or off
 //precursors 0; //toggle on or off
