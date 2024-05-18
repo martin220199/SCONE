@@ -6,12 +6,12 @@ XSdata   ce;
 dataType ce;
 timeIncrement 1.E-07;
 cycles 10;
-combing 0;
+combing 1;
 
-useEPC 1;
-fittestFactor 0.01; //0.01
-nReproductions 2; //2
-useQuickSort 0; //0
+useEPC 0;
+fittestFactor 0.01;
+nReproductions 2;
+useQuickSort 0;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -21,7 +21,7 @@ transportOperator { type transportOperatorDT;
 
 source {
   type pointSource;
-  r (-5.0 0.0 0.0); //r (-5.0 0.0 0.0);
+  r (-5.0 0.0 0.0);
   particle neutron;
   E 5.0E-03;
 }
@@ -30,7 +30,6 @@ tally  {
 
   flux_time { type collisionClerk;
     map { type multiMap; maps (map1 map2);
-    // NB this has to be this order: cells first, then time
     map1 { type cellMap; cells (1 2); }
     map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
     }
