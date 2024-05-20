@@ -1,0 +1,73 @@
+type timeDependentPhysicsPackage;
+
+pop      10000; //100000 1000       500 also good parameter for EPC
+timeSteps   100; //100
+XSdata   ce;
+dataType ce;
+timeIncrement 1.E-05;   //1.E-05
+cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
+
+combing 0;
+useEPC 1;
+fittestFactor 0.01; //0.01; //0.01
+nReproductions 10; // 10
+useQuickSort 0;
+
+outputFormat asciiJSON;
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator { type transportOperatorDT; //currently will only support this
+                  }
+
+source {
+  type pointSource;
+  r (0.0 0.0 0.0);
+  particle neutron;
+  E 5.0E-03;
+}
+
+tally  {
+
+  flux_time { type collisionClerk;
+    map { type timeMap; grid lin; min 0.0; max 1E-03; N 100;}
+    response (flux); flux {type fluxResponse;}
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { type box; id 1; origin (0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
+
+    } 
+
+    cells
+    {
+
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 1; fill m1;}
+
+    }
+}
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+    // hydrogen
+    m1 {
+      temp 12345;
+      composition {
+        1001.03   0.05803;}
+    }
+}
+}

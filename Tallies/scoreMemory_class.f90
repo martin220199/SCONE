@@ -302,6 +302,7 @@ contains
         
         ! Zero all score bins
         self % parallelBins(i,:) = ZERO
+        self % parallelBinsEPC(i,:) = ZERO
        
         ! Increment cumulative sums 
         self % bins(i,CSUM)  = self % bins(i,CSUM) + res
@@ -480,16 +481,20 @@ contains
   function processEvolutionaryParticle(self, timeBinIdx, tallyContribSizeEPC) result(tallyFootprint)
     class(scoreMemory), intent(inout)  :: self
     integer(shortInt), intent(in)      :: timeBinIdx, tallyContribSizeEPC
-    integer(shortInt)                  :: threadIdx, something
+    integer(shortInt)                  :: threadIdx, loc
     real(defReal), dimension(tallyContribSizeEPC)        :: tallyFootprint
     character(100),parameter :: Here = 'processEvolutionaryParticle (scoreMemory_class.f90)'
 
     threadIdx = ompGetThreadNum() + 1
-    something = timeBinIdx*tallyContribSizeEPC
-    tallyFootprint = self % parallelBinsEPC(something-1:something-1+tallyContribSizeEPC -1,threadIdx)
-    !print *, '1', tallyFootprint(:), timeBinIdx
-    !print *, 'memory at time', timeBinIdx,':', self % parallelBinsEPC(:self % N,threadIdx)
-    self % parallelBinsEPC(something-1:something-1+tallyContribSizeEPC -1,threadIdx) = ZERO
+
+    if (tallyContribSizeEPC > 1_shortInt) then
+      loc = (timeBinIdx-1)*tallyContribSizeEPC
+      tallyFootprint = self % parallelBinsEPC(loc+1:loc+1+tallyContribSizeEPC-1,threadIdx)
+      self % parallelBinsEPC(loc+1:loc+1+tallyContribSizeEPC-1,threadIdx) = ZERO
+    else
+      tallyFootprint = self % parallelBinsEPC(timeBinIdx,threadIdx)
+      self % parallelBinsEPC(timeBinIdx,threadIdx) = ZERO
+    end if
 
   end function processEvolutionaryParticle
 
@@ -497,13 +502,18 @@ contains
     class(scoreMemory), intent(inout)  :: self
     integer(shortInt), intent(in)      :: timeBinIdx, tallyContribSizeEPC
     real(defReal), dimension(tallyContribSizeEPC), intent(in)  :: score
-    integer(shortInt)                  :: threadIdx, something
+    integer(shortInt)                  :: threadIdx, loc
     character(100),parameter :: Here = 'updateScore (scoreMemory_class.f90)'
 
-    something = timeBinIdx*tallyContribSizeEPC
     threadIdx = ompGetThreadNum() + 1
-    self % parallelBins(something-1:something-1+tallyContribSizeEPC -1, threadIdx) = & 
-                        self % parallelBins(something-1:something-1+tallyContribSizeEPC -1, threadIdx) + score
+    if (tallyContribSizeEPC > 1_shortInt) then
+      loc = (timeBinIdx-1)*tallyContribSizeEPC
+      self % parallelBins(loc+1:loc+1+tallyContribSizeEPC-1, threadIdx) = & 
+                          self % parallelBins(loc+1:loc+1+tallyContribSizeEPC-1, threadIdx) + score
+    else
+      self % parallelBins(timeBinIdx, threadIdx) = & 
+                          self % parallelBins(timeBinIdx, threadIdx) + score(1)
+    end if
 
   end subroutine updateScore
 

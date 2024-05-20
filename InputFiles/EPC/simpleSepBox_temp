@@ -4,12 +4,12 @@ pop      5000; //5000
 timeSteps   100;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-07;
+timeIncrement 1.0E-07;
 cycles 10; //10
 combing 0;
 
 useEPC 1;
-fittestFactor 0.01;//0.01; //0.01
+fittestFactor 0.01;//0.0002; //0.01;//0.01; //0.01
 nReproductions 2; //2
 useQuickSort 0; //0
 
