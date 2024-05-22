@@ -7,8 +7,8 @@ dataType ce;
 timeIncrement 1.E-05;   //1.E-05
 cycles 3; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
-combing 1;
-useEPC 0;
+combing 0;
+useEPCmod 1;
 fittestFactor 0.01; //0.01; //0.01
 nReproductions 10; // 10
 useQuickSort 1;

@@ -166,6 +166,10 @@ module tallyAdmin_class
 
     procedure :: initEPC
 
+    procedure :: resetEPC
+
+    procedure :: getScore
+
   end type tallyAdmin
 
 contains
@@ -834,7 +838,7 @@ contains
   subroutine processEvolutionaryParticle(self, p, timeBinIdx)
     class(tallyAdmin),intent(inout)                      :: self
     class(particle), intent(inout)                       :: p
-    integer(shortInt), intent(in)                        :: timeBinIdx
+    integer(longInt), intent(in)                        :: timeBinIdx
     real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
     real(defReal), save                                  :: crossedTimeBoundary
     integer(shortInt)                                    :: i, s
@@ -843,7 +847,11 @@ contains
     !$omp threadprivate(crossedTimeBoundary)
 
     tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
-    call p % initEPC(tallyFootprint, self % tallyContribSizeEPC)
+    !if (timeBinIdx == 1 .or. timeBinIdx == 2) print *, '------------------------------------ SCORE', tallyFootprint
+    !if (timeBinIdx == 1) then
+    !  print *, '-------------- net score p', tallyFootprint
+    !end if
+    !call p % initEPC(tallyFootprint, self % tallyContribSizeEPC)
 
     if (p % fate == AGED_FATE) then
       crossedTimeBoundary = ONE
@@ -851,7 +859,7 @@ contains
       crossedTimeBoundary = ZERO
     end if
 
-    p % fitness = tallyFootprint(1) !* crossedTimeBoundary!tallyFootprint(1)  !(tallyFootprint(1)) * crossedTimeBoundary!tallyFootprint(1) * crossedTimeBoundary !tallyFootprint(2) * crossedTimeBoundary
+    p % fitness = tallyFootprint(1) * crossedTimeBoundary!tallyFootprint(1)  !(tallyFootprint(1)) * crossedTimeBoundary!tallyFootprint(1) * crossedTimeBoundary !tallyFootprint(2) * crossedTimeBoundary
 
 
     ! change to binary. First filter so that binary 1,0 based on which one has lowest entropy. THEN account for weight
@@ -876,7 +884,7 @@ contains
   subroutine updateScore(self, score, timeBinIdx)
     class(tallyAdmin),intent(inout) :: self
     real(defReal), dimension(self % tallyContribSizeEPC), intent(in)       :: score
-    integer(shortInt), intent(in)   :: timeBinIdx
+    integer(longInt), intent(in)   :: timeBinIdx
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
     call self % mem % updateScore(score, timeBinIdx, self % tallyContribSizeEPC)
@@ -894,5 +902,29 @@ contains
     self % entropy(:) = 0
 
   end subroutine initEPC
+
+  subroutine resetEPC(self, timeBinIdx)
+    class(tallyAdmin), intent(inout)  :: self
+    integer(longInt), intent(in)      :: timeBinIdx
+    integer(shortInt)                  :: threadIdx, loc
+    real(defReal), dimension(self % tallyContribSizeEPC)        :: tallyFootprint
+    character(100),parameter :: Here = 'resetEPC (tallyAdmin_class.f90)'
+
+    call self % mem % resetEPC(timeBinIdx, self % tallyContribSizeEPC)
+
+  end subroutine resetEPC
+
+  !!
+  !! Obtain value of a score in a bin
+  !! Return ZERO for invalid bin address (idx)
+  !!
+  elemental function getScore(self, idx) result (score)
+    class(tallyAdmin), intent(in) :: self
+    integer(longInt), intent(in)   :: idx
+    real(defReal)                  :: score
+
+    score = self % mem % getScore(idx)
+
+  end function getScore
 
 end module tallyAdmin_class
