@@ -859,7 +859,7 @@ contains
       crossedTimeBoundary = ZERO
     end if
 
-    p % fitness = tallyFootprint(1) * crossedTimeBoundary!tallyFootprint(1)  !(tallyFootprint(1)) * crossedTimeBoundary!tallyFootprint(1) * crossedTimeBoundary !tallyFootprint(2) * crossedTimeBoundary
+    p % fitness = tallyFootprint(2) * crossedTimeBoundary!tallyFootprint(1)  !(tallyFootprint(1)) * crossedTimeBoundary!tallyFootprint(1) * crossedTimeBoundary !tallyFootprint(2) * crossedTimeBoundary
 
 
     ! change to binary. First filter so that binary 1,0 based on which one has lowest entropy. THEN account for weight

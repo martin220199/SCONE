@@ -778,7 +778,7 @@ contains
         end if
 
         call tally % reportCycleStart(self % currentTime(i))
-        Nfittest = self % pop * self % fittestFactor!nParticles * self % fittestFactor
+        Nfittest = nParticles * self % fittestFactor!nParticles * self % fittestFactor
 
         !print *, '*************************** total particles', nParticles
         !$omp parallel do schedule(dynamic)
@@ -798,6 +798,8 @@ contains
             !if (t == 1 .or. t == 2) print *, 'sim fit particle', n, p % w
           end if
 
+
+          !print *, '-------------, E, matIdx', p % E, p % matIdx()
 
           p % timeMax = t * timeIncrement
 

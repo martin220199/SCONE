@@ -1,10 +1,10 @@
 type timeDependentPhysicsPackage;
 
 pop      5000; //5000 //2
-timeSteps   3;
+timeSteps   100;
 XSdata   ce;
 dataType ce;
-timeIncrement 3.3333333333E-06;
+timeIncrement 1.0E-07;
 cycles 10; //10
 combing 0;
 
@@ -35,7 +35,7 @@ tally  {
     //map { type multiMap; maps (map1 map2);
     // NB this has to be this order: cells first, then time
     //map1 { type cellMap; cells (2); }
-    map { type timeMap; grid lin; min 0.0; max 1E-05; N 3;}
+    map { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
     //}
     response (flux); flux {type fluxResponse;}
   }
