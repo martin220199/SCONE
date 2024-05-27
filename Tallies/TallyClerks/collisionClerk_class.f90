@@ -250,11 +250,10 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine print(self, outFile, mem, NtimeBins)
+  subroutine print(self, outFile, mem)
     class(collisionClerk), intent(in)          :: self
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
-    integer(shortInt), optional, intent(in)    :: NtimeBins
     real(defReal)                              :: val, std
     integer(shortInt)                          :: i, Nsamples, numBatchesPerTimeBin
     integer(shortInt),dimension(:),allocatable :: resArrayShape
@@ -281,73 +280,46 @@ contains
     ! Start array
     name ='Res'
     call outFile % startArray(name, resArrayShape)
-
+    !TODO: only do either or
+    !if (mem % bootstrapV == 0) then 
     ! Print results to the file
     do i=1,product(resArrayShape)
-      if (present(NtimeBins)) then
-        numBatchesPerTimeBin = mem % batchN / NtimeBins
-        call mem % getResult(val, std, self % getMemAddress() - 1 + i, numBatchesPerTimeBin)
-      else
-        call mem % getResult(val, std, self % getMemAddress() - 1 + i)
-      end if
-      print *, val
+      call mem % getResult(val, std, self % getMemAddress() - 1 + i, mem % CyclesPerTime)
       call outFile % addResult(val, std)
     end do
-
     call outFile % endArray()
 
-
-    ! FoM
-    name = 'FoM'
-    call outFile % startArray(name, resArrayShape)
-    do i=1,product(resArrayShape)
-      if (present(NtimeBins)) then
-        numBatchesPerTimeBin = mem % batchN / NtimeBins
-        call mem % getResult(val, std, self % getMemAddress() - 1 + i, numBatchesPerTimeBin)
-      else
-        call mem % getResult(val, std, self % getMemAddress() - 1 + i)
-      end if
-
-      !print *, std, val, (std / val)**2,  mem % getSimTime()
-      FoM = ONE / (((std / val)**2) * mem % getSimTime())
-      call outFile % addValue(FoM)
-    end do
-
-    call outFile % endArray()
-
-    name = 'SimTime'
-    call outFile % startArray(name, [1])
-    call outFile % addValue(mem % getSimTime())
-    call outFile % endArray()
-
-    bootstrapScore = mem % getBootstrapScore()
-    if (.not. present(NtimeBins)) then
-      ! Start array
-      name ='biasedRes'
+    if (mem % bootstrapV == 1) then
+      name ='BootstrapRes'
       call outFile % startArray(name, resArrayShape)
-
       ! Print results to the file
       do i=1,product(resArrayShape)
-        val = mem % getBiasedMean(i)
-        std = mem % getBiasedVar(i)
-        std = sqrt(std)
+        val = mem % bootstrapMean(i)
+        std = SQRT(mem % bootstrapVar(i))
         call outFile % addResult(val, std)
       end do
-
       call outFile % endArray()
 
-
-
-      name = 'normBias'
+    else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
+      name ='BootstrapSTDBiased'
       call outFile % startArray(name, resArrayShape)
+      ! Print results to the file
       do i=1,product(resArrayShape)
-        val = mem % getNormBias(i)
-        call outFile % addValue(val)
+        std = SQRT(mem % bootstrapMean(i))
+        call outFile % addValue(std)
       end do
-
       call outFile % endArray()
-    end if
 
+      name ='BootstrapSTDBiasAdjusted'
+      call outFile % startArray(name, resArrayShape)
+      ! Print results to the file
+      do i=1,product(resArrayShape)
+        std = SQRT(mem % bootstrapVar(i))
+        call outFile % addValue(std)
+      end do
+      call outFile % endArray()
+
+    end if
 
 
     call outFile % endBlock()
