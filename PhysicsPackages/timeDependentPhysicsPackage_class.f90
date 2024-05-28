@@ -356,6 +356,7 @@ contains
       call tally % reportTimeEnd(t, pRNG)
       call timerStop(self % timerMain)
       time2 = TimerTime(self % timerMain)
+      !print *, 'deltaT', time2-time1
       self % bootstrapTime = self % bootstrapTime + time2 - time1
 
       self % tempTime  => self % nextTime

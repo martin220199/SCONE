@@ -519,17 +519,16 @@ contains
 
   !Bootstrap means
   subroutine bootstrapV1(self, rand)
-    class(scoreMemory), intent(inout) :: self
-    class(RNG), intent(inout)         :: rand
-    integer(shortInt)                 :: i, N, j, r, B
-    integer(longInt)                  :: loc
-    real(defReal)                     :: inv_Bm1
-    real(defReal), save               :: res, plugInMean
-    integer(shortInt), save           :: idx
-    real(defReal), dimension(:), allocatable :: bootstrapAccumulator
-    real(defReal), dimension(:,:), allocatable :: bootstrapMean, bootstrapVar
-    real(defReal), save               :: mean, var
-    !$omp threadprivate(res, idx, plugInMean, mean, var)
+    class(scoreMemory), intent(inout)        :: self
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt)                        :: i, N, j, r, B
+    integer(longInt)                         :: loc
+    real(defReal)                            :: inv_Bm1
+    real(defReal), save                      :: res, plugInMean
+    integer(shortInt), save                  :: idx
+    real(defReal), save                      :: bootstrapAccumulator
+    real(defReal), dimension(:), allocatable, save :: bootstrapMean, bootstrapVar
+    real(defReal), save                      :: mean, var
 
     N = self % cyclesPerTime
     B = self % nBootstraps
@@ -540,32 +539,30 @@ contains
       inv_Bm1 = ONE
     end if
 
-    allocate(bootstrapAccumulator(self % nThreads))
-    allocate(bootstrapMean(self % Ntallies, self % nThreads))
-    allocate(bootstrapVar(self % Ntallies, self % nThreads))
-    !potentially allocate bootstrapMean, bootstrapVar with threads
-    !and used to accumulate scores bevause everythung is parallelised
-    ! need for each tally as well so (self % Ntallies, self % nThreads)
+    allocate(bootstrapMean(self % Ntallies))
+    allocate(bootstrapVar(self % Ntallies))
+    bootstrapAccumulator = ZERO
+    bootstrapMean = ZERO
+    bootstrapVar = ZERO
+
     loc = (self % timeN - 1_longInt) * self % Ntallies
 
-    !$omp parallel do
+    !$omp parallel do private(mean, var, bootstrapAccumulator, plugInMean, bootstrapMean, bootstrapVar)
     do i = 1, self % Ntallies
 
       plugInMean = sum(self % plugInSamples(i,:)) / N
+      bootstrapMean(i) = plugInMean
+      bootstrapVar(i) = plugInMean * plugInMean
 
-      bootstrapMean(i, ompGetThreadNum() + 1) = plugInMean
-      bootstrapVar(i, ompGetThreadNum() + 1) = plugInMean * plugInMean
-
-      !$omp parallel do
+      !$omp parallel do private(res, bootstrapAccumulator)
       do r = 1, self % nBootstraps - 1
-        !$omp parallel do
+        !$omp parallel do private(idx)
         do j = 1, N
           call rand % stride(j)
           validSample: do
             idx = int(N * rand % get()) + 1
             if (idx <= N) then
-              bootstrapAccumulator(ompGetThreadNum() + 1) = bootstrapAccumulator(ompGetThreadNum() + 1) &
-               + self % plugInSamples(i,idx)
+              bootstrapAccumulator = bootstrapAccumulator + self % plugInSamples(i,idx)
               exit validSample
             else
               cycle validSample
@@ -575,20 +572,15 @@ contains
         end do
         !$omp end parallel do
 
-        res = sum(bootstrapAccumulator)
+        res = bootstrapAccumulator
         bootstrapAccumulator = ZERO
-        bootstrapMean(i,ompGetThreadNum() + 1) & 
-        = bootstrapMean(i,ompGetThreadNum() + 1) + res / N
-
-        bootstrapVar(i,ompGetThreadNum() + 1) & 
-        = bootstrapVar(i,ompGetThreadNum() + 1) + (res / N) * (res / N)
+        bootstrapMean(i) = bootstrapMean(i) + res / N
+        bootstrapVar(i) = bootstrapVar(i) + (res / N) * (res / N)
       end do
       !$omp end parallel do
 
-
-      mean = sum(bootstrapMean(i,:)) / self % nBootstraps
-      var = sum(bootstrapVar(i,:)) * inv_Bm1 - mean * mean * inv_Bm1 * B
-
+      mean = bootstrapMean(i) / self % nBootstraps
+      var = bootstrapVar(i) * inv_Bm1 - mean * mean * inv_Bm1 * B
 
       self % bootstrapMean(loc + i) = mean
       self % bootstrapVar(loc + i) = var
@@ -596,24 +588,24 @@ contains
     end do
     !$omp end parallel do
 
-    deallocate(bootstrapAccumulator)
+    deallocate(bootstrapMean)
+    deallocate(bootstrapVar)
 
   end subroutine bootstrapV1
 
 
   !Bootstrap unbiased var
   subroutine bootstrapV2(self, rand)
-    class(scoreMemory), intent(inout) :: self
-    class(RNG), intent(inout)         :: rand
-    integer(shortInt)                 :: i, N, j, r, B
-    integer(longInt)                  :: loc
-    real(defReal)                     :: inv_Bm1, inv_N, inv_Nm1
-    real(defReal), save               :: res, res_sq, plugInVar
-    integer(shortInt), save           :: idx
-    real(defReal), dimension(:), allocatable :: bootstrapAccumulator, bootstrapAccumulator_sq
-    real(defReal), dimension(:,:), allocatable :: bootstrapMean, bootstrapVar
-    real(defReal), save               :: mean, mean_biasAdj
-    !$omp threadprivate(res, res_sq, idx, plugInVar, mean, mean_biasAdj)
+    class(scoreMemory), intent(inout)        :: self
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt)                        :: i, N, j, r, B
+    integer(longInt)                         :: loc
+    real(defReal)                            :: inv_Bm1, inv_N, inv_Nm1
+    real(defReal), save                      :: res, res_sq, pluginVar
+    integer(shortInt), save                  :: idx
+    real(defReal), save                      :: bootstrapAccumulator, bootstrapAccumulator_sq
+    real(defReal), dimension(:), allocatable, save :: bootstrapMean
+    real(defReal), save                      :: mean, mean_biasAdj
 
     N = self % cyclesPerTime
     B = self % nBootstraps
@@ -631,34 +623,32 @@ contains
       inv_Nm1 = ONE
     end if
 
-    allocate(bootstrapAccumulator(self % nThreads))
-    allocate(bootstrapAccumulator_sq(self % nThreads))
-    allocate(bootstrapMean(self % Ntallies, self % nThreads))
-    allocate(bootstrapVar(self % Ntallies, self % nThreads))
+
+    allocate(bootstrapMean(self % Ntallies))
+    bootstrapAccumulator = ZERO
+    bootstrapAccumulator_sq = ZERO
+    bootstrapMean = ZERO
 
     loc = (self % timeN - 1_longInt) * self % Ntallies
 
-    !$omp parallel do
+    !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies
 
       plugInVar = self % bins(loc + i, CSUM2) * inv_N * inv_Nm1 &
       - (self % bins(loc + i, CSUM) / N) * (self % bins(loc + i, CSUM) / N) * inv_Nm1
 
-      bootstrapMean(i, ompGetThreadNum() + 1) = plugInVar
+      bootstrapMean(i) = plugInVar
 
-      !$omp parallel do
+      !$omp parallel do private(res, res_sq, bootstrapAccumulator, bootstrapAccumulator_sq)
       do r = 1, self % nBootstraps - 1
-        !$omp parallel do
+        !$omp parallel do private(idx)
         do j = 1, N
           call rand % stride(j)
           validSample: do
             idx = int(N * rand % get()) + 1
             if (idx <= N) then
-              bootstrapAccumulator(ompGetThreadNum() + 1) = bootstrapAccumulator(ompGetThreadNum() + 1) &
-               + self % plugInSamples(i,idx)
-
-              bootstrapAccumulator_sq(ompGetThreadNum() + 1) = bootstrapAccumulator_sq(ompGetThreadNum() + 1) &
-               + self % plugInSamples(i,idx) * self % plugInSamples(i,idx)
+              bootstrapAccumulator = bootstrapAccumulator + self % plugInSamples(i,idx)
+              bootstrapAccumulator_sq = bootstrapAccumulator_sq + self % plugInSamples(i,idx) * self % plugInSamples(i,idx)
               exit validSample
             else
               cycle validSample
@@ -668,21 +658,18 @@ contains
         end do
         !$omp end parallel do
 
-        res = sum(bootstrapAccumulator)
-        res_sq = sum(bootstrapAccumulator_sq)
+        res = bootstrapAccumulator
+        res_sq = bootstrapAccumulator_sq
         bootstrapAccumulator = ZERO
         bootstrapAccumulator_sq = ZERO
 
-        bootstrapMean(i,ompGetThreadNum() + 1) & 
-        = bootstrapMean(i,ompGetThreadNum() + 1) & 
+        bootstrapMean(i) = bootstrapMean(i) & 
         +  res_sq * inv_N * inv_Nm1 - (res / N) * (res / N) * inv_Nm1
 
       end do
       !$omp end parallel do
 
-
-      mean = sum(bootstrapMean(i,:)) / self % nBootstraps
-
+      mean = bootstrapMean(i) / self % nBootstraps
       mean_biasAdj = TWO * plugInVar - mean
 
       self % bootstrapMean(loc + i) = mean        !biased
@@ -691,23 +678,21 @@ contains
     end do
     !$omp end parallel do
 
-    deallocate(bootstrapAccumulator)
-    deallocate(bootstrapAccumulator_sq)
+    deallocate(bootstrapMean)
   end subroutine bootstrapV2
 
  !Bootstrap maximum likelihood var
   subroutine bootstrapV3(self, rand)
-    class(scoreMemory), intent(inout) :: self
-    class(RNG), intent(inout)         :: rand
-    integer(shortInt)                 :: i, N, j, r, B
-    integer(longInt)                  :: loc
-    real(defReal)                     :: inv_Bm1, inv_N
-    real(defReal), save               :: res, res_sq, plugInVar
-    integer(shortInt), save           :: idx
-    real(defReal), dimension(:), allocatable :: bootstrapAccumulator, bootstrapAccumulator_sq
-    real(defReal), dimension(:,:), allocatable :: bootstrapMean, bootstrapVar
-    real(defReal), save               :: mean, mean_biasAdj
-    !$omp threadprivate(res, res_sq, idx, plugInVar, mean, mean_biasAdj)
+    class(scoreMemory), intent(inout)        :: self
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt)                        :: i, N, j, r, B
+    integer(longInt)                         :: loc
+    real(defReal)                            :: inv_Bm1, inv_N
+    real(defReal), save                      :: res, res_sq, plugInVar
+    integer(shortInt), save                  :: idx
+    real(defReal), save                      :: bootstrapAccumulator, bootstrapAccumulator_sq
+    real(defReal), dimension(:), allocatable, save :: bootstrapMean
+    real(defReal), save                      :: mean, mean_biasAdj
 
     N = self % cyclesPerTime
     B = self % nBootstraps
@@ -720,34 +705,31 @@ contains
 
     inv_N   = ONE / N
 
-    allocate(bootstrapAccumulator(self % nThreads))
-    allocate(bootstrapAccumulator_sq(self % nThreads))
-    allocate(bootstrapMean(self % Ntallies, self % nThreads))
-    allocate(bootstrapVar(self % Ntallies, self % nThreads))
+    allocate(bootstrapMean(self % Ntallies))
+    bootstrapAccumulator = ZERO
+    bootstrapAccumulator_sq = ZERO
+    bootstrapMean = ZERO
 
     loc = (self % timeN - 1_longInt) * self % Ntallies
 
-    !$omp parallel do
+    !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies
 
       plugInVar = self % bins(loc + i, CSUM2) * inv_N * inv_N &
       - (self % bins(loc + i, CSUM) / N) * (self % bins(loc + i, CSUM) / N) * inv_N
 
-      bootstrapMean(i, ompGetThreadNum() + 1) = plugInVar
+      bootstrapMean(i) = plugInVar
 
-      !$omp parallel do
+      !$omp parallel do private(res, res_sq, bootstrapAccumulator, bootstrapAccumulator_sq)
       do r = 1, self % nBootstraps - 1
-        !$omp parallel do
+        !$omp parallel do private(idx)
         do j = 1, N
           call rand % stride(j)
           validSample: do
             idx = int(N * rand % get()) + 1
             if (idx <= N) then
-              bootstrapAccumulator(ompGetThreadNum() + 1) = bootstrapAccumulator(ompGetThreadNum() + 1) &
-               + self % plugInSamples(i,idx)
-
-              bootstrapAccumulator_sq(ompGetThreadNum() + 1) = bootstrapAccumulator_sq(ompGetThreadNum() + 1) &
-               + self % plugInSamples(i,idx) * self % plugInSamples(i,idx)
+              bootstrapAccumulator = bootstrapAccumulator + self % plugInSamples(i,idx)
+              bootstrapAccumulator_sq = bootstrapAccumulator_sq + self % plugInSamples(i,idx) * self % plugInSamples(i,idx)
               exit validSample
             else
               cycle validSample
@@ -757,21 +739,18 @@ contains
         end do
         !$omp end parallel do
 
-        res = sum(bootstrapAccumulator)
-        res_sq = sum(bootstrapAccumulator_sq)
+        res = bootstrapAccumulator
+        res_sq = bootstrapAccumulator_sq
         bootstrapAccumulator = ZERO
         bootstrapAccumulator_sq = ZERO
 
-        bootstrapMean(i,ompGetThreadNum() + 1) & 
-        = bootstrapMean(i,ompGetThreadNum() + 1) & 
+        bootstrapMean(i) = bootstrapMean(i) & 
         +  res_sq * inv_N * inv_N - (res / N) * (res / N) * inv_N
 
       end do
       !$omp end parallel do
 
-
-      mean = sum(bootstrapMean(i,:)) / self % nBootstraps
-
+      mean = bootstrapMean(i) / self % nBootstraps
       mean_biasAdj = TWO * plugInVar - mean
 
       self % bootstrapMean(loc + i) = mean        !biased
@@ -780,8 +759,7 @@ contains
     end do
     !$omp end parallel do
 
-    deallocate(bootstrapAccumulator)
-    deallocate(bootstrapAccumulator_sq)
+    deallocate(bootstrapMean)
   end subroutine bootstrapV3
 
 end module scoreMemory_class
