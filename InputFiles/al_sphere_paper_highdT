@@ -30,7 +30,7 @@ tally  {
 
   //if useBootstrap 1, uncomment:
   nBootstraps 100;
-  useVarianceBiased 1;
+  useMean 1;
 
   // useMean
   //useVarianceUnbiased

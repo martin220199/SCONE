@@ -1,6 +1,6 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000;
+pop      2500000;
 timeSteps   70; //70
 XSdata   ce;
 dataType ce;
@@ -32,7 +32,7 @@ tally  {
 
   //if useBootstrap 1, uncomment:
   nBootstraps 1000;
-  useVarianceBiased 1;
+  useMean 1;
 
   // useMean
   //useVarianceUnbiased
@@ -41,9 +41,9 @@ tally  {
   flux_time { type collisionClerk;
     map { type multiMap; maps (map1 map2 map3 map4);
 
-    map1 {type spaceMap;  axis x;  grid lin; min -25; max 25; N 10;} //10, 20
-    map2 {type spaceMap;  axis y;  grid lin; min -25; max 25; N 10;}
-    map3 {type spaceMap;  axis z;  grid lin; min -25; max 25; N 10;}
+    map1 {type spaceMap;  axis x;  grid lin; min -25; max 25; N 20;} //10, 20
+    map2 {type spaceMap;  axis y;  grid lin; min -25; max 25; N 20;}
+    map3 {type spaceMap;  axis z;  grid lin; min -25; max 25; N 20;}
     map4 { type timeMap; grid lin; min 0.0; max 7E-04; N 70;} 
     }
 
