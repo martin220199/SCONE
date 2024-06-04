@@ -7,10 +7,10 @@ dataType ce;
 timeIncrement 1.E-05;   //1.E-05
 cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
-combing 0;
-useEPC 1;
+combing 1;
+useEPC 0;
 fittestFactor 0.01; //0.01; //0.01
-nReproductions 10; // 10
+nReproductions 2; // 10
 useQuickSort 0;
 
 outputFormat asciiJSON;

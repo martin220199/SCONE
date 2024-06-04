@@ -528,11 +528,11 @@ contains
         ! check sorting!
 
         !print *, 'start', nParticlesFittest
-        do n = 1, nParticlesFittest
-          call self % fittestParticles % copy(p_temp, n)
-          print *, 'FoM, wgt,cell,time', p_temp % fitness, p_temp % w, p_temp % tallyContrib, t
-          !print *, Nfittest, self % fittestParticles % popSize(), nParticlesFittest
-        end do
+        !do n = 1, nParticlesFittest
+        !  call self % fittestParticles % copy(p_temp, n)
+        !  print *, 'FoM, wgt,cell,time', p_temp % fitness, p_temp % w, p_temp % tallyContrib, t
+        !  !print *, Nfittest, self % fittestParticles % popSize(), nParticlesFittest
+        !end do
 
 
 
