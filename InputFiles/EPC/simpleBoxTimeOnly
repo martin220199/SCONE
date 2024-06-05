@@ -1,15 +1,16 @@
 type timeDependentPhysicsPackage;
 
-pop      10000; //100000 1000       500 also good parameter for EPC
+pop      1000; //100000 1000       500 also good parameter for EPC
 timeSteps   100; //100
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-05;   //1.E-05
 cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
-combing 1;
-useEPC 0;
-fittestFactor 0.01; //0.01; //0.01
+combing 0;
+useEPC 1;
+responseType 1; // space;
+fittestFactor 0.1; //0.01; //0.01
 nReproductions 2; // 10
 useQuickSort 0;
 

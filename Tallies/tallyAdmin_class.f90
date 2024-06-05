@@ -122,6 +122,7 @@ module tallyAdmin_class
 
     integer(shortInt)  :: nTimeBinsEPC = 0_shortInt
     integer(shortInt)  :: tallyContribSizeEPC = 0_shortInt
+    integer(shortInt)  :: EPCResponse
     integer(shortInt), dimension(:), allocatable :: entropy
   contains
 
@@ -836,11 +837,11 @@ contains
     class(particle), intent(inout)                       :: p
     integer(shortInt), intent(in)                        :: timeBinIdx
     real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
-    real(defReal), save                                  :: crossedTimeBoundary
+    real(defReal)                                        :: crossedTimeBoundary
     integer(shortInt)                                    :: i, s
     real(defreal)                                        :: invE
+    real(defReal)                                        :: epsilon = 0.01_defReal
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
-    !$omp threadprivate(crossedTimeBoundary)
 
     tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
     call p % initEPC(tallyFootprint, self % tallyContribSizeEPC)
@@ -851,26 +852,24 @@ contains
       crossedTimeBoundary = ZERO
     end if
 
-    p % fitness = tallyFootprint(2) !* crossedTimeBoundary!tallyFootprint(1)  !(tallyFootprint(1)) * crossedTimeBoundary!tallyFootprint(1) * crossedTimeBoundary !tallyFootprint(2) * crossedTimeBoundary
+    if (self % EPCResponse == 0_shortInt) then
+      p % fitness = ZERO
+      s = sum(self % entropy(:))
+      !$omp parallel do
+      do i = 1, self % tallyContribSizeEPC
+        if (s > 0_shortInt) p % fitness = p % fitness + tallyFootprint(i) / (self % entropy(i) / real(s)  + epsilon)
+        !print *, 'increment', i, tallyFootprint(i) / (self % entropy(i) / real(s)  + epsilon)
+        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+      end do
+      !$omp end parallel do
+      p % fitness = p % fitness * crossedTimeBoundary
 
+    else
+      p % fitness = crossedTimeBoundary * tallyFootprint(self % EPCResponse)
+    end if
 
-    ! change to binary. First filter so that binary 1,0 based on which one has lowest entropy. THEN account for weight
-    !p % fitness = ZERO
-    !s = sum(self % entropy(:))
-    !do i = 1, self % tallyContribSizeEPC
-    !  if (tallyFootprint(i) > ZERO) then
-    !    if (self % entropy(i) > 0) then
-    !      invE = real(self % entropy(i)) / real(s)
-    !      p % fitness = p % fitness + tallyFootprint(i) * (ONE / invE)
-    !    else
-    !      p % fitness = ZERO !INFINITY
-    !    end if
-    !    self % entropy(i) = self % entropy(i) + 1
-    !  end if
-    !end do
-    !p % fitness = p % fitness * crossedTimeBoundary
+    !print *, p % fitness, self % entropy, tallyFootprint
 
-    !print *, 'tallyfootprint from tally: ', tallyFootprint
   end subroutine processEvolutionaryParticle
 
   subroutine updateScore(self, score, timeBinIdx)
@@ -883,15 +882,19 @@ contains
 
   end subroutine updateScore
 
-  subroutine initEPC(self, N_timeBins)
+  subroutine initEPC(self, N_timeBins, EPCResponse)
     class(tallyAdmin),intent(inout) :: self
-    integer(shortInt), intent(in)   :: N_timeBins
+    integer(shortInt), intent(in)   :: N_timeBins, EPCResponse
     character(100),parameter :: Here = 'initEPC (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
     self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
-    allocate(self % entropy(self % tallyContribSizeEPC))
-    self % entropy(:) = 0
+    self % EPCResponse = EPCResponse
+
+    if (self % EPCResponse == 0_shortInt) then
+      allocate(self % entropy(self % tallyContribSizeEPC))
+      self % entropy(:) = 0
+    end if
 
   end subroutine initEPC
 
