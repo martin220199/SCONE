@@ -624,6 +624,7 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
+    integer(shortInt)                               :: EPCResponse
     character(100), parameter :: Here ='init (timeDependentPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -750,7 +751,8 @@ contains
       call dict % get(self % fittestFactor, 'fittestFactor')
       call dict % get(self % nReproductions, 'nReproductions')
       call dict % get(self % useQuickSort, 'useQuickSort')
-      call self % tally % initEPC(self % N_timeBins)
+      call dict % get(EPCResponse,'responseType')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse)
     end if
 
     call self % printSettings()

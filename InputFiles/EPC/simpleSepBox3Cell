@@ -1,19 +1,17 @@
 type timeDependentPhysicsPackage;
 
-pop      5000; //5000 //2
+pop      5000; //5000
 timeSteps   100;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.0E-07;
+timeIncrement 1.E-07;
 cycles 10; //10
 combing 0;
 
-useEPCmod 1;
-//roulette 0;
-//minWgt 0;
-//avWgt 0.75;
-fittestFactor 0.01; // 0.5;//0.0002; //0.01;//0.01; //0.01
-nReproductions 1; //2
+useEPC 1;
+responseType 3; // space
+fittestFactor 0.01;//0.01; //0.01
+nReproductions 2; //2
 useQuickSort 0; //0
 
 outputFormat asciiJSON;
@@ -24,7 +22,7 @@ transportOperator { type transportOperatorDT;
 
 source {
   type pointSource;
-  r (0.0 0.0 0.0); //r (-5.0 0.0 0.0);
+  r (-5.0 0.0 0.0); //r (-5.0 0.0 0.0);
   particle neutron;
   E 5.0E-03;
 }
@@ -32,15 +30,14 @@ source {
 tally  {
 
   flux_time { type collisionClerk;
-    //map { type multiMap; maps (map1 map2);
+    map { type multiMap; maps (map1 map2);
     // NB this has to be this order: cells first, then time
-    //map1 { type cellMap; cells (2); }
-    map { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
-    //}
+    map1 { type cellMap; cells (1 2 4); }
+    map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
+    }
     response (flux); flux {type fluxResponse;}
   }
-}
-  //}
+  }
 
 geometry {
     type geometryStd;
@@ -55,21 +52,24 @@ geometry {
 
       hydrogenBoxOne { type box; id 3; origin (-5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
 
-      hydrogenBoxTwo { type box; id 4; origin (5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
+      hydrogenBoxTwo { type box; id 4; origin (5.25 5.0 0.0); halfwidth (4.75 5.0 10.0); }
+
+      hydrogenBoxTwoTwo { type box; id 5; origin (5.25 -5.0 0.0); halfwidth (4.75 5.0 10.0); }
     } 
 
     cells
     {
     cellHydrogenOne { id 1; type simpleCell; surfaces (-3 2); filltype mat; material m1;} 
     cellHydrogenTwo { id 2; type simpleCell; surfaces (-4 2); filltype mat; material m1;}
-    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material m1;} //m2 original
+    cellHydrogenTwoTwo { id 4; type simpleCell; surfaces (-5 2); filltype mat; material m1;}
+    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material m2;}
     }
 
     universes
     {
 
       root{id 1; type rootUniverse; border 1; fill u<2>;}
-      geom { id 2; type cellUniverse; cells ( 1 2 3);}
+      geom { id 2; type cellUniverse; cells ( 1 2 3 4);}
 
     }
 }
