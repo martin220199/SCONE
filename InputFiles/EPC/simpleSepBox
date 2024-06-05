@@ -9,7 +9,7 @@ cycles 10; //10
 combing 0;
 
 useEPC 1;
-responseType 3; // space
+responseType 2; // space
 fittestFactor 0.01;//0.01; //0.01
 nReproductions 2; //2
 useQuickSort 0; //0
