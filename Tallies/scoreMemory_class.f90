@@ -105,7 +105,6 @@ module scoreMemory_class
     procedure :: setNumBatchesPerTimeStep
     procedure :: processEvolutionaryParticle
     procedure :: updateScore
-    procedure :: resetEPC
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -535,22 +534,4 @@ contains
     if (sum(self % parallelBinsEPC(:, threadIdx)) /= ZERO) call fatalError(Here, 'dfsf')
   end subroutine updateScore
 
-
-  subroutine resetEPC(self, timeBinIdx, tallyContribSizeEPC)
-    class(scoreMemory), intent(inout)  :: self
-    integer(longInt), intent(in)      :: timeBinIdx
-    integer(shortInt)                  :: threadIdx, loc, tallyContribSizeEPC
-    character(100),parameter :: Here = 'resetEPC (scoreMemory_class.f90)'
-
-    threadIdx = ompGetThreadNum() + 1
-
-    !if (timeBinIdx == 1) print *, 'score added fittest: ', self % parallelBinsEPC(timeBinIdx,threadIdx)
-    if (tallyContribSizeEPC > 1_shortInt) then
-      self % parallelBinsEPC(loc+1:loc+1+tallyContribSizeEPC-1,threadIdx) = ZERO
-    else
-      self % parallelBinsEPC(timeBinIdx,threadIdx) = ZERO
-    end if
-
-
-  end subroutine resetEPC
 end module scoreMemory_class

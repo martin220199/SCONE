@@ -1,17 +1,16 @@
 type timeDependentPhysicsPackage;
 
-pop      10; //100000 1000       500 also good parameter for EPC
-timeSteps   1; //100
+pop      10000; //100000 1000       500 also good parameter for EPC
+timeSteps   100; //100
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-03;   //1.E-05
-cycles 1; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
+timeIncrement 1.E-05;   //1.E-05
+cycles 10; //10 ! Good parameter for EPC. And Nfittest = nParticles / 100
 
 combing 0;
-
-useEPCmod 1;
+useEPC 1;
 fittestFactor 0.01; //0.01; //0.01
-nReproductions 1; // 10
+nReproductions 10; // 10
 useQuickSort 0;
 
 outputFormat asciiJSON;
@@ -30,7 +29,7 @@ source {
 tally  {
 
   flux_time { type collisionClerk;
-    map { type timeMap; grid lin; min 0.0; max 1E-03; N 1;}
+    map { type timeMap; grid lin; min 0.0; max 1E-03; N 100;}
     response (flux); flux {type fluxResponse;}
   }
   }

@@ -199,7 +199,6 @@ contains
       flx = ONE / xsData % getMajorantXS(p)
     else
       if (virtual) return
-      !print *, 'p % matIdx', p % matIdx()
       flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
