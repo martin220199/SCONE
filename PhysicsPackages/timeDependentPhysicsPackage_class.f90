@@ -87,7 +87,6 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useForcedPrecursorDecay
 
     logical(defBool)   :: useEPC
-    logical(defBool)   :: useQuickSort
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
 
@@ -123,13 +122,7 @@ module timeDependentPhysicsPackage_class
     procedure :: kill
     procedure :: russianRoulette
     procedure :: sortFittest
-    procedure :: quickSort
-    procedure :: swap
-    procedure :: partition
-    procedure :: parallelQuickSort
-
-    procedure :: merge_sort
-    procedure :: merge
+    procedure :: initEPC
 
   end type timeDependentPhysicsPackage
 
@@ -436,7 +429,6 @@ contains
         else
           Nfittest = self % fittestParticlesCurrent(i) % popSize()
           if (self % nReproductions >= 1_shortInt) then
-            !print *, 'should not print'
             !$omp parallel do schedule(dynamic)
             do n = 1, Nfittest
               call self % fittestParticlesCurrent(i) % copy(p, n)
@@ -455,7 +447,7 @@ contains
         end if
 
         call tally % reportCycleStart(self % currentTime(i))
-        Nfittest = nParticles * self % fittestFactor  !nParticles * self % fittestFactor
+        Nfittest = nParticles * self % fittestFactor
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -465,9 +457,11 @@ contains
 
           if (n <= self % currentTime(i) % popSize()) then
             call self % currentTime(i) % copy(p, n)
+
           else 
             call self % fittestParticlesCurrent(i) % copy(p, n-self % currentTime(i) % popSize())
           end if
+
 
           p % timeMax = t * timeIncrement
 
@@ -492,9 +486,21 @@ contains
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
                 call tally % processEvolutionaryParticle(p, t)
+
+
+                ! Calculate times
+                !call timerStop(self % timerMain)
+                !elapsed_T = timerTime(self % timerMain)
+
                 !$OMP CRITICAL
                 call self % sortFittest(p, Nfittest, i, fitness1)
                 !$OMP END CRITICAL
+
+                !call timerStop(self % timerMain)
+                !T_toEnd = timerTime(self % timerMain)
+                !if (i == 1) print *, 'sortin time', T_toEnd - elapsed_T, 'time', t
+
+
                 exit history
               endif
               if (self % usePrecursors) then
@@ -526,7 +532,9 @@ contains
 
         ! Neutron population control
         if (self % useCombing) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
+          if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
+            call self % nextTime(i) % combing(self % pop, pRNG)
+          end if
         else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
           call self % nextTime(i) % combing(self % pop, pRNG)
         end if
@@ -564,12 +572,6 @@ contains
     end do
 
   end subroutine cycles_EPC
-
-
-
-
-
-
 
   !!
   !! Print calculation results to file
@@ -664,8 +666,6 @@ contains
     ! Whether to implement precursors (default = yes)
     call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
 
-    call dict % getOrDefault(self % useEPC, 'useEPC', .false.)
-
     ! Whether to use analog or implicit kinetic (default = Analog)
     call dict % getOrDefault(self % useForcedPrecursorDecay, 'useForcedPrecursorDecay', .false.)
 
@@ -741,23 +741,48 @@ contains
       end do
     end if
 
-    if ((self % useEPC .eqv. .true.)) then
-      allocate(self % fittestParticlesCurrent(self % N_cycles))
-      allocate(self % fittestParticlesNext(self % N_cycles))
-      do i = 1, self % N_cycles
-        call self % fittestParticlesCurrent(i) % init(2 * self % pop)
-        call self % fittestParticlesNext(i) % init(2 * self % pop)
-      end do
-      call dict % get(self % fittestFactor, 'fittestFactor')
-      call dict % get(self % nReproductions, 'nReproductions')
-      call dict % get(self % useQuickSort, 'useQuickSort')
-      call dict % get(EPCResponse,'responseType')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse)
-    end if
+    tempDict => dict % getDictPtr('EPC')
+    call self % initEPC(tempDict)
 
     call self % printSettings()
 
   end subroutine init
+
+  subroutine initEPC(self, dict)
+    class(timeDependentPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(in)                     :: dict
+    class(dictionary), pointer                        :: tempDict
+    integer(shortInt)                                 :: i, EPCResponse
+    character(5)                                      :: responseDim
+    real(defReal),dimension(:), allocatable           :: r
+    integer(shortInt)                                 :: cellIdx
+    character(100), parameter :: Here ='init (initEPC.f90)'
+
+    self % useEPC = .true.
+    allocate(self % fittestParticlesCurrent(self % N_cycles))
+    allocate(self % fittestParticlesNext(self % N_cycles))
+    do i = 1, self % N_cycles
+      call self % fittestParticlesCurrent(i) % init(2 * self % pop)
+      call self % fittestParticlesNext(i) % init(2 * self % pop)
+    end do
+    call dict % get(self % fittestFactor, 'fittestFactor')
+    call dict % get(self % nReproductions, 'nReproductions')
+    call dict % get(EPCResponse,'responseType')
+    call dict % get(responseDim, 'responseDim')
+
+    if (responseDim == 'cells') then
+      call dict % get(cellIdx, 'responseVal')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, cellIdx)
+
+    else if (responseDim == 'space') then
+      call dict % get(r, 'responseVal')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, r)
+
+    else
+      call fatalError(Here, 'Need to specify cells or space of responseDim')
+    end if
+
+  end subroutine initEPC
 
   !!
   !! Deallocate memory
@@ -808,10 +833,10 @@ contains
     type(particle), intent(in)                        :: p
     integer(shortInt), intent(in)                     :: Nfittest, i
     real(defReal), intent(inout)                      :: fitness1
-    integer(shortInt)                           :: k
-    type(particle)                            :: p_temp, p_pre
+    integer(shortInt), save                           :: k
+    type(particle), save                            :: p_temp, p_pre
     character(100),parameter :: Here ='sortFittest (timeDependentPhysicsPackage_class.f90)'
-    !!$omp threadprivate(k, p_temp, p_pre)
+    !$omp threadprivate(k, p_temp, p_pre)
 
     p_pre = p
 
@@ -890,202 +915,5 @@ contains
     end if
 
   end subroutine sortFittest
-
-  recursive subroutine quickSort(self, fittestParticles, first, last)
-    class(timeDependentPhysicsPackage), intent(inout) :: self
-    type(particleDungeon), intent(inout)              :: fittestParticles
-    integer(shortInt), intent(in)                     :: first, last
-    real(defReal)                                     :: x, t, statement1, statement2
-    integer(shortInt)                                 :: i, j
-    type(particle)                                    :: p, p_temp
-
-    call fittestParticles % copy(p, (first+last)/2)
-    x = p % fitness
-
-    i = first
-    j = last
-
-    do
-      call fittestParticles % copy(p, i)
-      statement1 = p % fitness
-      do while (statement1 > x)     !> for descending
-          i=i+1
-
-          call fittestParticles % copy(p, i)
-          statement1 = p % fitness
-      end do
-
-      call fittestParticles % copy(p, j)
-      statement2 = p % fitness
-
-      do while (x > statement2)          !> for descending
-          j=j-1
-          call fittestParticles % copy(p, j)
-          statement2 = p % fitness
-      end do
-
-      if (i >= j) exit
-      call fittestParticles % copy(p, i)
-      call fittestParticles % copy(p_temp, j)
-      call fittestParticles % replace(p_temp, i)
-      call fittestParticles % replace(p, j)
-
-      i=i+1
-      j=j-1
-    end do
-    if (first < i-1) call self % quickSort(fittestParticles, first, i-1)
-    if (j+1 < last)  call self % quickSort(fittestParticles, j+1, last)
-
-  end subroutine quickSort
-
-
-subroutine swap(self, fittestParticles, i, j)
-  class(timeDependentPhysicsPackage), intent(inout) :: self
-  type(particleDungeon), intent(inout)              :: fittestParticles
-  integer(shortInt), intent(in)                     :: i, j
-  type(particle)                                    :: p, p_temp
-
-  call fittestParticles % copy(p_temp, i)
-  call fittestParticles % copy(p, j)
-  call fittestParticles % replace(p, i)
-  call fittestParticles % replace(p_temp, j)
-
-end subroutine swap
-
-function partition(self, fittestParticles, low, high) result(pivot)
-  class(timeDependentPhysicsPackage), intent(inout) :: self
-  type(particleDungeon), intent(inout)              :: fittestParticles
-  integer(shortInt), intent(in)                     :: low, high
-  integer(shortInt)                                 :: pivot, i, j
-  type(particle)                                    :: p, p_temp
-
-  pivot = low
-  i = low
-  j = high
-
-  call fittestParticles % copy(p_temp, pivot)
-
-  do while (i < j)
-    call fittestParticles % copy(p, i)
-    do while (p % fitness >= p_temp % fitness .and. i < high) !>= for descending
-      i = i + 1
-      call fittestParticles % copy(p, i)
-    end do
-
-    call fittestParticles % copy(p, j)
-    do while (p % fitness < p_temp % fitness) ! < for descending
-      j = j - 1
-      call fittestParticles % copy(p, j)
-    end do
-
-    if (i < j) then
-      call self % swap(fittestParticles, i, j)
-    end if
-  end do
-
-  call self % swap(fittestParticles, pivot, j)
-  pivot = j
-end function partition
-
-
-
-  recursive subroutine ParallelQuickSort(self, fittestParticles, low, high)
-    class(timeDependentPhysicsPackage), intent(inout) :: self
-    type(particleDungeon), intent(inout)              :: fittestParticles
-    integer(shortInt), intent(in)                     :: low, high
-    integer(shortInt)                                 :: pivot
-    type(particle)                                    :: p, p_temp
-
-    if (low < high) then
-      pivot = self % partition(fittestParticles, low, high)
-
-      !$OMP PARALLEL SECTIONS
-      !$OMP SECTION
-      call self % ParallelQuickSort(fittestParticles, low, pivot - 1)
-
-
-      !$OMP SECTION
-      call self % ParallelQuickSort(fittestParticles, pivot + 1, high)
-      !$OMP END PARALLEL SECTIONS
-    end if
-
-  end subroutine ParallelQuickSort
-
-
-
-
-  subroutine merge_sort(self, fittestParticles, low, high)
-    class(timeDependentPhysicsPackage), intent(inout) :: self
-    type(particleDungeon), intent(inout)              :: fittestParticles
-    integer(shortInt), intent(in)                     :: low, high
-    integer(shortInt)                                 :: mid
-
-    if (low < high) then
-      mid = (low + high) / 2
-
-      !$omp parallel sections
-      !$omp section
-      call self % merge_sort(fittestParticles, low, mid)
-      !$omp section
-      call self % merge_sort(fittestParticles, mid + 1, high)
-      !$omp end parallel sections
-
-      call self % merge(fittestParticles, low, mid, high)
-
-    end if
-  end subroutine merge_sort
-
-  subroutine merge(self, fittestParticles, low, mid, high)
-    class(timeDependentPhysicsPackage), intent(inout) :: self
-    type(particleDungeon), intent(inout)              :: fittestParticles
-    integer(shortInt), intent(in)                     :: low, mid, high
-    integer(shortInt)                                 :: i, j, k
-    type(particle), allocatable                       :: temp(:)
-    type(particle)                                    :: p, p_temp
-
-    allocate(temp(low:high))
-
-    i = low
-    j = mid + 1
-    k = low
-
-    do while (i <= mid .and. j <= high)
-
-      call fittestParticles % copy(p, i)
-      call fittestParticles % copy(p_temp, j)
-      if (p % fitness >= p_temp % fitness) then
-        temp(k) = p
-        i = i + 1
-      else
-        temp(k) = p_temp
-        j = j + 1
-      end if
-      k = k + 1
-
-    end do
-
-    do while (i <= mid)
-      call fittestParticles % copy(p, i)
-      temp(k) = p
-      i = i + 1
-      k = k + 1
-    end do
-
-    do while (j <= high)
-      call fittestParticles % copy(p, j)
-      temp(k) = p
-      j = j + 1
-      k = k + 1
-    end do
-
-    do i = low, high
-      call fittestParticles % replace (temp(i), i)
-    end do
-
-    deallocate(temp)
-
-  end subroutine merge
-
-
 
 end module timeDependentPhysicsPackage_class

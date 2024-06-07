@@ -8,11 +8,7 @@ timeIncrement 1.E-07;
 cycles 10; //10
 combing 0;
 
-useEPC 1;
-responseType 2; // space
-fittestFactor 0.01;//0.01; //0.01
-nReproductions 2; //2
-useQuickSort 0; //0
+EPC { responseType 1; responseDim space; responseVal (10 0 0); fittestFactor 0.01; nReproductions 2;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -22,7 +18,7 @@ transportOperator { type transportOperatorDT;
 
 source {
   type pointSource;
-  r (-5.0 0.0 0.0); //r (-5.0 0.0 0.0);
+  r (-5.0 0.0 0.0);
   particle neutron;
   E 5.0E-03;
 }

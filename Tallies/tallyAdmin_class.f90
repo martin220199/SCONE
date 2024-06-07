@@ -7,7 +7,7 @@ module tallyAdmin_class
   use dictionary_class,       only : dictionary
   use dynArray_class,         only : dynIntArray
   use charMap_class,          only : charMap
-  use particle_class,         only : particle
+  use particle_class,         only : particle, particleState
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk
   use tallyClerkSlot_class,   only : tallyClerkSlot
@@ -124,6 +124,9 @@ module tallyAdmin_class
     integer(shortInt)  :: tallyContribSizeEPC = 0_shortInt
     integer(shortInt)  :: EPCResponse
     integer(shortInt), dimension(:), allocatable :: entropy
+    real(defReal), dimension(:), allocatable :: targetSpace
+    real(defReal)                            :: targetCell
+
   contains
 
     ! Build procedures
@@ -165,7 +168,11 @@ module tallyAdmin_class
 
     procedure :: updateScore
 
-    procedure :: initEPC
+    !procedure :: initEPC
+    generic :: initEPC => initEPCSpace,&
+                          initEPCCell
+    procedure :: initEPCSpace
+    procedure :: initEPCCell
 
     procedure :: getScore
 
@@ -842,24 +849,94 @@ contains
     integer(shortInt)                                    :: i, s
     real(defreal)                                        :: invE
     real(defReal)                                        :: epsilon = 0.01_defReal
+
+    integer(shortInt)                                    :: mapIdx
+    type(particleState)                                  :: state
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
     tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
+    !if (self % EPCResponse == 0_shortInt) then
+    !  p % fitness = ZERO
+    !  s = sum(self % entropy(:))
+    !  !$omp parallel do
+    !  do i = 1, self % tallyContribSizeEPC
+    !    if (s > 0_shortInt) p % fitness = p % fitness + tallyFootprint(i) / (self % entropy(i) / real(s)  + epsilon)
+    !    if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+    !  end do
+    !  !$omp end parallel do
+    !  p % fitness = p % fitness * p % w
+    !else
+    !  p % fitness = tallyFootprint(self % EPCResponse) * p % w
+    !end if
+
+    state = p
+    p % fitness = ZERO
 
     if (self % EPCResponse == 0_shortInt) then
-      p % fitness = ZERO
-      s = sum(self % entropy(:))
-      !$omp parallel do
-      do i = 1, self % tallyContribSizeEPC
-        if (s > 0_shortInt) p % fitness = p % fitness + tallyFootprint(i) / (self % entropy(i) / real(s)  + epsilon)
-        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-      end do
-      !$omp end parallel do
-      p % fitness = p % fitness * p % w
+
+      if (.not. allocated(self % targetSpace)) then
+        s = sum(self % entropy(:))
+        if (s > 0_shortInt) p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / real(s)  + epsilon))
+
+        !$omp parallel do
+        do i = 1, self % tallyContribSizeEPC
+          if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+        end do
+        !$omp end parallel do
+
+      end if
+
+      !TODO: space continous way to do this
+      ! need to map.. need centre of spatial tallies
+
+      !either compute distance to each, or just check which spatial tally in 
+      ! and do similar to cell -> i.e., entropy of tally inside.
+      ! need mapping regardless, but maybe do combing / simple thing below first
+      ! I would start with less complex i.e map to tally it belongs,
+      ! usually tallies fine enough, the other is too complex prolly not viable
+      ! NB need to be able to map multimap, and singlemap
+      ! Think I need to break SCONE code a bit ... e.g initialise own map etc. like they
+      ! do. in EPC define spaceMap, just keep essentials, map is defined else as well
+
+
+      ! Then do combing / simple one so dont need to sort. 
+      ! simple one: just store all particles in dungeon
+        ! then when simulate: base split decision on fitness vs fitnessMax and fitnessMin
+        ! there are stored as particles are detained self % maxF etc.
+        ! decide number of reproductions -> want to cap so most have 0 reprod
+        ! particles that have fitness score within x percent are split
+        ! dont know order, so do until number of reprod filled up
+      ! Sorting is a big issue
 
     else
-      p % fitness = tallyFootprint(self % EPCResponse) * p % w
+      !space
+      if (allocated(self % targetSpace)) then
+        p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO)) * p % w !+ &
+                      !(state % r(2)-self % targetSpace(2))**TWO + &
+                      !(state % r(3)-self % targetSpace(3))**TWO)) !* p % w
+
+        !print *, state % r, p % fitness
+      !cell
+      else
+        if (state % cellIdx == self % targetCell) p % fitness = p % w
+      end if
     end if
+
+    !instead of tallyfootprint use, first, if in cell local. and weight
+    ! then do global for this: e.g.: cell its ins entropy. and weight
+
+    !print *, mapIdx, state % cellIdx, self % EPCResponse
+
+
+    !ok: if space -> either cell or 3D map. Particle has cellIdx and location
+
+    !local: 
+      !binary: match cellIdx with input
+      !continous: distance of location of particle to input loc
+
+    !global:
+      !binary: entropy if cellIdx match * p % w
+      !continous: entropy * distance * p % w
 
   end subroutine processEvolutionaryParticle
 
@@ -873,10 +950,10 @@ contains
 
   end subroutine updateScore
 
-  subroutine initEPC(self, N_timeBins, EPCResponse)
+  subroutine initEPCCell(self, N_timeBins, EPCResponse, responseVal)
     class(tallyAdmin),intent(inout) :: self
-    integer(shortInt), intent(in)   :: N_timeBins, EPCResponse
-    character(100),parameter :: Here = 'initEPC (tallyAdmin_class.f90)'
+    integer(shortInt), intent(in)   :: N_timeBins, EPCResponse, responseVal
+    character(100),parameter :: Here = 'initEPCCell (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
     self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
@@ -887,7 +964,33 @@ contains
       self % entropy(:) = 0
     end if
 
-  end subroutine initEPC
+    if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
+
+    self % targetCell = responseVal
+
+  end subroutine initEPCCell
+
+  subroutine initEPCSpace(self, N_timeBins, EPCResponse, responseVal)
+    class(tallyAdmin),intent(inout)         :: self
+    integer(shortInt), intent(in)           :: N_timeBins, EPCResponse
+    real(defReal), dimension(3), intent(in) ::  responseVal
+    character(100),parameter :: Here = 'initEPCSpace (tallyAdmin_class.f90)'
+
+    self % nTimeBinsEPC = N_timeBins
+    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
+    self % EPCResponse = EPCResponse
+
+    if (self % EPCResponse == 0_shortInt) then
+      allocate(self % entropy(self % tallyContribSizeEPC))
+      self % entropy(:) = 0
+    end if
+
+    if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
+
+    allocate(self % targetSpace(3))
+    self % targetSpace = responseVal
+
+  end subroutine initEPCSpace
 
   !!
   !! Obtain value of a score in a bin
