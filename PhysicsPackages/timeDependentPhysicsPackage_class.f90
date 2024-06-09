@@ -13,7 +13,7 @@ module timeDependentPhysicsPackage_class
                                              timerTime, timerReset, secToChar
 
   ! Particle classes and Random number generator
-  use particle_class,                 only : particle, P_NEUTRON
+  use particle_class,                 only : particle, P_NEUTRON, particleState
   use particleDungeon_class,          only : particleDungeon
   use source_inter,                   only : source
   use RNG_class,                      only : RNG
@@ -89,6 +89,7 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useEPC
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
+    integer(shortInt)  :: fitnessHandling !0 - sorting, 1 - combing, 2 - simple
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -391,6 +392,7 @@ contains
     integer(shortInt)                               :: j
     integer(longInt)                                :: t
     type(particle), save                            :: p, p_d
+    type(particleState), save                       :: stateTemp
     type(particleDungeon), save                     :: buffer
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
@@ -398,7 +400,7 @@ contains
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, decay_T, w_d, fitness1
     real(defReal), intent(in)                       :: timeIncrement
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG)
+    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, stateTemp)
 
     !$omp parallel
     ! Create particle buffer
@@ -427,23 +429,34 @@ contains
           call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
           nParticles = self % currentTime(i) % popSize()
         else
-          Nfittest = self % fittestParticlesCurrent(i) % popSize()
-          if (self % nReproductions >= 1_shortInt) then
-            !$omp parallel do schedule(dynamic)
-            do n = 1, Nfittest
-              call self % fittestParticlesCurrent(i) % copy(p, n)
-              p % w = p % w / self % nReproductions
-              call self % fittestParticlesCurrent(i) % replace(p, n)
 
-              if (self % nReproductions > 1_shortInt) then 
-                do j = 1, self % nReproductions - 1
-                  call self % fittestParticlesCurrent(i) % detain(p)
-                end do
-              end if
-            end do
-            !$omp end parallel do
+          if (self % fitnessHandling == 0_shortInt) then
+            Nfittest = self % fittestParticlesCurrent(i) % popSize()
+            if (self % nReproductions >= 1_shortInt) then
+              !$omp parallel do schedule(dynamic)
+              do n = 1, Nfittest
+                call self % fittestParticlesCurrent(i) % copy(p, n)
+                p % w = p % w / self % nReproductions
+                call self % fittestParticlesCurrent(i) % replace(p, n)
+
+                if (self % nReproductions > 1_shortInt) then 
+                  do j = 1, self % nReproductions - 1
+                    call self % fittestParticlesCurrent(i) % detain(p)
+                  end do
+                end if
+              end do
+              !$omp end parallel do
+            end if
+            nParticles = self % currentTime(i) % popSize() + self % fittestParticlesCurrent(i) % popSize()
+
+          else if (self % fitnessHandling == 1_shortInt) then
+
+            call self % currentTime(i) % fitness_combing(self % pop, pRNG)
+            nParticles = self % currentTime(i) % popSize()
+
+          else
+            call fatalError(Here, 'Need to define fitnessHandling')
           end if
-          nParticles = self % currentTime(i) % popSize() + self % fittestParticlesCurrent(i) % popSize()
         end if
 
         call tally % reportCycleStart(self % currentTime(i))
@@ -457,9 +470,12 @@ contains
 
           if (n <= self % currentTime(i) % popSize()) then
             call self % currentTime(i) % copy(p, n)
-
+            stateTemp = p
+            !print *, 'unfit', stateTemp % fitness, stateTemp % cellIdx, stateTemp % r
           else 
             call self % fittestParticlesCurrent(i) % copy(p, n-self % currentTime(i) % popSize())
+            stateTemp = p
+            !print *, 'fit', stateTemp % fitness, stateTemp % cellIdx, stateTemp % r
           end if
 
 
@@ -487,19 +503,13 @@ contains
               if(p % fate == AGED_FATE) then
                 call tally % processEvolutionaryParticle(p, t)
 
-
-                ! Calculate times
-                !call timerStop(self % timerMain)
-                !elapsed_T = timerTime(self % timerMain)
-
-                !$OMP CRITICAL
-                call self % sortFittest(p, Nfittest, i, fitness1)
-                !$OMP END CRITICAL
-
-                !call timerStop(self % timerMain)
-                !T_toEnd = timerTime(self % timerMain)
-                !if (i == 1) print *, 'sortin time', T_toEnd - elapsed_T, 'time', t
-
+                if (self % fitnessHandling == 0_shortInt) then
+                  !$OMP CRITICAL
+                  call self % sortFittest(p, Nfittest, i, fitness1)
+                  !$OMP END CRITICAL
+                else
+                  call self % nextTime(i) % detain(p)
+                end if
 
                 exit history
               endif
@@ -531,13 +541,13 @@ contains
         call self % fittestParticlesCurrent(i) % cleanPop()
 
         ! Neutron population control
-        if (self % useCombing) then
-          if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
-            call self % nextTime(i) % combing(self % pop, pRNG)
-          end if
-        else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
-        end if
+        !if (self % useCombing) then
+        !  if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
+        !    call self % nextTime(i) % combing(self % pop, pRNG)
+        !  end if
+        !else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
+        !  call self % nextTime(i) % combing(self % pop, pRNG)
+        !end if
 
       end do
 
@@ -769,6 +779,7 @@ contains
     call dict % get(self % nReproductions, 'nReproductions')
     call dict % get(EPCResponse,'responseType')
     call dict % get(responseDim, 'responseDim')
+    call dict % get(self % fitnessHandling, 'fitnessHandling')
 
     if (responseDim == 'cells') then
       call dict % get(cellIdx, 'responseVal')

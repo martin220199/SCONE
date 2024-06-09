@@ -877,6 +877,12 @@ contains
       if (.not. allocated(self % targetSpace)) then
         s = sum(self % entropy(:))
         if (s > 0_shortInt) p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / real(s)  + epsilon))
+        !print *, p % fitness, state % cellIdx, self % entropy(state % cellIdx)
+
+        ! OH SHIT!! TODO: Ok reason why not as good: cell 3 is boron. It is included
+        ! but not in tally output, so FoM high for particles in the middle. Not problem for 
+        ! non-combing BECAUSE fittestparticles pops not inflated by combing, just
+        ! certain number of particles fitttest simulated. AH-HA
 
         !$omp parallel do
         do i = 1, self % tallyContribSizeEPC
@@ -908,17 +914,32 @@ contains
         ! dont know order, so do until number of reprod filled up
       ! Sorting is a big issue
 
+
+      !why local space not performing as well as local cell in terms of variance?
+
     else
       !space
       if (allocated(self % targetSpace)) then
-        p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO)) * p % w !+ &
-                      !(state % r(2)-self % targetSpace(2))**TWO + &
-                      !(state % r(3)-self % targetSpace(3))**TWO)) !* p % w
+        if (size(self % targetSpace) == 1) then
+          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO)) * p % w
+        else if (size(self % targetSpace) == 2) then
+          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO + &
+                        (state % r(2)-self % targetSpace(2))**TWO)) * p % w
+        else
+          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO + &
+                        (state % r(2)-self % targetSpace(2))**TWO + &
+                        (state % r(3)-self % targetSpace(3))**TWO)) * p % w
 
-        !print *, state % r, p % fitness
+        end if
+
       !cell
       else
-        if (state % cellIdx == self % targetCell) p % fitness = p % w
+        !for combing cant have zero fitness, if not combing then only need fitness if equality
+        if (state % cellIdx == self % targetCell) then
+          p % fitness = 100.0 !p % w
+        else 
+          p % fitness = 1.0 !ZERO
+        end if
       end if
     end if
 
@@ -973,7 +994,7 @@ contains
   subroutine initEPCSpace(self, N_timeBins, EPCResponse, responseVal)
     class(tallyAdmin),intent(inout)         :: self
     integer(shortInt), intent(in)           :: N_timeBins, EPCResponse
-    real(defReal), dimension(3), intent(in) ::  responseVal
+    real(defReal), dimension(:), intent(in) ::  responseVal
     character(100),parameter :: Here = 'initEPCSpace (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
@@ -987,7 +1008,7 @@ contains
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
-    allocate(self % targetSpace(3))
+    allocate(self % targetSpace(size(responseVal)))
     self % targetSpace = responseVal
 
   end subroutine initEPCSpace
