@@ -7,8 +7,8 @@ dataType ce;
 timeIncrement 1.E-07;
 cycles 10; //10
 combing 0;
-                                                                         //0.01             //2
-EPC {fitnessHandling 1; responseType 0; responseDim cells; responseVal -1; fittestFactor 0.01; nReproductions 2;}
+                                                      //response (1 2)       //0.01             //2
+EPC {fitnessHandling 1; responseType 0; responseDim cells; response (1 2); fittestFactor 0.01; nReproductions 2;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}

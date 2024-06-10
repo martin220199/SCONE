@@ -202,8 +202,6 @@ contains
 
     self % parallelBinsEPC(idx, thread_idx) = &
             self % parallelBinsEPC(idx, thread_idx) + score
-    
-    !if (idx == 1) print *, 'score', score
 
   end subroutine score_defReal
 
@@ -291,16 +289,10 @@ contains
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
-    !print *, sum(self % parallelBins(:,:))
-
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       
       !$omp parallel do
       do i = 1, self % N
-        
-        !print *, 'cycle finished----------'
-        !print *, 'EPC bins should be zero: ', sum(self % parallelBinsEPC(:,:))
-        !print *, 'parallellBins', sum(self % parallelBins(i,:)), i
 
         ! Normalise scores
         self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
@@ -313,9 +305,6 @@ contains
         ! Increment cumulative sums 
         self % bins(i,CSUM)  = self % bins(i,CSUM) + res
         self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
-
-        !print *, 'moments', res, res*res
-        !print *, ' acc moments', self % bins(i,CSUM) , self % bins(i,CSUM2)
 
       end do
       !$omp end parallel do

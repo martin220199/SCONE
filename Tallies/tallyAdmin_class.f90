@@ -120,12 +120,14 @@ module tallyAdmin_class
     ! Score memory
     type(scoreMemory)  :: mem
 
-    integer(shortInt)  :: nTimeBinsEPC = 0_shortInt
-    integer(shortInt)  :: tallyContribSizeEPC = 0_shortInt
-    integer(shortInt)  :: EPCResponse
+    integer(shortInt)                            :: nTimeBinsEPC = 0_shortInt
+    integer(shortInt)                            :: tallyContribSizeEPC = 0_shortInt
+    integer(shortInt)                            :: EPCResponse, fitnessHandling
+    real(defReal)                                :: fittestFactor
     integer(shortInt), dimension(:), allocatable :: entropy
-    real(defReal), dimension(:), allocatable :: targetSpace
-    real(defReal)                            :: targetCell
+    real(defReal), dimension(:), allocatable     :: targetMultiReal
+    integer(shortInt), dimension(:), allocatable :: targetMultiInt
+    real(defReal)                                :: targetScalar
 
   contains
 
@@ -168,11 +170,12 @@ module tallyAdmin_class
 
     procedure :: updateScore
 
-    !procedure :: initEPC
-    generic :: initEPC => initEPCSpace,&
-                          initEPCCell
-    procedure :: initEPCSpace
-    procedure :: initEPCCell
+    generic :: initEPC => initEPCScalar,&
+                          initEPCMultiReal,&
+                          initEPCMultiInt
+    procedure :: initEPCScalar
+    procedure :: initEPCMultiReal
+    procedure :: initEPCMultiInt
 
     procedure :: getScore
 
@@ -846,118 +849,131 @@ contains
     class(particle), intent(inout)                       :: p
     integer(longInt), intent(in)                         :: timeBinIdx
     real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
-    integer(shortInt)                                    :: i, s
-    real(defreal)                                        :: invE
+    integer(shortInt)                                    :: i
+    real(defReal)                                        :: s
     real(defReal)                                        :: epsilon = 0.01_defReal
-
     integer(shortInt)                                    :: mapIdx
     type(particleState)                                  :: state
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
-    tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
-    !if (self % EPCResponse == 0_shortInt) then
-    !  p % fitness = ZERO
-    !  s = sum(self % entropy(:))
-    !  !$omp parallel do
-    !  do i = 1, self % tallyContribSizeEPC
-    !    if (s > 0_shortInt) p % fitness = p % fitness + tallyFootprint(i) / (self % entropy(i) / real(s)  + epsilon)
-    !    if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-    !  end do
-    !  !$omp end parallel do
-    !  p % fitness = p % fitness * p % w
-    !else
-    !  p % fitness = tallyFootprint(self % EPCResponse) * p % w
-    !end if
-
     state = p
-    p % fitness = ZERO
+    !sorting, local, cell
+    if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 1_shortInt) &
+         .and. (.not. allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      p % fitness = ZERO
+      if (state % cellIdx == self % targetScalar) p % fitness = p % w
 
-    if (self % EPCResponse == 0_shortInt) then
-
-      if (.not. allocated(self % targetSpace)) then
-        s = sum(self % entropy(:))
-        if (s > 0_shortInt) p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / real(s)  + epsilon))
-        !print *, p % fitness, state % cellIdx, self % entropy(state % cellIdx)
-
-        ! OH SHIT!! TODO: Ok reason why not as good: cell 3 is boron. It is included
-        ! but not in tally output, so FoM high for particles in the middle. Not problem for 
-        ! non-combing BECAUSE fittestparticles pops not inflated by combing, just
-        ! certain number of particles fitttest simulated. AH-HA
-
-        !$omp parallel do
-        do i = 1, self % tallyContribSizeEPC
-          if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-        end do
-        !$omp end parallel do
-
-      end if
-
-      !TODO: space continous way to do this
-      ! need to map.. need centre of spatial tallies
-
-      !either compute distance to each, or just check which spatial tally in 
-      ! and do similar to cell -> i.e., entropy of tally inside.
-      ! need mapping regardless, but maybe do combing / simple thing below first
-      ! I would start with less complex i.e map to tally it belongs,
-      ! usually tallies fine enough, the other is too complex prolly not viable
-      ! NB need to be able to map multimap, and singlemap
-      ! Think I need to break SCONE code a bit ... e.g initialise own map etc. like they
-      ! do. in EPC define spaceMap, just keep essentials, map is defined else as well
-
-
-      ! Then do combing / simple one so dont need to sort. 
-      ! simple one: just store all particles in dungeon
-        ! then when simulate: base split decision on fitness vs fitnessMax and fitnessMin
-        ! there are stored as particles are detained self % maxF etc.
-        ! decide number of reproductions -> want to cap so most have 0 reprod
-        ! particles that have fitness score within x percent are split
-        ! dont know order, so do until number of reprod filled up
-      ! Sorting is a big issue
-
-
-      !why local space not performing as well as local cell in terms of variance?
-
-    else
-      !space
-      if (allocated(self % targetSpace)) then
-        if (size(self % targetSpace) == 1) then
-          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO)) * p % w
-        else if (size(self % targetSpace) == 2) then
-          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO + &
-                        (state % r(2)-self % targetSpace(2))**TWO)) * p % w
-        else
-          p % fitness = (ONE / sqrt((state % r(1)-self % targetSpace(1))**TWO + &
-                        (state % r(2)-self % targetSpace(2))**TWO + &
-                        (state % r(3)-self % targetSpace(3))**TWO)) * p % w
-
-        end if
-
-      !cell
+    !sorting, local, space
+    else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 1_shortInt) &
+         .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      if (size(self % targetMultiReal) == 1) then
+        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO)) * p % w
+      else if (size(self % targetMultiReal) == 2) then
+        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+                      (state % r(2)-self % targetMultiReal(2))**TWO)) * p % w
       else
-        !for combing cant have zero fitness, if not combing then only need fitness if equality
-        if (state % cellIdx == self % targetCell) then
-          p % fitness = 100.0 !p % w
-        else 
-          p % fitness = 1.0 !ZERO
-        end if
+        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+                      (state % r(2)-self % targetMultiReal(2))**TWO + &
+                      (state % r(3)-self % targetMultiReal(3))**TWO)) * p % w
       end if
+
+    !sorting, global, cell
+    else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
+         .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
+      p % fitness = ZERO
+      tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
+      s = sum(self % entropy(:))
+      if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
+          p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / s  + epsilon))
+      end if
+      !$omp parallel do
+      do i = 1, self % tallyContribSizeEPC
+        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+      end do
+      !$omp end parallel do
+
+    !sorting, global, space
+    else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
+         .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      !TODO
+      call fatalError(Here, 'sorting, global, space not implemented yet')
+
+    !combing, local, cell
+    else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 1_shortInt) &
+         .and. (.not. allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      if (state % cellIdx == self % targetScalar) then
+        p % fitness = ONE / self % fittestFactor
+      else
+        p % fitness = ONE
+      end if
+
+    !combing, local, space
+    else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 1_shortInt) &
+         .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      if (size(self % targetMultiReal) == 1) then
+        p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO) + epsilon)
+      else if (size(self % targetMultiReal) == 2) then
+        p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+                      (state % r(2)-self % targetMultiReal(2))**TWO) + epsilon)
+      else
+        p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+                      (state % r(2)-self % targetMultiReal(2))**TWO + &
+                      (state % r(3)-self % targetMultiReal(3))**TWO) + epsilon)
+      end if
+
+    !combing, global, cell
+    else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
+         .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
+      p % fitness = ONE / (ONE)! + epsilon * 10.0)
+      tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
+      s = sum(self % entropy(:))
+      if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
+        p % fitness = MIN(10.0_defReal, ONE / (self % entropy(state % cellIdx) / s))!  + epsilon * 10.0)
+      end if
+      !$omp parallel do
+      do i = 1, self % tallyContribSizeEPC
+        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+      end do
+      !$omp end parallel do
+      !if (state % cellIdx == 2) print *, p % fitness, state % cellIdx
+
+    !combing, global, space
+    else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
+         .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+    !TODO
+    call fatalError(Here, 'combing, global, space not implemented yet')
+
     end if
 
-    !instead of tallyfootprint use, first, if in cell local. and weight
-    ! then do global for this: e.g.: cell its ins entropy. and weight
+    ! OH SHIT!! TODO: Ok reason why not as good: cell 3 is boron. It is included
+    ! but not in tally output, so FoM high for particles in the middle. Not problem for 
+    ! non-combing BECAUSE fittestparticles pops not inflated by combing, just
+    ! certain number of particles fitttest simulated. AH-HA
+    ! OK but this is the point ...?
 
-    !print *, mapIdx, state % cellIdx, self % EPCResponse
+
+    !TODO: space continous way to do this
+    ! need to map.. need centre of spatial tallies
+
+    !either compute distance to each, or just check which spatial tally in 
+    ! and do similar to cell -> i.e., entropy of tally inside.
+    ! need mapping regardless, but maybe do combing / simple thing below first
+    ! I would start with less complex i.e map to tally it belongs,
+    ! usually tallies fine enough, the other is too complex prolly not viable
+    ! NB need to be able to map multimap, and singlemap
+    ! Think I need to break SCONE code a bit ... e.g initialise own map etc. like they
+    ! do. in EPC define spaceMap, just keep essentials, map is defined else as well
 
 
-    !ok: if space -> either cell or 3D map. Particle has cellIdx and location
+    ! Then do combing / simple one so dont need to sort. 
+    ! simple one: just store all particles in dungeon
+      ! then when simulate: base split decision on fitness vs fitnessMax and fitnessMin
+      ! there are stored as particles are detained self % maxF etc.
+      ! decide number of reproductions -> want to cap so most have 0 reprod
+      ! particles that have fitness score within x percent are split
+      ! dont know order, so do until number of reprod filled up
+    ! Sorting is a big issue
 
-    !local: 
-      !binary: match cellIdx with input
-      !continous: distance of location of particle to input loc
-
-    !global:
-      !binary: entropy if cellIdx match * p % w
-      !continous: entropy * distance * p % w
 
   end subroutine processEvolutionaryParticle
 
@@ -971,14 +987,17 @@ contains
 
   end subroutine updateScore
 
-  subroutine initEPCCell(self, N_timeBins, EPCResponse, responseVal)
+  subroutine initEPCScalar(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, responseVal)
     class(tallyAdmin),intent(inout) :: self
-    integer(shortInt), intent(in)   :: N_timeBins, EPCResponse, responseVal
-    character(100),parameter :: Here = 'initEPCCell (tallyAdmin_class.f90)'
+    integer(shortInt), intent(in)   :: N_timeBins, EPCResponse, fitnessHandling, responseVal
+    real(defReal), intent(in)       :: fittestFactor
+    character(100),parameter :: Here = 'initEPCScalar (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
     self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
+    self % fitnessHandling = fitnessHandling
+    self % fittestFactor = fittestFactor
 
     if (self % EPCResponse == 0_shortInt) then
       allocate(self % entropy(self % tallyContribSizeEPC))
@@ -987,19 +1006,22 @@ contains
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
-    self % targetCell = responseVal
+    self % targetScalar = responseVal
 
-  end subroutine initEPCCell
+  end subroutine initEPCScalar
 
-  subroutine initEPCSpace(self, N_timeBins, EPCResponse, responseVal)
+  subroutine initEPCMultiReal(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, response)
     class(tallyAdmin),intent(inout)         :: self
-    integer(shortInt), intent(in)           :: N_timeBins, EPCResponse
-    real(defReal), dimension(:), intent(in) ::  responseVal
-    character(100),parameter :: Here = 'initEPCSpace (tallyAdmin_class.f90)'
+    integer(shortInt), intent(in)           :: N_timeBins, EPCResponse, fitnessHandling
+    real(defReal), intent(in)               :: fittestFactor
+    real(defReal), dimension(:), intent(in) ::  response
+    character(100),parameter :: Here = 'initEPCMultiReal (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
     self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
+    self % fitnessHandling = fitnessHandling
+    self % fittestFactor = fittestFactor
 
     if (self % EPCResponse == 0_shortInt) then
       allocate(self % entropy(self % tallyContribSizeEPC))
@@ -1008,10 +1030,35 @@ contains
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
-    allocate(self % targetSpace(size(responseVal)))
-    self % targetSpace = responseVal
+    allocate(self % targetMultiReal(size(response)))
+    self % targetMultiReal = response
 
-  end subroutine initEPCSpace
+  end subroutine initEPCMultiReal
+
+    subroutine initEPCMultiInt(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, response)
+    class(tallyAdmin),intent(inout)             :: self
+    integer(shortInt), intent(in)               :: N_timeBins, EPCResponse, fitnessHandling
+    real(defReal), intent(in)                   :: fittestFactor
+    integer(shortInt), dimension(:), intent(in) ::  response
+    character(100),parameter :: Here = 'initEPCMultiInt (tallyAdmin_class.f90)'
+
+    self % nTimeBinsEPC = N_timeBins
+    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
+    self % EPCResponse = EPCResponse
+    self % fitnessHandling = fitnessHandling
+    self % fittestFactor = fittestFactor
+
+    if (self % EPCResponse == 0_shortInt) then
+      allocate(self % entropy(self % tallyContribSizeEPC))
+      self % entropy(:) = 0
+    end if
+
+    if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
+
+    allocate(self % targetMultiInt(size(response)))
+    self % targetMultiInt = response
+
+  end subroutine initEPCMultiInt
 
   !!
   !! Obtain value of a score in a bin

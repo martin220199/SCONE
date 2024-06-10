@@ -541,10 +541,11 @@ contains
         call self % fittestParticlesCurrent(i) % cleanPop()
 
         ! Neutron population control
-        !if (self % useCombing) then
-        !  if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
-        !    call self % nextTime(i) % combing(self % pop, pRNG)
-        !  end if
+        if (self % useCombing .and. self % fitnessHandling == 0_shortInt) then
+          if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
+            call self % nextTime(i) % combing(self % pop, pRNG)
+          end if
+        end if
         !else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
         !  call self % nextTime(i) % combing(self % pop, pRNG)
         !end if
@@ -764,8 +765,9 @@ contains
     class(dictionary), pointer                        :: tempDict
     integer(shortInt)                                 :: i, EPCResponse
     character(5)                                      :: responseDim
-    real(defReal),dimension(:), allocatable           :: r
-    integer(shortInt)                                 :: cellIdx
+    real(defReal),dimension(:), allocatable           :: responseReal
+    integer(shortInt),dimension(:), allocatable       :: responseInt
+    integer(shortInt)                                 :: responseVal
     character(100), parameter :: Here ='init (initEPC.f90)'
 
     self % useEPC = .true.
@@ -781,13 +783,20 @@ contains
     call dict % get(responseDim, 'responseDim')
     call dict % get(self % fitnessHandling, 'fitnessHandling')
 
-    if (responseDim == 'cells') then
-      call dict % get(cellIdx, 'responseVal')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, cellIdx)
+    if (responseDim == 'cells' .and. EPCResponse == 1_shortInt) then
+      call dict % get(responseVal, 'response')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+                                  self % fittestFactor, responseVal)
+
+    else if (responseDim == 'cells' .and. EPCResponse == 0_shortInt) then
+      call dict % get(responseInt, 'response')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+                                  self % fittestFactor, responseInt)
 
     else if (responseDim == 'space') then
-      call dict % get(r, 'responseVal')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, r)
+      call dict % get(responseReal, 'response')
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+                                  self % fittestFactor, responseReal)
 
     else
       call fatalError(Here, 'Need to specify cells or space of responseDim')
