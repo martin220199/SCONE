@@ -886,11 +886,13 @@ contains
       if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
           p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / s  + epsilon))
       end if
-      !$omp parallel do
-      do i = 1, self % tallyContribSizeEPC
-        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-      end do
-      !$omp end parallel do
+      if (ANY(self % targetMultiInt == state % cellIdx)) &
+      self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
+      !!$omp parallel do
+      !do i = 1, self % tallyContribSizeEPC
+      !  if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+      !end do
+      !!$omp end parallel do
 
     !sorting, global, space
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
@@ -928,13 +930,19 @@ contains
       tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
       s = sum(self % entropy(:))
       if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
-        p % fitness = MIN(10.0_defReal, ONE / (self % entropy(state % cellIdx) / s))!  + epsilon * 10.0)
+        p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)!MIN(80.0_defReal, ONE / (self % entropy(state % cellIdx) / s))!  + epsilon * 10.0)
+        !if (state % cellIdx == 1) p % fitness = ONE
+        !if (state % cellIdx == 2) p % fitness = ONE * 100.0
+        !if (state % cellIdx == 2) print *, ONE / (self % entropy(state % cellIdx) / s), self % entropy
       end if
-      !$omp parallel do
-      do i = 1, self % tallyContribSizeEPC
-        if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-      end do
-      !$omp end parallel do
+
+      if (ANY(self % targetMultiInt == state % cellIdx)) &
+      self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
+      !!$omp parallel do
+      !do i = 1, self % tallyContribSizeEPC
+      !  if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
+      !end do
+      !!$omp end parallel do
       !if (state % cellIdx == 2) print *, p % fitness, state % cellIdx
 
     !combing, global, space
