@@ -83,7 +83,6 @@ module scoreMemory_class
       !private
       real(defReal),dimension(:,:),allocatable :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
       real(defReal),dimension(:,:),allocatable :: parallelBins  !! Space for scoring for different threads
-      real(defReal),dimension(:,:),allocatable :: parallelBinsEPC  !! Space for scoring for different threads  
       integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
       integer(shortInt)                        :: nThreads = 0  !! Number of threads used for parallelBins
       integer(shortInt)                        :: id            !! Id of the tally
@@ -103,8 +102,6 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: setNumBatchesPerTimeStep
-    procedure :: processEvolutionaryParticle
-    procedure :: updateScore
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -140,9 +137,6 @@ contains
     ! Note the array padding to avoid false sharing
     allocate( self % parallelBins(N + array_pad, self % nThreads))
     self % parallelBins = ZERO
-
-    allocate( self % parallelBinsEPC(N + array_pad, self % nThreads))
-    self % parallelBinsEPC = ZERO
 
     ! Save size of memory
     self % N = N
@@ -199,9 +193,6 @@ contains
     thread_idx = ompGetThreadNum() + 1
     self % parallelBins(idx, thread_idx) = &
             self % parallelBins(idx, thread_idx) + score
-
-    self % parallelBinsEPC(idx, thread_idx) = &
-            self % parallelBinsEPC(idx, thread_idx) + score
 
   end subroutine score_defReal
 
@@ -300,7 +291,6 @@ contains
         
         ! Zero all score bins
         self % parallelBins(i,:) = ZERO
-        self % parallelBinsEPC(i,:) = ZERO
        
         ! Increment cumulative sums 
         self % bins(i,CSUM)  = self % bins(i,CSUM) + res
@@ -475,52 +465,5 @@ contains
     end if
 
   end function getScore
-
-  function processEvolutionaryParticle(self, timeBinIdx, tallyContribSizeEPC) result(tallyFootprint)
-    class(scoreMemory), intent(inout)  :: self
-    integer(longInt), intent(in)      :: timeBinIdx
-    integer(shortInt), intent(in)      :: tallyContribSizeEPC
-    integer(shortInt)                  :: threadIdx, loc
-    real(defReal), dimension(tallyContribSizeEPC)        :: tallyFootprint
-    character(100),parameter :: Here = 'processEvolutionaryParticle (scoreMemory_class.f90)'
-
-    threadIdx = ompGetThreadNum() + 1
-
-    if (tallyContribSizeEPC > 1_shortInt) then
-      loc = (timeBinIdx-1)*tallyContribSizeEPC
-      tallyFootprint = self % parallelBinsEPC(loc+1:loc+1+tallyContribSizeEPC-1,threadIdx)
-      self % parallelBinsEPC(loc+1:loc+1+tallyContribSizeEPC-1,threadIdx) = ZERO
-    else
-      tallyFootprint = self % parallelBinsEPC(timeBinIdx,threadIdx)
-      !if (timeBinIdx == 1) print *, 'score added source ', tallyFootprint
-      self % parallelBinsEPC(timeBinIdx,threadIdx) = ZERO
-    end if
-
-
-  end function processEvolutionaryParticle
-
-  subroutine updateScore(self, score, timeBinIdx, tallyContribSizeEPC)
-    class(scoreMemory), intent(inout)  :: self
-    integer(longInt), intent(in)      :: timeBinIdx
-    integer(shortInt), intent(in)      :: tallyContribSizeEPC
-    real(defReal), dimension(tallyContribSizeEPC), intent(in)  :: score
-    integer(shortInt)                  :: threadIdx, loc
-    character(100),parameter :: Here = 'updateScore (scoreMemory_class.f90)'
-
-    threadIdx = ompGetThreadNum() + 1
-
-
-    if (tallyContribSizeEPC > 1_shortInt) then
-      loc = (timeBinIdx-1)*tallyContribSizeEPC
-      self % parallelBins(loc+1:loc+1+tallyContribSizeEPC-1, threadIdx) = & 
-                          self % parallelBins(loc+1:loc+1+tallyContribSizeEPC-1, threadIdx) + score
-    else
-      self % parallelBins(timeBinIdx, threadIdx) = & 
-                          self % parallelBins(timeBinIdx, threadIdx) + score(1)
-    end if
-
-    !print *, 'should go down to zero', self % parallelBins(timeBinIdx, threadIdx)
-    if (sum(self % parallelBinsEPC(:, threadIdx)) /= ZERO) call fatalError(Here, 'dfsf')
-  end subroutine updateScore
 
 end module scoreMemory_class

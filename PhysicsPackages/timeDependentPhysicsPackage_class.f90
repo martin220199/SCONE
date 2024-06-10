@@ -424,7 +424,6 @@ contains
 
     do t = 1, N_timeBins
       do i = 1, N_cycles
-        !print *, '----- cycle', i
 
         if (t == 1) then 
           call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
@@ -766,7 +765,8 @@ contains
     class(dictionary), pointer                        :: tempDict
     integer(shortInt)                                 :: i, EPCResponse
     character(5)                                      :: responseDim
-    real(defReal),dimension(:), allocatable           :: responseReal
+    real(defReal), dimension(:), allocatable          :: responseReal
+    real(defReal), dimension(1)                       :: responseRealDummy
     integer(shortInt),dimension(:), allocatable       :: responseInt
     integer(shortInt)                                 :: responseVal
     character(100), parameter :: Here ='init (initEPC.f90)'
@@ -794,10 +794,14 @@ contains
       call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseInt)
 
-    else if (responseDim == 'space') then
+    else if (responseDim == 'space' .and. EPCResponse == 1_shortInt) then
       call dict % get(responseReal, 'response')
       call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseReal)
+
+    else if (responseDim == 'space' .and. EPCResponse == 0_shortInt) then
+      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+                                  self % fittestFactor, responseRealDummy)
 
     else
       call fatalError(Here, 'Need to specify cells or space of responseDim')

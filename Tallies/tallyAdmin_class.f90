@@ -168,8 +168,6 @@ module tallyAdmin_class
 
     procedure :: processEvolutionaryParticle
 
-    procedure :: updateScore
-
     generic :: initEPC => initEPCScalar,&
                           initEPCMultiReal,&
                           initEPCMultiInt
@@ -867,37 +865,31 @@ contains
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 1_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
       if (size(self % targetMultiReal) == 1) then
-        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO)) * p % w
+        p % fitness = (ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO) + epsilon)) * p % w
       else if (size(self % targetMultiReal) == 2) then
-        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
-                      (state % r(2)-self % targetMultiReal(2))**TWO)) * p % w
+        p % fitness = (ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+                      (state % r(2)-self % targetMultiReal(2))**TWO) + epsilon)) * p % w
       else
-        p % fitness = (ONE / sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
+        p % fitness = (ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
                       (state % r(2)-self % targetMultiReal(2))**TWO + &
-                      (state % r(3)-self % targetMultiReal(3))**TWO)) * p % w
+                      (state % r(3)-self % targetMultiReal(3))**TWO) + epsilon)) * p % w
       end if
 
     !sorting, global, cell
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
       p % fitness = ZERO
-      tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
       s = sum(self % entropy(:))
       if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
           p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / s  + epsilon))
       end if
       if (ANY(self % targetMultiInt == state % cellIdx)) &
       self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
-      !!$omp parallel do
-      !do i = 1, self % tallyContribSizeEPC
-      !  if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-      !end do
-      !!$omp end parallel do
 
     !sorting, global, space
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
-      !TODO
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TODO
       call fatalError(Here, 'sorting, global, space not implemented yet')
 
     !combing, local, cell
@@ -913,37 +905,26 @@ contains
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 1_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
       if (size(self % targetMultiReal) == 1) then
-        p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO) + epsilon)
+        p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO) + self % fittestFactor)
       else if (size(self % targetMultiReal) == 2) then
         p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
-                      (state % r(2)-self % targetMultiReal(2))**TWO) + epsilon)
+                      (state % r(2)-self % targetMultiReal(2))**TWO) + self % fittestFactor)
       else
         p % fitness = ONE / (sqrt((state % r(1)-self % targetMultiReal(1))**TWO + &
                       (state % r(2)-self % targetMultiReal(2))**TWO + &
-                      (state % r(3)-self % targetMultiReal(3))**TWO) + epsilon)
+                      (state % r(3)-self % targetMultiReal(3))**TWO) + self % fittestFactor)
       end if
 
     !combing, global, cell
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
-      p % fitness = ONE / (ONE)! + epsilon * 10.0)
-      tallyFootprint = self % mem % processEvolutionaryParticle(timeBinIdx, self % tallyContribSizeEPC)
+      p % fitness = ONE / (ONE + self % fittestFactor)
       s = sum(self % entropy(:))
       if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
-        p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)!MIN(80.0_defReal, ONE / (self % entropy(state % cellIdx) / s))!  + epsilon * 10.0)
-        !if (state % cellIdx == 1) p % fitness = ONE
-        !if (state % cellIdx == 2) p % fitness = ONE * 100.0
-        !if (state % cellIdx == 2) print *, ONE / (self % entropy(state % cellIdx) / s), self % entropy
+        p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)
       end if
-
       if (ANY(self % targetMultiInt == state % cellIdx)) &
       self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
-      !!$omp parallel do
-      !do i = 1, self % tallyContribSizeEPC
-      !  if (tallyFootprint(i) > ZERO) self % entropy(i) = self % entropy(i) + 1_shortInt
-      !end do
-      !!$omp end parallel do
-      !if (state % cellIdx == 2) print *, p % fitness, state % cellIdx
 
     !combing, global, space
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
@@ -984,16 +965,6 @@ contains
 
 
   end subroutine processEvolutionaryParticle
-
-  subroutine updateScore(self, score, timeBinIdx)
-    class(tallyAdmin),intent(inout) :: self
-    real(defReal), dimension(self % tallyContribSizeEPC), intent(in)       :: score
-    integer(longInt), intent(in)   :: timeBinIdx
-    character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
-
-    call self % mem % updateScore(score, timeBinIdx, self % tallyContribSizeEPC)
-
-  end subroutine updateScore
 
   subroutine initEPCScalar(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, responseVal)
     class(tallyAdmin),intent(inout) :: self
