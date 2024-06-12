@@ -4,7 +4,7 @@ pop      5000; //5000
 timeSteps   100;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-07;
+timeIncrement 1.E-08;
 cycles 10; //10
 combing 0;
                                                       //response (1 2)       //0.01             //2
@@ -29,7 +29,7 @@ tally  {
     map { type multiMap; maps (map1 map2);
     // NB this has to be this order: cells first, then time
     map1 { type cellMap; cells (1 2); }
-    map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
+    map2 { type timeMap; grid lin; min 0.0; max 1E-07; N 100;}
     }
     response (flux); flux {type fluxResponse;}
   }

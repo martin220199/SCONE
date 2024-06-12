@@ -449,10 +449,9 @@ contains
   subroutine combing(self, N, rand)
     class(particleDungeon), intent(inout)    :: self
     integer(shortInt), intent(in)            :: N
-    integer(shortInt)                        :: i, j
     class(RNG), intent(inout)                :: rand
-    real(defReal)                            :: w_av, nextTooth, curWeight
-    !real(defReal), dimension(self % pop)     :: w_array
+    integer(shortInt)                        :: i, j
+    real(defReal)                            :: w_avg, nextTooth, curWeight
     type(particleState), dimension(N)        :: newPrisoners
     character(100), parameter :: Here =' combing (particleDungeon_class.f90)'
 
@@ -464,39 +463,31 @@ contains
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
 
-    ! Get new particle weight
-    w_av = self % popWeight() / N
+    ! Average particle weight
+    w_avg = self % popWeight() / N
 
-    ! Fill array with each prisoner weight (probably neater way to do this)
-    !do i=1, self % pop
-    !  w_array(i) = self % prisoners(i) % wgt
-    !end do
+    ! First comb tooth
+    nextTooth = rand % get() * w_avg
 
-    ! Get the location of the first tooth
-    nextTooth = rand % get() * w_av
-
-    ! Set variable to store current sum of prisoners weight
     curWeight = ZERO
-
     j=1
     do i=1, N
-      ! Iterate over current particles
-      ! until a tooth falls within bounds of particle weight
+      ! Iterate until accumulated weights of particles matches next tooth
       do while (curWeight + self % prisoners(j) % wgt < nextTooth)
         curWeight = curWeight + self % prisoners(j) % wgt
         j = j + 1
       end do
 
-      ! When a particle has been found...
-      newPrisoners(i) = self % prisoners(j)     ! Add to new array
-      newPrisoners(i) % wgt = w_av              ! Update weight
-      nextTooth = nextTooth + w_av              ! Update position of tooth
+      ! Particle to sample out
+      newPrisoners(i) = self % prisoners(j)
+      newPrisoners(i) % wgt = w_avg
+      nextTooth = nextTooth + w_avg
     end do
 
-    ! Re-size the dungeon to new size
+    ! Update size of particle dungeon
     call self % setSize(N)
 
-    ! Replace the particle at each index with the new particles
+    ! store sampled particles
     do i=1, N
       call self % replace_particleState(newPrisoners(i), i)
     end do

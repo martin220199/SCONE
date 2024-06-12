@@ -4,11 +4,11 @@ pop      100000; //5000
 timeSteps   50;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-08;
-cycles 5; //10
+timeIncrement 1.E-07;
+cycles 3; //10
 combing 0;
 
-EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim space; response (110 0); fittestFactor 0.001; nReproductions 2;}
+EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim space; response (200 0 0); fittestFactor 0.01; nReproductions 2;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -18,8 +18,7 @@ transportOperator { type transportOperatorDT;
 
 source {
   type pointSource;
-  r (-140.0 0.0 0.0);
-  //dir (1.0 0.0 0.0);
+  r (0.0 0.0 0.0);
   particle neutron;
   E 10.0;
 }
@@ -29,10 +28,10 @@ tally  {
   flux_time { type collisionClerk;
     map { type multiMap; maps (map1 map2 map3 map4);
     // NB this has to be this order: cells first, then time
-    map1 { type spaceMap; axis x; grid lin; min -150; max 150; N 31;}
-    map2 { type spaceMap; axis y; grid lin; min -150; max 150; N 31;}
-    map3 { type spaceMap; axis z; grid lin; min -150; max 150; N 1;}
-    map4 { type timeMap; grid lin; min 0.0; max 5E-07; N 50;}
+    map1 { type spaceMap; axis x; grid lin; min -250; max 250; N 11;}
+    map2 { type spaceMap; axis y; grid lin; min -250; max 250; N 11;}
+    map3 { type spaceMap; axis z; grid lin; min -250; max 250; N 1;}
+    map4 { type timeMap; grid lin; min 0.0; max 5E-06; N 50;}
     }
     response (flux); flux {type fluxResponse;}
   }
@@ -40,28 +39,28 @@ tally  {
 
 geometry {
     type geometryStd;
-    boundary (0 0 0 0 0 0); //(1 1 1 1 1 1);
+    boundary (1 1 1 1 1 1); //(1 1 1 1 1 1);
     graph {type shrunk;}
 
     surfaces
     {
-      universeBox { id 1; type box; origin (0.0 0.0 0.0); halfwidth (150.0 150.0 150.0);}
+      universeBox { id 1; type box; origin (0.0 0.0 0.0); halfwidth (250.0 250.0 250.0);}
 
-      personCylinderOne {id 3; type zTruncCylinder; origin (110 0 0); halfwidth 200; radius 20;}
+      canCylinderOne {id 2; type zTruncCylinder; origin (200 0 0); halfwidth 250; radius 25;}
+      personCylinderOne {id 3; type zTruncCylinder; origin (200 0 0); halfwidth 250; radius 10;}
 
-      concreteBox { id 6; type box; origin (0.0 0.0 0.0); halfwidth (20.0 200.0 200.0);}
+      canCylinderTwo {id 4; type zTruncCylinder; origin (-200 0 0); halfwidth 250; radius 25;}
+      personCylinderTwo {id 5; type zTruncCylinder; origin (-200 0 0); halfwidth 250; radius 10;}
 
     } 
 
     cells
     {
     PersonOne { id 1; type simpleCell; surfaces (-3); filltype mat; material m1;} 
-    //PersonTwo { id 2; type simpleCell; surfaces (-5); filltype mat; material m4;} //m1
-    //CanOne { id 3; type simpleCell; surfaces (-2 3); filltype mat; material m2;} 
-    //CanTwo { id 4; type simpleCell; surfaces (-4 5); filltype mat; material m4;} //m3
-    Medium { id 5; type simpleCell; surfaces (-1 6 3); filltype mat; material m4;} 
-
-    ConcreteWall { id 6; type simpleCell; surfaces (-6); filltype mat; material m3;} 
+    PersonTwo { id 2; type simpleCell; surfaces (-5); filltype mat; material m4;} //m1
+    CanOne { id 3; type simpleCell; surfaces (-2 3); filltype mat; material m2;} 
+    CanTwo { id 4; type simpleCell; surfaces (-4 5); filltype mat; material m4;} //m3
+    Medium { id 5; type simpleCell; surfaces (-1 2 4); filltype mat; material m4;} 
 
     }
 
@@ -69,7 +68,7 @@ geometry {
     {
 
       root{id 1; type rootUniverse; border 1; fill u<2>;}
-      geom { id 2; type cellUniverse; cells ( 1 5 6);}
+      geom { id 2; type cellUniverse; cells ( 1 2 3 4 5);}
 
     }
 }
