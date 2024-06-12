@@ -740,15 +740,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(3 * self % pop)
-      call self % nextTime(i) % init(3 * self % pop)
+      call self % currentTime(i) % init(self % pop)
+      call self % nextTime(i) % init(self % pop)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(2 * self % pop)
+        call self % precursorDungeons(i) % init(self % pop)
       end do
     end if
 
@@ -771,18 +771,21 @@ contains
     integer(shortInt)                                 :: responseVal
     character(100), parameter :: Here ='init (initEPC.f90)'
 
-    self % useEPC = .true.
+    call dict % getOrDefault( self % useEPC, 'useEPC', .false.)
+    if (self % useEPC .eqv. .false.) return
     allocate(self % fittestParticlesCurrent(self % N_cycles))
     allocate(self % fittestParticlesNext(self % N_cycles))
-    do i = 1, self % N_cycles
-      call self % fittestParticlesCurrent(i) % init(2 * self % pop)
-      call self % fittestParticlesNext(i) % init(2 * self % pop)
-    end do
     call dict % get(self % fittestFactor, 'fittestFactor')
     call dict % get(self % nReproductions, 'nReproductions')
     call dict % get(EPCResponse,'responseType')
     call dict % get(responseDim, 'responseDim')
     call dict % get(self % fitnessHandling, 'fitnessHandling')
+    if (self % fitnessHandling == 0_shortInt) then
+      do i = 1, self % N_cycles
+        call self % fittestParticlesCurrent(i) % init(2 * self % pop)
+        call self % fittestParticlesNext(i) % init(2 * self % pop)
+      end do
+    end if
 
     if (responseDim == 'cells' .and. EPCResponse == 1_shortInt) then
       call dict % get(responseVal, 'response')
@@ -802,6 +805,8 @@ contains
     else if (responseDim == 'space' .and. EPCResponse == 0_shortInt) then
       call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseRealDummy)
+
+      !TODO initialise multimap in tallyadmin
 
     else
       call fatalError(Here, 'Need to specify cells or space of responseDim')

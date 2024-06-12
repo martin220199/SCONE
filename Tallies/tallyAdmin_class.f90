@@ -890,6 +890,16 @@ contains
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TODO
+      !2 versions. Start easy: map loc. and do like cell. 2nd -> calc distances to each spatial tally and weight by entropy. DO when
+                                                                 ! have more knowledge of how can be done trivially from 1.
+      !need to initialise multimap in tallyAdmin_class self % map % map
+
+
+
+
+
+
+
       call fatalError(Here, 'sorting, global, space not implemented yet')
 
     !combing, local, cell
