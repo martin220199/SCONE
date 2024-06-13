@@ -8,11 +8,8 @@ timeIncrement 1.E-07;
 cycles 10; //10
 combing 0;
 
-useEPC 1;
-responseType 3; // space
-fittestFactor 0.01;//0.01; //0.01
-nReproductions 2; //2
-useQuickSort 0; //0
+                                                                   //response (1 2 3)
+EPC {useEPC 1; fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01; nReproductions 2;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -32,7 +29,7 @@ tally  {
   flux_time { type collisionClerk;
     map { type multiMap; maps (map1 map2);
     // NB this has to be this order: cells first, then time
-    map1 { type cellMap; cells (1 2 4); }
+    map1 { type cellMap; cells (1 2 3); }
     map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
     }
     response (flux); flux {type fluxResponse;}
@@ -61,8 +58,10 @@ geometry {
     {
     cellHydrogenOne { id 1; type simpleCell; surfaces (-3 2); filltype mat; material m1;} 
     cellHydrogenTwo { id 2; type simpleCell; surfaces (-4 2); filltype mat; material m1;}
-    cellHydrogenTwoTwo { id 4; type simpleCell; surfaces (-5 2); filltype mat; material m1;}
-    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material m2;}
+    cellHydrogenTwoTwo { id 3; type simpleCell; surfaces (-5 2); filltype mat; material m1;}
+    cellBoron { id 4; type simpleCell; surfaces (-2); filltype mat; material m2;}
+
+
     }
 
     universes

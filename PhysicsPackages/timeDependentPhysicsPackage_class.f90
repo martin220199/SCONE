@@ -740,8 +740,8 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % pop)
-      call self % nextTime(i) % init(self % pop)
+      call self % currentTime(i) % init(3 * self % pop)
+      call self % nextTime(i) % init(3 * self % pop)
     end do
 
     ! Size precursor dungeon
@@ -782,8 +782,8 @@ contains
     call dict % get(self % fitnessHandling, 'fitnessHandling')
     if (self % fitnessHandling == 0_shortInt) then
       do i = 1, self % N_cycles
-        call self % fittestParticlesCurrent(i) % init(2 * self % pop)
-        call self % fittestParticlesNext(i) % init(2 * self % pop)
+        call self % fittestParticlesCurrent(i) % init(3 * self % pop)
+        call self % fittestParticlesNext(i) % init(3 * self % pop)
       end do
     end if
 
