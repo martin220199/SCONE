@@ -543,7 +543,7 @@ contains
 
           ! for quicksort
           if (n > Nfittest) then
-            call fatalError(Here, "should not happen")
+            !call fatalError(Here, "should not happen")
             if (p_temp % fate == aged_fate) then
               p_temp % isDead = .false.
               call self % nextTime(i) % detain(p_temp)
