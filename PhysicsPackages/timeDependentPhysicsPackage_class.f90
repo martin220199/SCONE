@@ -156,6 +156,7 @@ contains
     integer(shortInt), intent(in)                   :: N_timeBins, N_cycles
     integer(shortInt)                               :: i, t, n, nParticles, nDelayedParticles
     type(particle), save                            :: p, p_d
+    type(particleState), save                       :: stateTemp
     type(particleDungeon), save                     :: buffer
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
@@ -163,7 +164,7 @@ contains
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, decay_T, w_d
     real(defReal), intent(in)                       :: timeIncrement
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG)
+    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, stateTemp)
 
     !$omp parallel
     ! Create particle buffer
@@ -219,6 +220,13 @@ contains
             end if
 
             call self % geom % placeCoord(p % coords)
+
+            !particle location viz
+            !if ((t == 25) .or. (t == 50) .or. (t == 75) .or. (t == 100)) then
+            !  stateTemp = p
+            !  print *, '(', stateTemp % r(1), ',', stateTemp % r(2), ')', ','
+            !end if
+
             call p % savePreHistory()
 
             ! Transport particle untill its death
@@ -492,6 +500,12 @@ contains
 
             call self % geom % placeCoord(p % coords)
 
+            !particle location viz
+            !if ((t == 25) .or. (t == 50) .or. (t == 75) .or. (t == 100)) then
+            !  stateTemp = p
+            !  print *, '(', stateTemp % r(1), ',', stateTemp % r(2),')', ','
+            !end if
+
             call p % savePreHistory()
 
 
@@ -740,8 +754,8 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % pop)
-      call self % nextTime(i) % init(self % pop)
+      call self % currentTime(i) % init(3 * self % pop)
+      call self % nextTime(i) % init(3 * self % pop)
     end do
 
     ! Size precursor dungeon
