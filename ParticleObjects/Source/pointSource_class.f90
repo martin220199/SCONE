@@ -10,7 +10,6 @@ module pointSource_class
   use RNG_class,               only : RNG
   use nuclearDataReg_mod,      only : ndReg_getNeutronMG => getNeutronMG
   use mgNeutronDatabase_inter, only : mgNeutronDatabase
-  use poissonPmf_class,        only : poissonPmf
 
   implicit none
   private
@@ -64,9 +63,6 @@ module pointSource_class
     integer(shortInt)                         :: particleType = P_NEUTRON
     logical(defBool)                          :: isMG         = .false.
     logical(defBool)                          :: isIsotropic  = .false.
-    real(defReal)                             :: poissonSource = -ONE
-    real(defReal)                             :: poissonSourceScale = -ONE
-    type(poissonPmf)                          :: poissonPmf
   contains
     procedure :: init
     procedure :: sampleType
@@ -143,14 +139,6 @@ contains
       end if
       self % dir = temp
       self % dir = self % dir / norm2(self % dir)
-    end if
-
-    call dict % getOrDefault(self % poissonSource, 'poissonSource', -ONE)
-    call dict % getOrDefault(self % poissonSourceScale, 'poissonScale', -ONE)
-    if ((self % poissonSource >= ZERO) .and. (self % poissonSourceScale == -ONE)) then 
-      call fatalError(Here, 'Poisson Source requires scale')
-    else if ((self % poissonSource == -ONE) .and. (self % poissonSourceScale > ZERO)) then
-      call fatalError(Here, 'Poisson Source needs to be defined')
     end if
 
     ! Get particle energy/group
@@ -291,11 +279,7 @@ contains
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
 
-    if ((self % poissonSource >= ZERO) .and. (self % poissonSourceScale > ZERO)) then
-      p % time = self % poissonPmf % sample(self % poissonSource, rand) * self % poissonSourceScale
-    else
-      p % time = ZERO
-    end if
+    ! TODO: sample time uniformly like they do in Serpent if necessary.
 
   end subroutine sampleTime
 
