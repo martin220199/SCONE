@@ -11,34 +11,6 @@ module particle_class
   private
 
   !!
-  !! Particle Information for Evolutionary Population Control
-  !!
-  type, public :: stateInfo
-    type(coordList)            :: coords
-    real(defReal)              :: E         ! Particle Energy
-    integer(shortInt)          :: G         ! Particle Energy Group
-    real(defReal)              :: w         ! Particle Weight
-    real(defReal)              :: time      ! Particle time point
-
-    ! Precursor particle data
-    real(defReal)              :: lambda    ! Precursor decay constant
-
-    ! Particle flags
-    real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
-    logical(defBool)           :: isDead
-    logical(defBool)           :: isMG
-    real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
-    integer(shortInt)          :: fate = no_FATE ! Neutron's fate after being subjected to an operator
-    integer(shortInt)          :: type           ! Particle type
-
-    ! Particle processing information
-    !class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
-    real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
-    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
-
-
-  end type stateInfo
-  !!
   !! Particle types paramethers
   !!
   integer(shortInt), parameter,public :: P_NEUTRON   = 1,&
@@ -90,7 +62,6 @@ module particle_class
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
 
     real(defReal)                :: fitness
-    type(stateInfo)              :: preEvolutionState
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -163,7 +134,6 @@ module particle_class
     type(particleState)        :: preCollision
 
     real(defReal)              :: fitness
-    type(stateInfo)            :: preEvolutionState
 
   contains
      ! Build procedures
@@ -200,8 +170,6 @@ module particle_class
     procedure, non_overridable  :: savePreTransition
     procedure, non_overridable  :: savePrePath
     procedure, non_overridable  :: savePreCollision
-    procedure, non_overridable  :: savePreEvolution
-    procedure, non_overridable  :: loadPreEvolution
 
     ! Debug procedures
     procedure            :: display => display_particle
@@ -325,21 +293,6 @@ contains
     LHS % lambda                = RHS % lambda
     LHS % fate                  = RHS % fate
     LHS % fitness               = RHS % fitness
-    LHS% preEvolutionState % coords        =  RHS %preEvolutionState % coords         
-    LHS% preEvolutionState % E             =  RHS %preEvolutionState % E
-    LHS% preEvolutionState % G             =  RHS %preEvolutionState % G 
-    LHS% preEvolutionState % w             =  RHS %preEvolutionState % w   
-    LHS% preEvolutionState % time          =  RHS %preEvolutionState % time 
-    LHS% preEvolutionState % lambda        =  RHS %preEvolutionState % lambda 
-    LHS% preEvolutionState % w0            =  RHS %preEvolutionState % w0 
-    LHS% preEvolutionState % isDead        =  RHS %preEvolutionState % isDead
-    LHS% preEvolutionState % isMG          =  RHS %preEvolutionState % isMG
-    LHS% preEvolutionState % timeMax       =  RHS %preEvolutionState % timeMax
-    LHS% preEvolutionState % fate          =  RHS %preEvolutionState % fate
-    LHS% preEvolutionState % type          =  RHS %preEvolutionState % type
-    !LHS %preEvolutionState % pRNG         =  RHS %preEvolutionState % pRNG 
-    LHS% preEvolutionState % k_eff         =  RHS %preEvolutionState % k_eff 
-    LHS% preEvolutionState % geomIdx       =  RHS %preEvolutionState % geomIdx
 
   end subroutine particle_fromParticleState
 
@@ -697,50 +650,6 @@ contains
 
   end subroutine savePreCollision
 
-  !!
-  !! Save state of the particle at the beginning of history
-  !!
-  subroutine savePreEvolution(self)
-    class(particle), intent(inout) :: self
-
-    self % preEvolutionState % coords        =  self % coords               
-    self % preEvolutionState % E             =  self % E
-    self % preEvolutionState % G             =  self % G 
-    self % preEvolutionState % w             =  self % w   
-    self % preEvolutionState % time          =  self % time 
-    self % preEvolutionState % lambda        =  self % lambda 
-    self % preEvolutionState % w0            =  self % w0 
-    self % preEvolutionState % isDead        =  self % isDead
-    self % preEvolutionState % isMG          =  self % isMG
-    self % preEvolutionState % timeMax       =  self % timeMax
-    self % preEvolutionState % fate          =  self % fate
-    self % preEvolutionState % type          =  self % type
-    !self % preEvolutionState % pRNG          =>  self % pRNG 
-    self % preEvolutionState % k_eff         =  self % k_eff 
-    self % preEvolutionState % geomIdx       =  self % geomIdx
-
-  end subroutine savePreEvolution
-
-  subroutine LoadPreEvolution(self)
-    class(particle), intent(inout) :: self
-
-    self % coords        =self % preEvolutionState % coords        
-    self % E             = self % preEvolutionState % E             
-    self % G             =self % preEvolutionState % G             
-    self % w             =self % preEvolutionState % w             
-    self % time          =self % preEvolutionState % time          
-    self % lambda        =self % preEvolutionState % lambda        
-    self % w0            =self % preEvolutionState % w0            
-    self % isDead        =self % preEvolutionState % isDead        
-    self % isMG          =self % preEvolutionState % isMG          
-    self % timeMax       =self % preEvolutionState % timeMax       
-    self % fate          =self % preEvolutionState % fate          
-    self % type          =self % preEvolutionState % type          
-    !self % pRNG          => self % preEvolutionState % pRNG          
-    self % k_eff         =self % preEvolutionState % k_eff         
-    self % geomIdx       =self % preEvolutionState % geomIdx        
-
-  end subroutine LoadPreEvolution
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle debug procedures
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -805,7 +714,6 @@ contains
     LHS % cellIdx  = RHS % coords % cell()
 
     LHS % fitness           = RHS % fitness
-    LHS % preEvolutionState = RHS % preEvolutionState
 
   end subroutine particleState_fromParticle
 
@@ -839,21 +747,6 @@ contains
 
     isEqual = isEqual .and. LHS % fitness           == RHS % fitness
 
-    !isEqual = isEqual .and. LHS %  preEvolutionState % coords     .eqv. RHS %preEvolutionState % coords  
-    isEqual = isEqual .and. LHS %  preEvolutionState % E          == RHS %preEvolutionState % E       
-    isEqual = isEqual .and. LHS %  preEvolutionState % G          == RHS %preEvolutionState % G       
-    isEqual = isEqual .and. LHS %  preEvolutionState % w          == RHS %preEvolutionState % w       
-    isEqual = isEqual .and. LHS %  preEvolutionState % time       == RHS %preEvolutionState % time    
-    isEqual = isEqual .and. LHS %  preEvolutionState % lambda     == RHS %preEvolutionState % lambda  
-    isEqual = isEqual .and. LHS %  preEvolutionState % w0         == RHS %preEvolutionState % w0      
-    isEqual = isEqual .and. LHS %  preEvolutionState % isDead     .eqv. RHS %preEvolutionState % isDead  
-    isEqual = isEqual .and. LHS %  preEvolutionState % isMG       .eqv. RHS %preEvolutionState % isMG    
-    isEqual = isEqual .and. LHS %  preEvolutionState % timeMax    == RHS %preEvolutionState % timeMax 
-    isEqual = isEqual .and. LHS %  preEvolutionState % fate       == RHS %preEvolutionState % fate    
-    isEqual = isEqual .and. LHS %  preEvolutionState % type       == RHS %preEvolutionState % type    
-    !isEqual = isEqual .and. LHS %  preEvolutionState % pRNG       == RHS %preEvolutionState % pRNG    
-    isEqual = isEqual .and. LHS %  preEvolutionState % k_eff      == RHS %preEvolutionState % k_eff   
-    isEqual = isEqual .and. LHS %  preEvolutionState % geomIdx    == RHS %preEvolutionState % geomIdx 
   end function equal_particleState
 
 !  !!

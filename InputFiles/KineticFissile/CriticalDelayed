@@ -8,16 +8,15 @@ timeIncrement 0.1;
 cycles 10;
 buffer 100000;
 
-combing 0; 
-precursors 1;
-useForcedPrecursorDecay 1;
+combing 1; 
+precursors 0;
+useForcedPrecursorDecay 0;
 branchless 1;
 outputFormat asciiJSON;
 
+EPC {useEPC 0; fitnessHandling 0; responseType 1; responseDim space; response (0 0 0); fittestFactor 0.0; nReproductions 0;}
 
-EPC {useEPC 1; fitnessHandling 0; responseType 1; responseDim space; response (0 0 0); fittestFactor 0.0; nReproductions 0;}
-
-collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 1;}}
+collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 0;branchless 1;}}
 
 transportOperator { type transportOperatorDT;
                   }

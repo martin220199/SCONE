@@ -100,16 +100,14 @@ module timeDependentPhysicsPackage_class
     type(particleDungeon), pointer, dimension(:) :: nextTime              => null()
     type(particleDungeon), pointer, dimension(:) :: tempTime              => null()
     type(particleDungeon), pointer, dimension(:) :: precursorDungeons     => null()
-    type(particleDungeon), pointer               :: fittestParticles      => null()
 
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesCurrent => null()   
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesTemp    => null()
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesNext    => null()
-    real(defReal), dimension(:), allocatable :: precursorWeights
     class(source), allocatable     :: fixedSource
 
     ! Timer bins
-    integer(shortInt) :: timerMain
+    integer(shortInt)  :: timerMain
     real (defReal)     :: CPU_time_start
     real (defReal)     :: CPU_time_end
 
