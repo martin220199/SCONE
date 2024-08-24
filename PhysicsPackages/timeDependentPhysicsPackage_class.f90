@@ -85,7 +85,6 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: useCombing
     logical(defBool)   :: usePrecursors
     logical(defBool)   :: useForcedPrecursorDecay
-    integer(shortInt), dimension(:), allocatable  :: batchPopulations
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -96,8 +95,7 @@ module timeDependentPhysicsPackage_class
     type(particleDungeon), pointer, dimension(:) :: nextTime          => null()
     type(particleDungeon), pointer, dimension(:) :: tempTime          => null()
     type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null() 
-    real(defReal), dimension(:), allocatable :: precursorWeights
-    class(source), allocatable     :: fixedSource
+    class(source), allocatable                   :: fixedSource
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -209,16 +207,13 @@ contains
             ! Transport particle untill its death
             history: do
               if(p % isDead) exit history
-              !print *, 'here'
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
                 call self % nextTime(i) % detain(p)
-                !print *, 'here2'
                 exit history
               endif
               if (self % usePrecursors) then
-                !print *, 'here3'
                 call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
               else
                 call collOp % collide(p, tally, buffer, buffer)
@@ -503,15 +498,15 @@ contains
   !!
   subroutine init(self, dict)
     class(timeDependentPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(inout)                :: dict
-    class(dictionary),pointer                       :: tempDict
-    integer(shortInt)                               :: seed_temp, i
-    integer(longInt)                                :: seed
-    character(10)                                   :: time
-    character(8)                                    :: date
-    character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy, geomName
-    type(outputFile)                                :: test_out
+    class(dictionary), intent(inout)                  :: dict
+    class(dictionary),pointer                         :: tempDict
+    integer(shortInt)                                 :: seed_temp, i
+    integer(longInt)                                  :: seed
+    character(10)                                     :: time
+    character(8)                                      :: date
+    character(:),allocatable                          :: string
+    character(nameLen)                                :: nucData, energy, geomName
+    type(outputFile)                                  :: test_out
     character(100), parameter :: Here ='init (timeDependentPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -548,10 +543,10 @@ contains
     ! Whether to use combing (default = no)
     call dict % getOrDefault(self % useCombing, 'combing', .false.)
 
-    ! Whether to implement precursors (default = no)
+    ! Whether to account for precursors (default = no)
     call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
 
-    ! Whether to use analog or implicit kinetic (default = Analog)
+    ! Whether to use analog or implicit kinetic (default = analog)
     call dict % getOrDefault(self % useForcedPrecursorDecay, 'useForcedPrecursorDecay', .false.)
 
     ! Register timer
