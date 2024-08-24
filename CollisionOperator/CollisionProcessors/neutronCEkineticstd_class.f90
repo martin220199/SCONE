@@ -7,7 +7,7 @@ module neutronCEkineticstd_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -204,18 +204,18 @@ contains
   !!
   subroutine fission(self, p, collDat, thisCycle, nextCycle)
     class(neutronCEkineticstd), intent(inout)   :: self
-    class(particle), intent(inout)       :: p
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    type(fissionCE), pointer             :: fiss
-    type(neutronMicroXSs)                :: microXSs
-    type(particleState)                  :: pTemp
-    real(defReal),dimension(3)           :: r, dir
-    integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, E_out, mu, phi, lambda, decayT
-    real(defReal)                        :: sig_nufiss, k_eff, sig_fiss
-    character(100),parameter             :: Here = 'fission (neutronCEkineticstd_class.f90)'
+    class(particle), intent(inout)              :: p
+    type(collisionData), intent(inout)          :: collDat
+    class(particleDungeon),intent(inout)        :: thisCycle
+    class(particleDungeon),intent(inout)        :: nextCycle
+    type(fissionCE), pointer                    :: fiss
+    type(neutronMicroXSs)                       :: microXSs
+    type(particleState)                         :: pTemp
+    real(defReal),dimension(3)                  :: r, dir
+    integer(shortInt)                           :: n, i
+    real(defReal)                               :: wgt, w0, E_out, mu, phi, lambda, decayT
+    real(defReal)                               :: sig_nufiss, k_eff, sig_fiss
+    character(100),parameter                    :: Here = 'fission (neutronCEkineticstd_class.f90)'
 
     ! Obtain required data
     wgt   = p % w                ! Current weight
@@ -279,7 +279,7 @@ contains
           pTemp % E   = E_out
           pTemp % wgt = wgt
           pTemp % time = pTemp % time + decayT
-          pTemp % type = 3
+          pTemp % type = P_PRECURSOR
 
           call thisCycle % detain(pTemp)
         end do

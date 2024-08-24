@@ -8,7 +8,7 @@ module neutronCEkineticimp_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -317,7 +317,7 @@ contains
             pTemp % r   = r
             pTemp % dir = dir
             pTemp % E   = E_out
-            pTemp % type = 3
+            pTemp % type = P_PRECURSOR
             pTemp % wgt = wgt
             pTemp % time = p % time
             pTemp % lambda = lambda
@@ -407,7 +407,7 @@ contains
         pTemp % r   = r
         pTemp % dir = dir
         pTemp % E   = E_out
-        pTemp % type = 3
+        pTemp % type = P_PRECURSOR
         pTemp % time = p % time
         pTemp % lambda = lambda
 

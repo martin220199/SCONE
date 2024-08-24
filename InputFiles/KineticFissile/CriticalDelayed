@@ -1,21 +1,25 @@
 type timeDependentPhysicsPackage;
 
-pop      5000; //200000, 5000
+pop      20000;
 timeSteps   200; 
 XSdata   ce;
 dataType ce;
 timeIncrement 0.1;
-cycles 100; //100
-buffer 1000;
+cycles 10;
+buffer 100000;
 
-//combing 1; 
+combing 0; 
 precursors 1;
-//useForcedPrecursorDecay 1;
-
+useForcedPrecursorDecay 1;
+branchless 1;
 outputFormat asciiJSON;
-collisionOperator { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20;precursors 1;}} //precursors 1;
 
-transportOperator { type transportOperatorDT; //currently will only support this
+
+EPC {useEPC 1; fitnessHandling 0; responseType 1; responseDim space; response (0 0 0); fittestFactor 0.0; nReproductions 0;}
+
+collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 1;}}
+
+transportOperator { type transportOperatorDT;
                   }
 
 source {
@@ -23,20 +27,15 @@ source {
   r (0 0 0);
   particle neutron;
   E 0.025E-06;
-  poissonSource 30.0;
-  poissonScale 0.01;
 }
 
 tally  {
-  //bootstrap 100;
-  //timeSteps  70;
-  //modified 1;
-  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    map { type timeMap; grid lin; min 0.0; max 20.0; N 200;} // max 400E-09; N 500;} 
+  flux_time { type collisionClerk;
+    map { type timeMap; grid lin; min 0.0; max 20.0; N 200;}
     response (flux); flux {type fluxResponse;}
-    //handleVirtual 1;
     }
   }
+
 geometry {
     type geometryStd;
     boundary (1 1 1 1 1 1);
@@ -75,8 +74,7 @@ nuclearData {
       composition {
       1001.03    2.01892E-05;
       92235.03   9.3472E-09;	  }
-      }
+    }
 
 }
-
 }
