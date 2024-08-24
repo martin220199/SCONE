@@ -117,12 +117,11 @@ contains
 
   subroutine run(self)
     class(timeDependentPhysicsPackage), intent(inout) :: self
-    real(defReal) :: simTime
 
     print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
-    call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement, simTime)
+    call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     call self % collectResults()
 
     print *
@@ -133,10 +132,9 @@ contains
   !!
   !!
   !!
-  subroutine cycles(self, tally, N_cycles, N_timeBins, timeIncrement, simTime)
+  subroutine cycles(self, tally, N_cycles, N_timeBins, timeIncrement)
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)           :: tally
-    real(defReal), intent(inout)                      :: simTime
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
     type(particle), save                              :: p, p_d
