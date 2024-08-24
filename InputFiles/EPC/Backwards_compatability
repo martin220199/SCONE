@@ -1,0 +1,94 @@
+type timeDependentPhysicsPackage;
+
+pop      5000; //5000
+timeSteps   100;
+XSdata   ce;
+dataType ce;
+timeIncrement 1.E-07;
+cycles 10; //10
+combing 0;
+
+buffer 100000;
+
+EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim cells; response 1; fittestFactor 0.01; nReproductions 2;}
+
+outputFormat asciiJSON;
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator { type transportOperatorDT;
+                  }
+
+source {
+  type pointSource;
+  r (-5.0 0.0 0.0); //r (-5.0 0.0 0.0);
+  particle neutron;
+  E 5.0E-03;
+}
+
+tally  {
+
+  flux_time { type collisionClerk;
+    map { type multiMap; maps (map1 map2);
+    // NB this has to be this order: cells first, then time
+    map1 { type cellMap; cells (1 2); }
+    map2 { type timeMap; grid lin; min 0.0; max 1E-05; N 100;}
+    }
+    response (flux); flux {type fluxResponse;}
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { type box; id 1; origin (0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
+
+      boronBox { type box; id 2; origin (0.0 0.0 0.0); halfwidth (0.5 10.0 10.0); }
+
+      hydrogenBoxOne { type box; id 3; origin (-5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
+
+      hydrogenBoxTwo { type box; id 4; origin (5.25 0.0 0.0); halfwidth (4.75 10.0 10.0); }
+    } 
+
+    cells
+    {
+    cellHydrogenOne { id 1; type simpleCell; surfaces (-3 2); filltype mat; material m1;} 
+    cellHydrogenTwo { id 2; type simpleCell; surfaces (-4 2); filltype mat; material m1;}
+    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material m2;}
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 1; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2 3);}
+
+    }
+}
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+    // hydrogen
+    m1 {
+      temp 12345;
+      composition {
+        1001.03   0.05803;}
+    }
+
+    // boron
+    m2 {
+      temp 12345;
+      composition {
+        5010.03   0.05;
+        5011.03   0.05;
+
+        }
+    }
+}
+}

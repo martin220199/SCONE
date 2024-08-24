@@ -221,16 +221,13 @@ contains
             ! Transport particle untill its death
             history: do
               if(p % isDead) exit history
-              !print *, 'here'
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
                 call self % nextTime(i) % detain(p)
-                !print *, 'here2'
                 exit history
               endif
               if (self % usePrecursors) then
-                !print *, 'here3'
                 call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
               else
                 call collOp % collide(p, tally, buffer, buffer)
@@ -566,7 +563,7 @@ contains
           if (n <= self % currentTime(i) % popSize()) then
             call self % currentTime(i) % copy(p, n)
             stateTemp = p
-          else 
+          else
             call self % fittestParticlesCurrent(i) % copy(p, n-self % currentTime(i) % popSize())
             stateTemp = p
           end if
@@ -830,6 +827,10 @@ contains
           if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % pop * 2.0) then
             call self % nextTime(i) % combing(self % pop, pRNG)
           end if
+        
+        else if ((self % fitnessHandling == 0_shortInt) .and. (self % usePrecursors .eqv. .true.) &
+                 .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
+          call self % nextTime(i) % combing(self % pop, pRNG)
         end if
 
       end do
