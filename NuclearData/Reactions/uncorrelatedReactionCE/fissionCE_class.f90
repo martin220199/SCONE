@@ -359,7 +359,6 @@ contains
       if( r2 < ZERO) then
         E_out = self % delayed(i) % eLaw % sample(E_in, rand)
         lambda = self % delayed(i) % lambda
-        !print *, 'lambda: ', numToChar(lambda)
         return
       end if
     end do precursors
