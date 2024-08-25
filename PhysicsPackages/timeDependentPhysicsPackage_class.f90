@@ -246,6 +246,7 @@ contains
                 pRNG = self % pRNG
                 p % pRNG => pRNG
                 call p % pRNG % stride(n)
+
                 bufferLoopDelayed: do
 
                   if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
