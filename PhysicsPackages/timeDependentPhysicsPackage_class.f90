@@ -395,9 +395,9 @@ contains
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
+            ! pass to next time interval for Forced Precursor Decay
             !$omp parallel do schedule(dynamic)
             genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
 
               call self % precursorDungeons(i) % copy(p, n)
 
@@ -783,9 +783,9 @@ contains
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
+            ! pass to next time interval for Forced Precursor Decay
             !$omp parallel do schedule(dynamic)
             genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
 
               call self % precursorDungeons(i) % copy(p, n)
 

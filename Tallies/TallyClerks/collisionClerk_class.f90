@@ -225,7 +225,6 @@ contains
 
     ! Append all bins
     do i=1,self % width
-      !print *, 'weight', p % w
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
       call mem % score(scoreVal, adrr + i)
 

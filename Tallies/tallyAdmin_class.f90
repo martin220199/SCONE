@@ -889,17 +889,6 @@ contains
     !sorting, global, space
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TODO
-      !2 versions. Start easy: map loc. and do like cell. 2nd -> calc distances to each spatial tally and weight by entropy. DO when
-                                                                 ! have more knowledge of how can be done trivially from 1.
-      !need to initialise multimap in tallyAdmin_class self % map % map
-
-
-
-
-
-
-
       call fatalError(Here, 'sorting, global, space not implemented yet')
 
     !combing, local, cell
@@ -939,40 +928,9 @@ contains
     !combing, global, space
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
-    !TODO
     call fatalError(Here, 'combing, global, space not implemented yet')
 
     end if
-
-    ! OH SHIT!! TODO: Ok reason why not as good: cell 3 is boron. It is included
-    ! but not in tally output, so FoM high for particles in the middle. Not problem for 
-    ! non-combing BECAUSE fittestparticles pops not inflated by combing, just
-    ! certain number of particles fitttest simulated. AH-HA
-    ! OK but this is the point ...?
-
-
-    !TODO: space continous way to do this
-    ! need to map.. need centre of spatial tallies
-
-    !either compute distance to each, or just check which spatial tally in 
-    ! and do similar to cell -> i.e., entropy of tally inside.
-    ! need mapping regardless, but maybe do combing / simple thing below first
-    ! I would start with less complex i.e map to tally it belongs,
-    ! usually tallies fine enough, the other is too complex prolly not viable
-    ! NB need to be able to map multimap, and singlemap
-    ! Think I need to break SCONE code a bit ... e.g initialise own map etc. like they
-    ! do. in EPC define spaceMap, just keep essentials, map is defined else as well
-
-
-    ! Then do combing / simple one so dont need to sort. 
-    ! simple one: just store all particles in dungeon
-      ! then when simulate: base split decision on fitness vs fitnessMax and fitnessMin
-      ! there are stored as particles are detained self % maxF etc.
-      ! decide number of reproductions -> want to cap so most have 0 reprod
-      ! particles that have fitness score within x percent are split
-      ! dont know order, so do until number of reprod filled up
-    ! Sorting is a big issue
-
 
   end subroutine processEvolutionaryParticle
 
