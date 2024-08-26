@@ -5,11 +5,14 @@ timeSteps   100;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-07;
+buffer 100000;
 cycles 10; //10
-combing 1;
+combing 0;
+
+//new fitnessfacs for global entropy with coll history given (might need tuning for results)
 
 //global:
-                                         //responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01;
+                                         //responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.1;
                         //extinction    //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 30;
                                          //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 15;
 
@@ -17,7 +20,7 @@ combing 1;
                                          //responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001;
                         //extinction    //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 30;
                                          //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 15;
-EPC {useEPC 1; fitnessHandling 0; responseType 1; responseDim cells; response 3; fittestFactor 0.001; nReproductions 30;}
+EPC {useEPC 1; fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 15;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}

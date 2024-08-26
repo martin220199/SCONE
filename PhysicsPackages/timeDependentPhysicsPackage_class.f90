@@ -86,10 +86,12 @@ module timeDependentPhysicsPackage_class
     logical(defBool)   :: usePrecursors
     logical(defBool)   :: useForcedPrecursorDecay
 
+    !EPC settings
     logical(defBool)   :: useEPC
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
     integer(shortInt)  :: fitnessHandling !0 - sorting, 1 - combing, 2 - simple
+    integer(shortInt)  :: EPCResponse     !0 - global, 1 - local
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -395,9 +397,9 @@ contains
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
+            ! pass to next time interval for Forced Precursor Decay
             !$omp parallel do schedule(dynamic)
             genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
 
               call self % precursorDungeons(i) % copy(p, n)
 
@@ -599,6 +601,7 @@ contains
                 end if
                 exit history
               endif
+              if (self % EPCResponse == 0_shortInt) call tally % updateEntropy(p)
               if (self % usePrecursors) then
                 call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
               else
@@ -664,6 +667,7 @@ contains
                       end if
                       exit historyDelayed
                     endif
+                    if (self % EPCResponse == 0_shortInt) call tally % updateEntropy(p)
                     call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
                     if(p % isDead) exit historyDelayed
                   end do historyDelayed
@@ -746,6 +750,7 @@ contains
                     end if
                     exit historyDelayedImp
                   endif
+                  if (self % EPCResponse == 0_shortInt) call tally % updateEntropy(p)
                   call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
                   if(p % isDead) exit historyDelayedImp
                 end do historyDelayedImp
@@ -783,9 +788,9 @@ contains
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
+            ! pass to next time interval for Forced Precursor Decay
             !$omp parallel do schedule(dynamic)
             genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
 
               call self % precursorDungeons(i) % copy(p, n)
 
@@ -1069,6 +1074,8 @@ contains
         call self % fittestParticlesNext(i) % init(self % bufferSize)
       end do
     end if
+
+    self % EPCResponse = EPCResponse
 
     if (responseDim == 'cells' .and. EPCResponse == 1_shortInt) then
       call dict % get(responseVal, 'response')
