@@ -7,5 +7,5 @@ add_sources( ./physicsPackage_inter.f90
              ./vizPhysicsPackage_class.f90
              ./rayVolPhysicsPackage_class.f90
              ./timeDependentPhysicsPackage_class.f90
+             ./criticalKineticPhysicsPackage_class.f90
              )
-             #./dynamPhysicsPackage_class.f90)
