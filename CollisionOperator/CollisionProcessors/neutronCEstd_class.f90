@@ -7,7 +7,7 @@ module neutronCEstd_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -27,11 +27,15 @@ module neutronCEstd_class
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
 
   ! Cross-Section Packages
-  use neutronXsPackages_class,       only : neutronMicroXSs
+  use neutronXsPackages_class,       only : neutronMicroXSs, neutronMacroXSs
 
   ! Scattering procedures
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
                                      asymptoticInelasticScatter
+
+  ! Tallies
+  use tallyCodes
+
   implicit none
   private
 
@@ -69,10 +73,11 @@ module neutronCEstd_class
     class(ceNeutronNuclide),  pointer, public :: nuc    => null()
 
     !! Settings - private
-    real(defReal) :: minE
-    real(defReal) :: maxE
-    real(defReal) :: thresh_E
-    real(defReal) :: thresh_A
+    real(defReal)    :: minE
+    real(defReal)    :: maxE
+    real(defReal)    :: thresh_E
+    real(defReal)    :: thresh_A
+    logical(defBool) :: usePrecursors
 
   contains
     ! Initialisation procedure
@@ -122,6 +127,9 @@ contains
     if( self % thresh_E < 0) call fatalError(Here,' -ve energyThreshold')
     if( self % thresh_A < 0) call fatalError(Here,' -ve massThreshold')
 
+    ! Whether to implement precursors (default = yes)
+    call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
+
   end subroutine init
 
   !!
@@ -134,7 +142,9 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
+    type(neutronMacroXSs)                :: macroXSs
     real(defReal)                        :: r
+    type(particleState)                  :: pTemp
     character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
 
     ! Verify that particle is CE neutron
@@ -149,6 +159,17 @@ contains
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
+
+    ! Critical Source Kinetic Coupling
+    if (p % criticalSource .eqv. .true.) then
+      ! Handle Neutrons
+      pTemp = p
+      call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
+      pTemp % wgt = pTemp % wgt / (p % getSpeed() * macroXSs % total)
+      pTemp % time = ZERO
+      pTemp % fate = NO_FATE
+      call nextCycle % detain(pTemp)
+    end if
 
     ! Select collision nuclide
     collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
@@ -177,12 +198,13 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff
+    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi, decayT, lambda
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, sig_fiss
+    type(neutronMacroXSs)                :: macroXSs
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
-    if ( self % nuc % isFissile()) then
+    if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .false.)) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
       w0    = p % preHistory % wgt ! Starting weight
@@ -190,7 +212,11 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
-      sig_nufiss = microXSs % nuFission
+      if (self % usePrecursors .eqv. .true.) then
+        sig_nufiss = microXSs % nuFission
+      else
+        sig_nufiss = microXSs % promptNuFission
+      end if
       sig_tot    = microXSs % total
 
       ! Sample number of fission sites generated
@@ -225,6 +251,44 @@ contains
 
         call nextCycle % detain(pTemp)
       end do
+
+    else if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .true.) .and. (self % usePrecursors .eqv. .true.)) then
+
+      r   = p % rGlobal()
+      call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
+      sig_tot    = microXSs % total
+      sig_fiss   = microXSs % fission
+
+      ! Get fission Reaction
+      fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
+      if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
+
+      call fission % sampleDelayed(mu, phi, E_out, p % E, p % pRNG, lambda)
+      dir = rotateVector(p % dirGlobal(), mu, phi)
+      call fission % samplePrecursorDecayT(lambda, p % pRNG, decayT)
+
+      if (E_out > self % maxE) E_out = self % maxE
+
+      ! Copy extra detail from parent particle (i.e. time, flags ect.)
+      pTemp       = p
+
+      ! Handle Precursors
+      call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
+
+      pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
+                        (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda) * &
+                         fission % getDelayedWeight(decayT, lambda)
+
+      ! Overwrite position, direction, energy and weight
+      pTemp % r   = r
+      pTemp % dir = dir
+      pTemp % E   = E_out
+      pTemp % wgt = wgt
+      pTemp % time = pTemp % time + decayT
+      pTemp % type = P_PRECURSOR
+
+      call thisCycle % detain(pTemp)
+
     end if
 
   end subroutine implicit

@@ -14,7 +14,7 @@ module exponentialPdf_class
     private
   contains
     procedure :: sample
-    procedure   :: probabilityOf
+    procedure :: probabilityOf
 
   end type exponentialPdf
 
@@ -39,7 +39,7 @@ contains
   !!
   function probabilityOf(self, x, lambda) result(prob)
     class(exponentialPdf), intent(in) :: self
-    integer(shortInt), intent(in)     :: x
+    real(defReal), intent(in)         :: x
     real(defReal), intent(in)         :: lambda
     real(defReal)                     :: prob
 

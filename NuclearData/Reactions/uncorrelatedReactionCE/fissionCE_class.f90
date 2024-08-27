@@ -83,8 +83,10 @@ module fissionCE_class
     procedure :: sampleOut
     procedure :: samplePrompt
     procedure :: sampleDelayed
+    procedure :: sampleDelayedImp
     procedure :: samplePrecursorDecayT
     procedure :: probOf
+    procedure :: getDelayedWeight
 
     ! Type specific procedures
     procedure :: buildFromACE
@@ -331,7 +333,7 @@ contains
   end subroutine samplePrompt
 
   !!
-  !! Samples mu, phi, E_out for a delayed neutron
+  !! Samples mu, phi, E_out for a delayed neutron (analog)
   !!
   subroutine sampleDelayed(self, mu, phi, E_out, E_in, rand, lambda)
     class(fissionCE), intent(in)                           :: self
@@ -340,12 +342,12 @@ contains
     real(defReal), intent(out)                             :: E_out
     real(defReal), intent(in)                              :: E_in
     class(RNG), intent(inout)                              :: rand
-    real(defReal), intent(inout)                           :: lambda
-    real(defReal)                                          :: r2
+    real(defReal), intent(out)                             :: lambda
+    real(defReal)                                          :: r
     integer(shortInt)                                      :: i, N
     character(100),parameter :: Here = 'sampleDelayed (fissionCE_class.f90)'
   
-    r2 = rand % get()
+    r = rand % get()
 
     ! Sample mu
     mu = TWO * rand % get() - ONE
@@ -355,8 +357,8 @@ contains
 
     ! Loop over precursor groups
     precursors: do i=1,size(self % delayed)
-      r2 = r2 - self % delayed(i) % prob % at(E_in)
-      if( r2 < ZERO) then
+      r = r - self % delayed(i) % prob % at(E_in)
+      if( r < ZERO) then
         E_out = self % delayed(i) % eLaw % sample(E_in, rand)
         lambda = self % delayed(i) % lambda
         return
@@ -371,6 +373,40 @@ contains
   end subroutine sampleDelayed
 
   !!
+  !! Samples mu, phi, E_out for a delayed neutron (implicit)
+  !!
+  subroutine sampleDelayedImp(self, mu, phi, E_d, E_in, rand, lambda_p, f_p, delayed_frac)
+    class(fissionCE), intent(in)                           :: self
+    real(defReal), intent(out)                             :: mu
+    real(defReal), intent(out)                             :: phi
+    real(defReal), intent(out), dimension(precursorGroups) :: E_d
+    real(defReal), intent(in)                              :: E_in
+    class(RNG), intent(inout)                              :: rand
+    real(defReal), intent(out), dimension(precursorGroups) :: lambda_p
+    real(defReal), intent(out), dimension(precursorGroups) :: f_p
+    real(defReal), intent(out)                             :: delayed_frac
+    integer(shortInt)                                      :: i
+    character(100),parameter :: Here = 'sampleDelayedImp (fissionCE_class.f90)'
+
+    ! Sample mu
+    mu = TWO * rand % get() - ONE
+
+    ! Sample phi
+    phi = TWO_PI * rand % get()
+
+    ! Fraction of delayed neutrons
+    delayed_frac = self % releaseDelayed(E_in) / self % release(E_in)
+
+    ! Loop over precursor groups
+    precursors: do i=1, size(self % delayed)
+      E_d(i) = self % delayed(i) % eLaw % sample(E_in, rand)
+      lambda_p(i) = self % delayed(i) % lambda
+      f_p(i) = self % delayed(i) % prob % at(E_in)
+    end do precursors
+
+  end subroutine sampleDelayedImp
+
+  !!
   !! Samples the time until decay for a precursor
   !!
   subroutine samplePrecursorDecayT(self, lambda, rand, decayT)
@@ -382,6 +418,19 @@ contains
     decayT = self % exponentialPdf % sample(lambda, rand)
 
   end subroutine samplePrecursorDecayT
+
+  !!
+  !! Get delay neutron weight
+  !!
+  function getDelayedWeight(self, decayT, lambda) result(wgt)
+    class(fissionCE), intent(in) :: self
+    real(defReal), intent(in)    :: decayT
+    real(defReal), intent(in)    :: lambda
+    real(defReal)                :: wgt
+
+    wgt = self % exponentialPdf % probabilityOf(decayT, lambda)
+
+  end function getDelayedWeight
 
   !!
   !! Return probability density of emission at given angle and energy

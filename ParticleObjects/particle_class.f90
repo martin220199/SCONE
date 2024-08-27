@@ -119,6 +119,7 @@ module particle_class
     real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
     integer(shortInt)          :: fate = no_FATE ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
+    logical(defBool)           :: criticalSource = .false.
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
