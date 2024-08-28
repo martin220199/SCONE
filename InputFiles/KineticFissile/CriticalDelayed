@@ -5,7 +5,7 @@ timeSteps   200;
 XSdata   ce;
 dataType ce;
 timeIncrement 0.1;
-cycles 10;
+cycles 10; //10
 buffer 100000;
 
 combing 0; 

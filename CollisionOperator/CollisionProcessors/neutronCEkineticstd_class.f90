@@ -90,6 +90,7 @@ module neutronCEkineticstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: decay
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -483,6 +484,17 @@ contains
     collDat % muL = dot_product(dir_pre, dir_post)
 
   end subroutine scatterFromMoving
+
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decay(self, p, collDat, thisCycle, nextCycle)
+    class(neutronCEkineticstd), intent(inout) :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+  end subroutine decay
 
 
 end module neutronCEkineticstd_class

@@ -57,6 +57,9 @@ module particle_class
     integer(shortInt)          :: type = P_NEUTRON  ! Particle physical type
     real(defReal)              :: time = ZERO       ! Particle time position
     real(defReal)              :: lambda            ! Precursor decay constant
+    integer(shortInt)          :: nucIdx
+    real(defReal)              :: deltaT
+    real(defReal)              :: w_timed
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
@@ -111,6 +114,9 @@ module particle_class
 
     ! Precursor particle data
     real(defReal)              :: lambda    ! Precursor decay constant
+    real(defReal)              :: deltaT
+    real(defReal)              :: w_timed
+    integer(shortInt)          :: nucIdx
 
     ! Particle flags
     real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
@@ -150,6 +156,7 @@ module particle_class
 
     ! Inquiry about precursor parameters
     procedure               :: forcedPrecursorDecayWgt
+    procedure               :: forcedPrecursorDecayE
     procedure               :: timedWgt
 
     ! Operations on coordinates
@@ -287,6 +294,10 @@ contains
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
     LHS % lambda                = RHS % lambda
+    LHS % nucIdx                = RHS % nucIdx
+    LHS % coords % matIdx       = RHS % matIdx
+    LHS % deltaT                = RHS % deltaT
+    LHS % w_timed               = RHS % w_timed
     LHS % fate                  = RHS % fate    
 
   end subroutine particle_fromParticleState
@@ -483,16 +494,71 @@ contains
   !! Errors:
   !!
   !!
-  function forcedPrecursorDecayWgt(self, t, delta_T) result(w_d)
+  function forcedPrecursorDecayWgt(self, lambda_p, f_p) result(w_d)
     class(particle), intent(in) :: self
-    real(defReal), intent(in)   :: t
-    real(defReal), intent(in)   :: delta_T
+    real(defReal), dimension(precursorGroups), intent(in) :: lambda_p, f_p
     integer(shortInt)           :: i
     real(defReal)               :: w_d
 
-    w_d = self % w * delta_T * self % lambda * exp(-self % lambda * (t - self % time))
+    w_d = ZERO
+    if (self % type == P_PRECURSOR) then
+        do i = 1, precursorGroups
+            w_d = w_d + f_p(i) * lambda_p(i) *&
+                    exp(-lambda_p(i) * (self % lambda - self % time))
+        end do
+    end if
+
+    w_d = self % w * self % deltaT * w_d
 
   end function forcedPrecursorDecayWgt
+
+  !!
+  !! Sample outgoing delayed neutron energy from forced precursor decay
+  !! at time t.
+  !!
+  !! Args:
+  !!   t      -> current time [s]
+  !!
+  !! Result:
+  !!   Energy of outgoing delayed neutron from forced precursor decay
+  !!   Returns ZERO if particle is not a precursor
+  !!
+  !! Errors:
+  !!   
+  !!
+  function forcedPrecursorDecayE(self, E_d, lambda_p, f_p) result(E_out)
+    class(particle), intent(in)                           :: self
+    real(defReal), dimension(precursorGroups), intent(in) :: E_d, lambda_p, f_p
+    real(defReal)                                         :: r, norm
+    integer(shortInt)                                     :: i
+    real(defReal)                                         :: E_out
+    
+    if (self % type == P_PRECURSOR) then
+        r = self % pRNG % get()
+        norm = ZERO
+        
+        do i=1, precursorGroups
+          norm = norm + f_p(i) * lambda_p(i) *&
+                                    exp(-lambda_p(i) * (self % lambda - self % time))
+        end do
+
+        ! Sample outgoing energy
+        do i = 1, precursorGroups
+            r = r - f_p(i) * lambda_p(i) *&
+                                    exp(-lambda_p(i) * (self % lambda - self % time)) / norm
+            if(r < ZERO) then
+                E_out = E_d(i)
+                return
+            end if
+        end do
+        
+        ! Sampling failed -> Choose top precursor group
+        E_out = E_d(precursorGroups)
+    else
+        E_out = ZERO
+    end if
+
+  end function forcedPrecursorDecayE
 
   !!
   !! Return current timed weight of particle
@@ -506,13 +572,19 @@ contains
   !!
   !! Errors:
   !!
-  function timedWgt(self, t) result(w_timed)
-    class(particle), intent(in) :: self
-    real(defReal), intent(in)   :: t
-    integer(shortInt)           :: i
-    real(defReal)               :: w_timed
+  function timedWgt(self, lambda_p, f_p) result(w_timed)
+    class(particle), intent(in)                           :: self
+    real(defReal), dimension(precursorGroups), intent(in) :: lambda_p, f_p
+    integer(shortInt)                                     :: i
+    real(defReal)                                         :: w_timed
 
-    w_timed = self % w * exp(-self % lambda * (t - self % time))
+    w_timed = ZERO
+    if (self % type == P_PRECURSOR) then
+        do i = 1, precursorGroups
+            w_timed = w_timed + f_p(i) * exp(-lambda_p(i) * (self % timeMax - self % time))
+        end do 
+    end if
+    w_timed = self % w * w_timed
   end function timedWgt
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -692,19 +764,21 @@ contains
     class(particleState), intent(out)  :: LHS
     class(particle), intent(in)        :: RHS
 
-    LHS % wgt    = RHS % w
-    LHS % r      = RHS % rGlobal()
-    LHS % dir    = RHS % dirGlobal()
-    LHS % E      = RHS % E
-    LHS % G      = RHS % G
-    LHS % isDead = RHS % isDead
-    LHS % isMG   = RHS % isMG
-    LHS % type   = RHS % type
-    LHS % time   = RHS % time
-    LHS % fate   = RHS % fate
-
+    LHS % wgt     = RHS % w
+    LHS % r       = RHS % rGlobal()
+    LHS % dir     = RHS % dirGlobal()
+    LHS % E       = RHS % E
+    LHS % G       = RHS % G
+    LHS % isDead  = RHS % isDead
+    LHS % isMG    = RHS % isMG
+    LHS % type    = RHS % type
+    LHS % time    = RHS % time
+    LHS % fate    = RHS % fate
+    LHS % w_timed = RHS % w_timed
+  
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx
+    LHS % nucIdx   = RHS % nucIdx
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
 

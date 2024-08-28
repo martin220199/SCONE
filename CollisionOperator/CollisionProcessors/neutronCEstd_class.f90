@@ -86,6 +86,7 @@ module neutronCEstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: decay
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -451,5 +452,15 @@ contains
 
   end subroutine scatterFromMoving
 
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decay(self, p, collDat, thisCycle, nextCycle)
+    class(neutronCEstd), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+  end subroutine decay
 
 end module neutronCEstd_class

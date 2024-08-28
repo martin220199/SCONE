@@ -306,11 +306,16 @@ contains
               ! Force decay at this time interval if generated in this time interval
               call self % precursorDungeons(i) % copy(p, n)
 
+              p_d = p
+
               decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
-
-              ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
-
+              p % lambda = decay_T
+              p % deltaT = t*timeIncrement - p % time
+              p % timeMax = t*timeIncrement
+              call self % geom % placeCoord(p % coords)
+              call collOp % decayP(p, tally, buffer, buffer)
+              p_d % w_timed = p % w_timed
+              call self % precursorDungeons(i) % replace(p_d, n)
               pRNG = self % pRNG
               p % pRNG => pRNG
               call p % pRNG % stride(n)
@@ -318,7 +323,6 @@ contains
               ! Update parameters
               p % type = P_NEUTRON
               p % time = decay_T
-              p % w = w_d
               p % fate = no_FATE
 
               bufferLoopDelayedImp: do
@@ -386,12 +390,18 @@ contains
 
               call self % precursorDungeons(i) % copy(p, n)
 
+              p_d = p
+
               ! Sample decay time
               decay_T = timeIncrement * (t+pRNG % get())
 
-              ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
-
+              p % lambda = decay_T
+              p % deltaT = timeIncrement
+              call self % geom % placeCoord(p % coords)
+              p % timeMax = (t + 1)*timeIncrement
+              call collOp % decayP(p, tally, buffer, buffer)
+              p_d % w_timed = p % w_timed
+              call self % precursorDungeons(i) % replace(p_d, n)
               pRNG = self % pRNG
               p % pRNG => pRNG
               call p % pRNG % stride(n)
@@ -399,7 +409,6 @@ contains
               ! Update parameters
               p % type = P_NEUTRON
               p % time = decay_T
-              p % w = w_d
               p % fate = no_FATE
 
               ! Add to current dungeon

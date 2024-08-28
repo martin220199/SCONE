@@ -532,7 +532,7 @@ contains
     ! Get timed weight of each precursor
     do i=1, self % pop
       call self % copy(p, i)
-      wTimedArray(i) = p % timedWgt(t)
+      wTimedArray(i) = p % w_timed
       T_kArray(i) = wTimedArray(i) / p % w
       wTimedTotal = wTimedTotal + wTimedArray(i)
     end do

@@ -65,6 +65,7 @@ module collisionProcessor_inter
 
     ! Extendable initialisation procedure
     procedure :: init
+    procedure :: decayP
 
     ! Customisable deffered procedures
     procedure(collisionAction),deferred  :: sampleCollision
@@ -74,6 +75,7 @@ module collisionProcessor_inter
     procedure(collisionAction),deferred  :: capture
     procedure(collisionAction),deferred  :: fission
     procedure(collisionAction),deferred  :: cutoffs
+    procedure(collisionAction),deferred  :: decay
 
   end type collisionProcessor
 
@@ -176,5 +178,21 @@ contains
     ! For now does nothing
 
   end subroutine init
+
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decayP(self, p, tally, thisCycle, nextCycle)
+    class(collisionProcessor), intent(inout) :: self
+    class(particle), intent(inout)           :: p
+    type(tallyAdmin), intent(inout)          :: tally
+    class(particleDungeon),intent(inout)     :: thisCycle
+    class(particleDungeon),intent(inout)     :: nextCycle
+    type(collisionData)                      :: collDat
+
+    collDat % matIdx = p % matIdx()
+    call self % decay(p, collDat, thisCycle, nextCycle)
+
+  end subroutine decayP
 
 end module collisionProcessor_inter
