@@ -1,0 +1,866 @@
+type criticalKineticPhysicsPackage;
+
+pop      3000; //30000
+timeSteps   20; 
+XSdata   ce;
+dataType ce;
+timeIncrement 1.0e-3;
+cycles 5; //100
+buffer 100000;
+active   200; //500
+inactive 200; //200
+combing 1;
+
+decorrelationCycles 10; //50
+precursors 1;
+
+kineticGeometry{enable 1; timeSteps (5); }
+
+outputFormat asciiJSON;
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} 
+
+transportOperatorCritical { type transportOperatorDT;
+                  }
+
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} //precursors 1;
+
+transportOperatorKinetic { type transportOperatorKineticDT;
+}
+
+
+tally  {
+  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+    map { type timeMap; grid lin; min 0.0; max 20.0e-3; N 20;} 
+    response (flux); flux {type fluxResponse;}
+    }
+
+  //flux_space { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+
+  //  map { type multiMap; maps (map1 map2 map3);
+  //    map1 { type timeMap; grid lin; min 0.0; max 20.0e-3; N 20;}
+  //    map2 { type spaceMap;  axis y;  grid lin; min -7.56; max 7.56; N 80;} 
+  //    map3 { type spaceMap;  axis x;  grid lin;  min -7.56; max 7.56; N 80;}
+
+  //  }
+
+   // response (flux); flux {type fluxResponse;}
+   // }
+  }
+
+
+
+
+inactiveTally {
+              }
+activeTally  {
+                display (k_eff);
+                k_eff { type keffAnalogClerk;}
+
+  flux_time { type collisionClerk; 
+    map { type multiMap; maps (map1 map2);
+      map1 { type spaceMap;  axis y;  grid lin; min -7.56; max 7.56; N 80;} 
+      map2 { type spaceMap;  axis x;  grid lin;  min -7.56; max 7.56; N 80;}
+    }
+    response (flux); flux {type fluxResponse;}
+    }
+        }
+
+
+
+
+
+
+
+
+
+geometry {
+    type geometryStd;
+    boundary (2 2 2 2 1 1 ); //1 1 1 1 1 1 
+    graph {type shrunk;}
+
+    surfaces
+    {
+
+      universe { id 21; type box; origin ( 0.0  0.0  0.0); halfwidth (7.56 7.56 12.6); } //universe { id 21; type box; origin ( 0.0  0.0  0.0); halfwidth (12.6 12.6 12.6); }
+      //cells
+      //columns
+      c_one   { id 1; type box; origin (-11.34 0.0 0.0); halfwidth (1.26 7.56 12.6);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_three { id 3; type box; origin (-6.3 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_four  { id 4; type box; origin (-3.78 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_five  { id 5; type box; origin (-1.26 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_six   { id 6; type box; origin (1.26 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_seven { id 7; type box; origin (3.78 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_eight { id 8; type box; origin (6.3 0.0 0.0);    halfwidth (1.26 7.56 12.6);}
+      c_nine  { id 9; type box; origin (8.82 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_ten   { id 10; type box; origin (11.34 0.0 0.0); halfwidth (1.26 7.56 12.6);}
+
+      //rows
+      r_one   { id 11; type box; origin (0.0 11.34 0.0); halfwidth (7.56 1.26 12.6);}
+      r_two   { id 12; type box; origin (0.0 8.82 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_three { id 13; type box; origin (0.0 6.3 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_four  { id 14; type box; origin (0.0 3.78 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_five  { id 15; type box; origin (0.0 1.26 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_six   { id 16; type box; origin (0.0 -1.26 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_seven { id 17; type box; origin (0.0 -3.78 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_eight { id 18; type box; origin (0.0 -6.3 0.0);    halfwidth (7.56 1.26 12.6);}
+      r_nine  { id 19; type box; origin (0.0 -8.82 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_ten   { id 20; type box; origin (0.0 -11.34 0.0);  halfwidth (7.56 1.26 12.6);}
+
+      //rods
+      //inner circles
+      f_1 { id 22; type zTruncCylinder; origin (-1.26 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_1 { id 23; type zTruncCylinder; origin (-1.26 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_2 { id 24; type zTruncCylinder; origin (1.26 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_2 { id 25; type zTruncCylinder; origin (1.26 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_3 { id 26; type zTruncCylinder; origin (1.26 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_3 { id 27; type zTruncCylinder; origin (1.26 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_4 { id 28; type zTruncCylinder; origin (-1.26 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_4 { id 29; type zTruncCylinder; origin (-1.26 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //squares
+      f_5 { id 30; type zTruncCylinder; origin (-1.26 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_5 { id 31; type zTruncCylinder; origin (-1.26 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_6 { id 32; type zTruncCylinder; origin (1.26 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_6 { id 33; type zTruncCylinder; origin (1.26 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_7 { id 34; type zTruncCylinder; origin (3.78 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_7 { id 35; type zTruncCylinder; origin (3.78 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_8 { id 36; type zTruncCylinder; origin (3.78 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_8 { id 37; type zTruncCylinder; origin (3.78 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_9 { id 38; type zTruncCylinder; origin (1.26 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_9 { id 39; type zTruncCylinder; origin (1.26 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_10 { id 40; type zTruncCylinder; origin (-1.26 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_10 { id 41; type zTruncCylinder; origin (-1.26 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_11 { id 42; type zTruncCylinder; origin (-3.78 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_11 { id 43; type zTruncCylinder; origin (-3.78 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_12 { id 44; type zTruncCylinder; origin (-3.78 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_12 { id 45; type zTruncCylinder; origin (-3.78 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //outter circles
+      f_13 { id 46; type zTruncCylinder; origin (-1.26 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_13 { id 47; type zTruncCylinder; origin (-1.26 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_14 { id 48; type zTruncCylinder; origin (1.26 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_14 { id 49; type zTruncCylinder; origin (1.26 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_15 { id 50; type zTruncCylinder; origin (3.78 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_15 { id 51; type zTruncCylinder; origin (3.78 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_16 { id 52; type zTruncCylinder; origin (6.3 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_16 { id 53; type zTruncCylinder; origin (6.3 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_17 { id 54; type zTruncCylinder; origin (6.3 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_17 { id 55; type zTruncCylinder; origin (6.3 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_18 { id 56; type zTruncCylinder; origin (3.78 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_18 { id 57; type zTruncCylinder; origin (3.78 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_19 { id 58; type zTruncCylinder; origin (1.26 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_19 { id 59; type zTruncCylinder; origin (1.26 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_20 { id 60; type zTruncCylinder; origin (-1.26 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_20 { id 61; type zTruncCylinder; origin (-1.26 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_21 { id 62; type zTruncCylinder; origin (-3.78 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_21 { id 63; type zTruncCylinder; origin (-3.78 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_22 { id 64; type zTruncCylinder; origin (-6.3 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_22 { id 65; type zTruncCylinder; origin (-6.3 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_23 { id 66; type zTruncCylinder; origin (-6.3 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_23 { id 67; type zTruncCylinder; origin (-6.3 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_24 { id 68; type zTruncCylinder; origin (-3.78 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_24 { id 69; type zTruncCylinder; origin (-3.78 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //triangles
+      f_25 { id 70; type zTruncCylinder; origin (3.78 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_25 { id 71; type zTruncCylinder; origin (3.78 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_26 { id 72; type zTruncCylinder; origin (6.3 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_26 { id 73; type zTruncCylinder; origin (6.3 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_27 { id 74; type zTruncCylinder; origin (6.3 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_27 { id 75; type zTruncCylinder; origin (6.3 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_28 { id 76; type zTruncCylinder; origin (3.78 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_28 { id 77; type zTruncCylinder; origin (3.78 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_29 { id 78; type zTruncCylinder; origin (-3.78 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_29 { id 79; type zTruncCylinder; origin (-3.78 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_30 { id 80; type zTruncCylinder; origin (-6.3 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_30 { id 81; type zTruncCylinder; origin (-6.3 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_31 { id 82; type zTruncCylinder; origin (-6.3 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_31 { id 83; type zTruncCylinder; origin (-6.3 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_32 { id 84; type zTruncCylinder; origin (-3.78 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_32 { id 85; type zTruncCylinder; origin (-3.78 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+    }
+
+
+    cells
+    {
+
+      
+      // water cells
+      //row 1
+
+      //1 {id 1; type simpleCell;  surfaces (-1 -11); filltype mat; material water;}
+      //2 {id 2; type simpleCell;  surfaces (-2 -11); filltype mat; material water;}
+      //3 {id 3; type simpleCell;  surfaces (-3 -11); filltype mat; material water;}
+      //4 {id 4; type simpleCell;  surfaces (-4 -11); filltype mat; material water;}
+      //5 {id 5; type simpleCell;  surfaces (-5 -11); filltype mat; material water;}
+      //6 {id 6; type simpleCell;  surfaces (-6 -11); filltype mat; material water;}
+      //7 {id 7; type simpleCell;  surfaces (-7 -11); filltype mat; material water;}
+      //8 {id 8; type simpleCell;  surfaces (-8 -11); filltype mat; material water;}
+      //9 {id 9; type simpleCell;  surfaces (-9 -11); filltype mat; material water;}
+      //10 {id 10; type simpleCell;  surfaces (-10 -11); filltype mat; material water;}
+
+
+      //row2
+      //11 {id 11; type simpleCell;  surfaces (-1 -12); filltype mat; material water;}
+      //12 {id 1; type simpleCell;  surfaces (-2 -12); filltype mat; material water;}
+      //13 {id 2; type simpleCell;  surfaces (-3 -12); filltype mat; material water;}
+      //14 {id 3; type simpleCell;  surfaces (-4 -12); filltype mat; material water;}
+      //15 {id 4; type simpleCell;  surfaces (-5 -12); filltype mat; material water;}
+      //16 {id 5; type simpleCell;  surfaces (-6 -12); filltype mat; material water;}
+      //17 {id 6; type simpleCell;  surfaces (-7 -12); filltype mat; material water;}
+      //18 {id 7; type simpleCell;  surfaces (-8 -12); filltype mat; material water;}
+      //19 {id 8; type simpleCell;  surfaces (-9 -12); filltype mat; material water;}
+      //20 {id 20; type simpleCell;  surfaces (-10 -12); filltype mat; material water;}
+
+      //row3
+      //21 {id 21; type simpleCell;  surfaces (-1 -13); filltype mat; material water;}
+      //22 {id 9; type simpleCell;  surfaces (-2 -13); filltype mat; material water;}
+      23 {id 1; type simpleCell;  surfaces (-3 -13); filltype mat; material water;}
+      24 {id 2; type simpleCell;  surfaces (-4 -13 85); filltype mat; material water;} //2
+      25 {id 3; type simpleCell;  surfaces (-5 -13 47); filltype mat; material water;} //1
+      26 {id 4; type simpleCell;  surfaces (-6 -13 49); filltype mat; material water;} //1
+      27 {id 5; type simpleCell;  surfaces (-7 -13 71); filltype mat; material water;} //2
+      28 {id 6; type simpleCell;  surfaces (-8 -13); filltype mat; material water;}
+      //29 {id 16; type simpleCell;  surfaces (-9 -13); filltype mat; material water;}
+      //30 {id 30; type simpleCell;  surfaces (-10 -13); filltype mat; material water;}
+
+      //row4
+      //31 {id 31; type simpleCell;  surfaces (-1  -14); filltype mat; material water;}
+      //32 {id 17; type simpleCell;  surfaces (-2  -14); filltype mat; material water;}
+      33 {id 7; type simpleCell;  surfaces (-3  -14 83); filltype mat; material water;} //2
+      34 {id 8; type simpleCell;  surfaces (-4  -14 69); filltype mat; material water;} //1
+      35 {id 9; type simpleCell;  surfaces (-5  -14 31); filltype mat; material water;} //
+      36 {id 10; type simpleCell;  surfaces (-6  -14 33); filltype mat; material water;} //
+      37 {id 11; type simpleCell;  surfaces (-7  -14 51); filltype mat; material water;} //1
+      38 {id 12; type simpleCell;  surfaces (-8  -14 73); filltype mat; material water;} //2
+      //39 {id 24; type simpleCell;  surfaces (-9  -14); filltype mat; material water;}
+      //40 {id 40; type simpleCell;  surfaces (-10 -14); filltype mat; material water;}
+
+      //row5
+      //41 {id 41; type simpleCell;  surfaces (-1  -15); filltype mat; material water;}
+      //42 {id 25; type simpleCell;  surfaces (-2  -15); filltype mat; material water;}
+      43 {id 13; type simpleCell;  surfaces (-3  -15 67); filltype mat; material water;} //1
+      44 {id 14; type simpleCell;  surfaces (-4  -15 45); filltype mat; material water;} //
+      45 {id 15; type simpleCell;  surfaces (-5  -15 23); filltype mat; material water;} //
+      46 {id 16; type simpleCell;  surfaces (-6  -15 25); filltype mat; material water;} //
+      47 {id 17; type simpleCell;  surfaces (-7  -15 35); filltype mat; material water;} //
+      48 {id 18; type simpleCell;  surfaces (-8  -15 53); filltype mat; material water;} //1
+      //49 {id 32; type simpleCell;  surfaces (-9  -15); filltype mat; material water;}
+      //50 {id 50; type simpleCell;  surfaces (-10 -15); filltype mat; material water;}
+
+      //row6
+      //51 {id 51; type simpleCell;  surfaces (-1  -16); filltype mat; material water;}
+      //52 {id 33; type simpleCell;  surfaces (-2  -16); filltype mat; material water;}
+      53 {id 19; type simpleCell;  surfaces (-3  -16 65); filltype mat; material water;} //1
+      54 {id 20; type simpleCell;  surfaces (-4  -16 43); filltype mat; material water;} //
+      55 {id 21; type simpleCell;  surfaces (-5  -16 29); filltype mat; material water;} //
+      56 {id 22; type simpleCell;  surfaces (-6  -16 27); filltype mat; material water;} //
+      57 {id 23; type simpleCell;  surfaces (-7  -16 37); filltype mat; material water;} //
+      58 {id 24; type simpleCell;  surfaces (-8  -16 55); filltype mat; material water;} //1
+      //59 {id 40; type simpleCell;  surfaces (-9  -16); filltype mat; material water;}
+      //60 {id 60; type simpleCell;  surfaces (-10 -16); filltype mat; material water;}
+
+      //row7
+      //61 {id 61; type simpleCell;  surfaces (-1  -17); filltype mat; material water;}
+      //62 {id 41; type simpleCell;  surfaces (-2  -17); filltype mat; material water;}
+      63 {id 25; type simpleCell;  surfaces (-3  -17 81); filltype mat; material water;} //2
+      64 {id 26; type simpleCell;  surfaces (-4  -17 63); filltype mat; material water;} //1
+      65 {id 27; type simpleCell;  surfaces (-5  -17 41); filltype mat; material water;} //
+      66 {id 28; type simpleCell;  surfaces (-6  -17 39); filltype mat; material water;} //
+      67 {id 29; type simpleCell;  surfaces (-7  -17 57); filltype mat; material water;} //1
+      68 {id 30; type simpleCell;  surfaces (-8  -17 75); filltype mat; material water;} //2
+      //69 {id 48; type simpleCell;  surfaces (-9  -17); filltype mat; material water;}
+      //70 {id 70; type simpleCell;  surfaces (-10 -17); filltype mat; material water;}
+
+      //row8
+      //71 {id 71; type simpleCell;  surfaces (-1  -18); filltype mat; material water;}
+      //72 {id 49; type simpleCell;  surfaces (-2  -18); filltype mat; material water;}
+      73 {id 31; type simpleCell;  surfaces (-3  -18); filltype mat; material water;}
+      74 {id 32; type simpleCell;  surfaces (-4  -18 79); filltype mat; material water;} //2
+      75 {id 33; type simpleCell;  surfaces (-5  -18 61); filltype mat; material water;} //1
+      76 {id 34; type simpleCell;  surfaces (-6  -18 59); filltype mat; material water;} //1
+      77 {id 35; type simpleCell;  surfaces (-7  -18 77); filltype mat; material water;} //2
+      78 {id 36; type simpleCell;  surfaces (-8  -18); filltype mat; material water;}
+      //79 {id 56; type simpleCell;  surfaces (-9  -18); filltype mat; material water;}
+      //80 {id 80; type simpleCell;  surfaces (-10 -18); filltype mat; material water;}
+
+      //row9
+      //81 {id 81; type simpleCell;  surfaces (-1  -19); filltype mat; material water;}
+      //82 {id 57; type simpleCell;  surfaces (-2  -19); filltype mat; material water;}
+      //83 {id 58; type simpleCell;  surfaces (-3  -19); filltype mat; material water;}
+      //84 {id 59; type simpleCell;  surfaces (-4  -19); filltype mat; material water;}
+      //85 {id 60; type simpleCell;  surfaces (-5  -19); filltype mat; material water;}
+      //86 {id 61; type simpleCell;  surfaces (-6  -19); filltype mat; material water;}
+      //87 {id 62; type simpleCell;  surfaces (-7  -19); filltype mat; material water;}
+      //88 {id 63; type simpleCell;  surfaces (-8  -19); filltype mat; material water;}
+      //89 {id 64; type simpleCell;  surfaces (-9  -19); filltype mat; material water;}
+      //90 {id 90; type simpleCell;  surfaces (-10 -19); filltype mat; material water;}
+
+      //row10
+      //91 {id 91; type simpleCell;  surfaces (-1  -20); filltype mat; material water;}
+      //92 {id 92; type simpleCell;  surfaces (-2  -20); filltype mat; material water;}
+      //93 {id 93; type simpleCell;  surfaces (-3  -20); filltype mat; material water;}
+      //94 {id 94; type simpleCell;  surfaces (-4  -20); filltype mat; material water;}
+      //95 {id 95; type simpleCell;  surfaces (-5  -20); filltype mat; material water;}
+      //96 {id 96; type simpleCell;  surfaces (-6  -20); filltype mat; material water;}
+      //97 {id 97; type simpleCell;  surfaces (-7  -20); filltype mat; material water;}
+      //98 {id 98; type simpleCell;  surfaces (-8  -20); filltype mat; material water;}
+      //99 {id 99; type simpleCell;  surfaces (-9  -20); filltype mat; material water;}
+      //100 {id 100; type simpleCell;surfaces (-10 -20); filltype mat; material water;}
+
+      //inner circle
+      f_1 {id 37; type simpleCell;surfaces (-22); filltype mat; material fuel;}
+      c_1 {id 38; type simpleCell;surfaces (-23 22); filltype mat; material clad;}
+      f_2 {id 39; type simpleCell;surfaces (-24); filltype mat; material fuel;}
+      c_2 {id 40; type simpleCell;surfaces (-25 24); filltype mat; material clad;}
+      f_3 {id 41; type simpleCell;surfaces (-26); filltype mat; material fuel;}
+      c_3 {id 42; type simpleCell;surfaces (-27 26); filltype mat; material clad;}
+      f_4 {id 43; type simpleCell;surfaces (-28); filltype mat; material fuel;}
+      c_4 {id 44; type simpleCell;surfaces (-29 28); filltype mat; material clad;}
+
+      //squares
+      f_5 {id 45; type simpleCell;surfaces (-30); filltype mat; material fuel_2;}
+      c_5 {id 46; type simpleCell;surfaces (-31 30); filltype mat; material clad_2;}
+      f_6 {id 47; type simpleCell;surfaces (-32); filltype mat; material fuel_2;}
+      c_6 {id 48; type simpleCell;surfaces (-33 32); filltype mat; material clad_2;}
+      f_7 {id 49; type simpleCell;surfaces (-34); filltype mat; material fuel_2;}
+      c_7 {id 50; type simpleCell;surfaces (-35 34); filltype mat; material clad_2;}
+      f_8 {id 51; type simpleCell;surfaces (-36); filltype mat; material fuel_2;}
+      c_8 {id 52; type simpleCell;surfaces (-37 36); filltype mat; material clad_2;}
+      f_9 {id 53; type simpleCell;surfaces (-38); filltype mat; material fuel_2;}
+      c_9 {id 54; type simpleCell;surfaces (-39 38); filltype mat; material clad_2;}
+      f_10 {id 55; type simpleCell;surfaces (-40); filltype mat; material fuel_2;}
+      c_10 {id 56; type simpleCell;surfaces (-41 40); filltype mat; material clad_2;}
+      f_11 {id 57; type simpleCell;surfaces (-42); filltype mat; material fuel_2;}
+      c_11 {id 58; type simpleCell;surfaces (-43 42); filltype mat; material clad_2;}
+      f_12 {id 59; type simpleCell;surfaces (-44); filltype mat; material fuel_2;}
+      c_12 {id 60; type simpleCell;surfaces (-45 44); filltype mat; material clad_2;}
+
+      //outter circles
+      f_13 {id 61; type simpleCell;surfaces (-46); filltype mat; material fuel;}
+      c_13 {id 62; type simpleCell;surfaces (-47 46); filltype mat; material clad;}
+      f_14 {id 63; type simpleCell;surfaces (-48); filltype mat; material fuel;}
+      c_14 {id 64; type simpleCell;surfaces (-49 48); filltype mat; material clad;}
+      f_15 {id 65; type simpleCell;surfaces (-50); filltype mat; material fuel;}
+      c_15 {id 66; type simpleCell;surfaces (-51 50); filltype mat; material clad;}
+      f_16 {id 67; type simpleCell;surfaces (-52); filltype mat; material fuel;}
+      c_16 {id 68; type simpleCell;surfaces (-53 52); filltype mat; material clad;}
+      f_17 {id 69; type simpleCell;surfaces (-54); filltype mat; material fuel;}
+      c_17 {id 70; type simpleCell;surfaces (-55 54); filltype mat; material clad;}
+      f_18 {id 71; type simpleCell;surfaces (-56); filltype mat; material fuel;}
+      c_18 {id 72; type simpleCell;surfaces (-57 56); filltype mat; material clad;}
+      f_19 {id 73; type simpleCell;surfaces (-58); filltype mat; material fuel;}
+      c_19 {id 74; type simpleCell;surfaces (-59 58); filltype mat; material clad;}
+      f_20 {id 75; type simpleCell;surfaces (-60); filltype mat; material fuel;}
+      c_20 {id 76; type simpleCell;surfaces (-61 60); filltype mat; material clad;}
+      f_21 {id 77; type simpleCell;surfaces (-62); filltype mat; material fuel;}
+      c_21 {id 78; type simpleCell;surfaces (-63 62); filltype mat; material clad;}
+      f_22 {id 79; type simpleCell;surfaces (-64); filltype mat; material fuel;}
+      c_22 {id 80; type simpleCell;surfaces (-65 64); filltype mat; material clad;}
+      f_23 {id 81; type simpleCell;surfaces (-66); filltype mat; material fuel;}
+      c_23 {id 82; type simpleCell;surfaces (-67 66); filltype mat; material clad;}
+      f_24 {id 83; type simpleCell;surfaces (-68); filltype mat; material fuel;}
+      c_24 {id 84; type simpleCell;surfaces (-69 68); filltype mat; material clad;}
+
+      //triangles
+      f_25 {id 85; type simpleCell;surfaces (-70); filltype mat; material fuel_3;}
+      c_25 {id 86; type simpleCell;surfaces (-71 70); filltype mat; material clad;}
+
+      f_26 {id 87; type simpleCell;surfaces (-72); filltype mat; material fuel_3;}
+      c_26 {id 88; type simpleCell;surfaces (-73 72); filltype mat; material clad;}
+
+      f_27 {id 89; type simpleCell;surfaces (-74); filltype mat; material fuel_3;}
+      c_27 {id 90; type simpleCell;surfaces (-75 74); filltype mat; material clad;}
+
+      f_28 {id 91; type simpleCell;surfaces (-76); filltype mat; material fuel_3;}
+      c_28 {id 92; type simpleCell;surfaces (-77 76); filltype mat; material clad;}
+
+      f_29 {id 93; type simpleCell;surfaces (-78); filltype mat; material fuel_3;}
+      c_29 {id 94; type simpleCell;surfaces (-79 78); filltype mat; material clad;}
+
+      f_30 {id 95; type simpleCell;surfaces (-80); filltype mat; material fuel_3;}
+      c_30 {id 96; type simpleCell;surfaces (-81 80); filltype mat; material clad;}
+
+      f_31 {id 97; type simpleCell;surfaces (-82); filltype mat; material fuel_3;}
+      c_31 {id 98; type simpleCell;surfaces (-83 82); filltype mat; material clad;}
+
+      f_32 {id 99; type simpleCell;surfaces (-84); filltype mat; material fuel_3;}
+      c_32 {id 100; type simpleCell;surfaces (-85 84); filltype mat; material clad;}
+
+
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 21; fill u<2>;}
+      geom2{id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100);}
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+kineticGeom1 {
+    type geometryStd;
+    boundary (2 2 2 2 1 1 ); //1 1 1 1 1 1 
+    graph {type shrunk;}
+
+    surfaces
+    {
+
+      universe { id 21; type box; origin ( 0.0  0.0  0.0); halfwidth (7.56 7.56 12.6); } //universe { id 21; type box; origin ( 0.0  0.0  0.0); halfwidth (12.6 12.6 12.6); }
+      //cells
+      //columns
+      c_one   { id 1; type box; origin (-11.34 0.0 0.0); halfwidth (1.26 7.56 12.6);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_three { id 3; type box; origin (-6.3 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_four  { id 4; type box; origin (-3.78 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_five  { id 5; type box; origin (-1.26 0.0 0.0);  halfwidth (1.26 7.56 12.6);}
+      c_six   { id 6; type box; origin (1.26 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_seven { id 7; type box; origin (3.78 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_eight { id 8; type box; origin (6.3 0.0 0.0);    halfwidth (1.26 7.56 12.6);}
+      c_nine  { id 9; type box; origin (8.82 0.0 0.0);   halfwidth (1.26 7.56 12.6);}
+      c_ten   { id 10; type box; origin (11.34 0.0 0.0); halfwidth (1.26 7.56 12.6);}
+
+      //rows
+      r_one   { id 11; type box; origin (0.0 11.34 0.0); halfwidth (7.56 1.26 12.6);}
+      r_two   { id 12; type box; origin (0.0 8.82 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_three { id 13; type box; origin (0.0 6.3 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_four  { id 14; type box; origin (0.0 3.78 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_five  { id 15; type box; origin (0.0 1.26 0.0);  halfwidth (7.56 1.26 12.6);}
+      r_six   { id 16; type box; origin (0.0 -1.26 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_seven { id 17; type box; origin (0.0 -3.78 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_eight { id 18; type box; origin (0.0 -6.3 0.0);    halfwidth (7.56 1.26 12.6);}
+      r_nine  { id 19; type box; origin (0.0 -8.82 0.0);   halfwidth (7.56 1.26 12.6);}
+      r_ten   { id 20; type box; origin (0.0 -11.34 0.0);  halfwidth (7.56 1.26 12.6);}
+
+      //rods
+      //inner circles
+      f_1 { id 22; type zTruncCylinder; origin (-1.26 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_1 { id 23; type zTruncCylinder; origin (-1.26 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_2 { id 24; type zTruncCylinder; origin (1.26 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_2 { id 25; type zTruncCylinder; origin (1.26 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_3 { id 26; type zTruncCylinder; origin (1.26 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_3 { id 27; type zTruncCylinder; origin (1.26 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_4 { id 28; type zTruncCylinder; origin (-1.26 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_4 { id 29; type zTruncCylinder; origin (-1.26 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //squares
+      f_5 { id 30; type zTruncCylinder; origin (-1.26 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_5 { id 31; type zTruncCylinder; origin (-1.26 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_6 { id 32; type zTruncCylinder; origin (1.26 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_6 { id 33; type zTruncCylinder; origin (1.26 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_7 { id 34; type zTruncCylinder; origin (3.78 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_7 { id 35; type zTruncCylinder; origin (3.78 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_8 { id 36; type zTruncCylinder; origin (3.78 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_8 { id 37; type zTruncCylinder; origin (3.78 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_9 { id 38; type zTruncCylinder; origin (1.26 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_9 { id 39; type zTruncCylinder; origin (1.26 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_10 { id 40; type zTruncCylinder; origin (-1.26 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_10 { id 41; type zTruncCylinder; origin (-1.26 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_11 { id 42; type zTruncCylinder; origin (-3.78 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_11 { id 43; type zTruncCylinder; origin (-3.78 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_12 { id 44; type zTruncCylinder; origin (-3.78 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_12 { id 45; type zTruncCylinder; origin (-3.78 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //outter circles
+      f_13 { id 46; type zTruncCylinder; origin (-1.26 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_13 { id 47; type zTruncCylinder; origin (-1.26 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_14 { id 48; type zTruncCylinder; origin (1.26 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_14 { id 49; type zTruncCylinder; origin (1.26 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_15 { id 50; type zTruncCylinder; origin (3.78 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_15 { id 51; type zTruncCylinder; origin (3.78 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_16 { id 52; type zTruncCylinder; origin (6.3 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_16 { id 53; type zTruncCylinder; origin (6.3 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_17 { id 54; type zTruncCylinder; origin (6.3 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_17 { id 55; type zTruncCylinder; origin (6.3 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_18 { id 56; type zTruncCylinder; origin (3.78 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_18 { id 57; type zTruncCylinder; origin (3.78 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_19 { id 58; type zTruncCylinder; origin (1.26 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_19 { id 59; type zTruncCylinder; origin (1.26 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_20 { id 60; type zTruncCylinder; origin (-1.26 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_20 { id 61; type zTruncCylinder; origin (-1.26 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_21 { id 62; type zTruncCylinder; origin (-3.78 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_21 { id 63; type zTruncCylinder; origin (-3.78 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+      f_22 { id 64; type zTruncCylinder; origin (-6.3 -1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_22 { id 65; type zTruncCylinder; origin (-6.3 -1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_23 { id 66; type zTruncCylinder; origin (-6.3 1.26 0.0); halfwidth 12.6; radius 0.4180;}
+      c_23 { id 67; type zTruncCylinder; origin (-6.3 1.26 0.0); halfwidth 12.6; radius 0.4850;}
+      f_24 { id 68; type zTruncCylinder; origin (-3.78 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_24 { id 69; type zTruncCylinder; origin (-3.78 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      //triangles
+      f_25 { id 70; type zTruncCylinder; origin (3.78 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_25 { id 71; type zTruncCylinder; origin (3.78 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+      f_26 { id 72; type zTruncCylinder; origin (6.3 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_26 { id 73; type zTruncCylinder; origin (6.3 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_27 { id 74; type zTruncCylinder; origin (6.3 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_27 { id 75; type zTruncCylinder; origin (6.3 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_28 { id 76; type zTruncCylinder; origin (3.78 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_28 { id 77; type zTruncCylinder; origin (3.78 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_29 { id 78; type zTruncCylinder; origin (-3.78 -6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_29 { id 79; type zTruncCylinder; origin (-3.78 -6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_30 { id 80; type zTruncCylinder; origin (-6.3 -3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_30 { id 81; type zTruncCylinder; origin (-6.3 -3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_31 { id 82; type zTruncCylinder; origin (-6.3 3.78 0.0); halfwidth 12.6; radius 0.4180;}
+      c_31 { id 83; type zTruncCylinder; origin (-6.3 3.78 0.0); halfwidth 12.6; radius 0.4850;}
+
+      f_32 { id 84; type zTruncCylinder; origin (-3.78 6.3 0.0); halfwidth 12.6; radius 0.4180;}
+      c_32 { id 85; type zTruncCylinder; origin (-3.78 6.3 0.0); halfwidth 12.6; radius 0.4850;}
+
+
+      boronRod1 { id 86; type zTruncCylinder; origin (6.3 6.3 0.0); halfwidth 12.6; radius 1.2;}
+      boronRod2 { id 87; type zTruncCylinder; origin (6.3 -6.3 0.0); halfwidth 12.6; radius 1.2;}
+      boronRod3 { id 88; type zTruncCylinder; origin (-6.3 -6.3 0.0); halfwidth 12.6; radius 1.2;}
+      boronRod4 { id 89; type zTruncCylinder; origin (-6.3 6.3 0.0); halfwidth 12.6; radius 1.2;}
+    }
+
+
+    cells
+    {
+
+      
+      // water cells
+      //row 1
+
+      //1 {id 1; type simpleCell;  surfaces (-1 -11); filltype mat; material water;}
+      //2 {id 2; type simpleCell;  surfaces (-2 -11); filltype mat; material water;}
+      //3 {id 3; type simpleCell;  surfaces (-3 -11); filltype mat; material water;}
+      //4 {id 4; type simpleCell;  surfaces (-4 -11); filltype mat; material water;}
+      //5 {id 5; type simpleCell;  surfaces (-5 -11); filltype mat; material water;}
+      //6 {id 6; type simpleCell;  surfaces (-6 -11); filltype mat; material water;}
+      //7 {id 7; type simpleCell;  surfaces (-7 -11); filltype mat; material water;}
+      //8 {id 8; type simpleCell;  surfaces (-8 -11); filltype mat; material water;}
+      //9 {id 9; type simpleCell;  surfaces (-9 -11); filltype mat; material water;}
+      //10 {id 10; type simpleCell;  surfaces (-10 -11); filltype mat; material water;}
+
+
+      //row2
+      //11 {id 11; type simpleCell;  surfaces (-1 -12); filltype mat; material water;}
+      //12 {id 1; type simpleCell;  surfaces (-2 -12); filltype mat; material water;}
+      //13 {id 2; type simpleCell;  surfaces (-3 -12); filltype mat; material water;}
+      //14 {id 3; type simpleCell;  surfaces (-4 -12); filltype mat; material water;}
+      //15 {id 4; type simpleCell;  surfaces (-5 -12); filltype mat; material water;}
+      //16 {id 5; type simpleCell;  surfaces (-6 -12); filltype mat; material water;}
+      //17 {id 6; type simpleCell;  surfaces (-7 -12); filltype mat; material water;}
+      //18 {id 7; type simpleCell;  surfaces (-8 -12); filltype mat; material water;}
+      //19 {id 8; type simpleCell;  surfaces (-9 -12); filltype mat; material water;}
+      //20 {id 20; type simpleCell;  surfaces (-10 -12); filltype mat; material water;}
+
+      //row3
+      //21 {id 21; type simpleCell;  surfaces (-1 -13); filltype mat; material water;}
+      //22 {id 9; type simpleCell;  surfaces (-2 -13); filltype mat; material water;}
+      23 {id 1; type simpleCell;  surfaces (-3 -13 89); filltype mat; material water;}
+      24 {id 2; type simpleCell;  surfaces (-4 -13 85); filltype mat; material water;} //2
+      25 {id 3; type simpleCell;  surfaces (-5 -13 47); filltype mat; material water;} //1
+      26 {id 4; type simpleCell;  surfaces (-6 -13 49); filltype mat; material water;} //1
+      27 {id 5; type simpleCell;  surfaces (-7 -13 71); filltype mat; material water;} //2
+      28 {id 6; type simpleCell;  surfaces (-8 -13 86); filltype mat; material water;}
+      //29 {id 16; type simpleCell;  surfaces (-9 -13); filltype mat; material water;}
+      //30 {id 30; type simpleCell;  surfaces (-10 -13); filltype mat; material water;}
+
+      //row4
+      //31 {id 31; type simpleCell;  surfaces (-1  -14); filltype mat; material water;}
+      //32 {id 17; type simpleCell;  surfaces (-2  -14); filltype mat; material water;}
+      33 {id 7; type simpleCell;  surfaces (-3  -14 83); filltype mat; material water;} //2
+      34 {id 8; type simpleCell;  surfaces (-4  -14 69); filltype mat; material water;} //1
+      35 {id 9; type simpleCell;  surfaces (-5  -14 31); filltype mat; material water;} //
+      36 {id 10; type simpleCell;  surfaces (-6  -14 33); filltype mat; material water;} //
+      37 {id 11; type simpleCell;  surfaces (-7  -14 51); filltype mat; material water;} //1
+      38 {id 12; type simpleCell;  surfaces (-8  -14 73); filltype mat; material water;} //2
+      //39 {id 24; type simpleCell;  surfaces (-9  -14); filltype mat; material water;}
+      //40 {id 40; type simpleCell;  surfaces (-10 -14); filltype mat; material water;}
+
+      //row5
+      //41 {id 41; type simpleCell;  surfaces (-1  -15); filltype mat; material water;}
+      //42 {id 25; type simpleCell;  surfaces (-2  -15); filltype mat; material water;}
+      43 {id 13; type simpleCell;  surfaces (-3  -15 67); filltype mat; material water;} //1
+      44 {id 14; type simpleCell;  surfaces (-4  -15 45); filltype mat; material water;} //
+      45 {id 15; type simpleCell;  surfaces (-5  -15 23); filltype mat; material water;} //
+      46 {id 16; type simpleCell;  surfaces (-6  -15 25); filltype mat; material water;} //
+      47 {id 17; type simpleCell;  surfaces (-7  -15 35); filltype mat; material water;} //
+      48 {id 18; type simpleCell;  surfaces (-8  -15 53); filltype mat; material water;} //1
+      //49 {id 32; type simpleCell;  surfaces (-9  -15); filltype mat; material water;}
+      //50 {id 50; type simpleCell;  surfaces (-10 -15); filltype mat; material water;}
+
+      //row6
+      //51 {id 51; type simpleCell;  surfaces (-1  -16); filltype mat; material water;}
+      //52 {id 33; type simpleCell;  surfaces (-2  -16); filltype mat; material water;}
+      53 {id 19; type simpleCell;  surfaces (-3  -16 65); filltype mat; material water;} //1
+      54 {id 20; type simpleCell;  surfaces (-4  -16 43); filltype mat; material water;} //
+      55 {id 21; type simpleCell;  surfaces (-5  -16 29); filltype mat; material water;} //
+      56 {id 22; type simpleCell;  surfaces (-6  -16 27); filltype mat; material water;} //
+      57 {id 23; type simpleCell;  surfaces (-7  -16 37); filltype mat; material water;} //
+      58 {id 24; type simpleCell;  surfaces (-8  -16 55); filltype mat; material water;} //1
+      //59 {id 40; type simpleCell;  surfaces (-9  -16); filltype mat; material water;}
+      //60 {id 60; type simpleCell;  surfaces (-10 -16); filltype mat; material water;}
+
+      //row7
+      //61 {id 61; type simpleCell;  surfaces (-1  -17); filltype mat; material water;}
+      //62 {id 41; type simpleCell;  surfaces (-2  -17); filltype mat; material water;}
+      63 {id 25; type simpleCell;  surfaces (-3  -17 81); filltype mat; material water;} //2
+      64 {id 26; type simpleCell;  surfaces (-4  -17 63); filltype mat; material water;} //1
+      65 {id 27; type simpleCell;  surfaces (-5  -17 41); filltype mat; material water;} //
+      66 {id 28; type simpleCell;  surfaces (-6  -17 39); filltype mat; material water;} //
+      67 {id 29; type simpleCell;  surfaces (-7  -17 57); filltype mat; material water;} //1
+      68 {id 30; type simpleCell;  surfaces (-8  -17 75); filltype mat; material water;} //2
+      //69 {id 48; type simpleCell;  surfaces (-9  -17); filltype mat; material water;}
+      //70 {id 70; type simpleCell;  surfaces (-10 -17); filltype mat; material water;}
+
+      //row8
+      //71 {id 71; type simpleCell;  surfaces (-1  -18); filltype mat; material water;}
+      //72 {id 49; type simpleCell;  surfaces (-2  -18); filltype mat; material water;}
+      73 {id 31; type simpleCell;  surfaces (-3  -18 88); filltype mat; material water;}
+      74 {id 32; type simpleCell;  surfaces (-4  -18 79); filltype mat; material water;} //2
+      75 {id 33; type simpleCell;  surfaces (-5  -18 61); filltype mat; material water;} //1
+      76 {id 34; type simpleCell;  surfaces (-6  -18 59); filltype mat; material water;} //1
+      77 {id 35; type simpleCell;  surfaces (-7  -18 77); filltype mat; material water;} //2
+      78 {id 36; type simpleCell;  surfaces (-8  -18 87); filltype mat; material water;}
+      //79 {id 56; type simpleCell;  surfaces (-9  -18); filltype mat; material water;}
+      //80 {id 80; type simpleCell;  surfaces (-10 -18); filltype mat; material water;}
+
+      //row9
+      //81 {id 81; type simpleCell;  surfaces (-1  -19); filltype mat; material water;}
+      //82 {id 57; type simpleCell;  surfaces (-2  -19); filltype mat; material water;}
+      //83 {id 58; type simpleCell;  surfaces (-3  -19); filltype mat; material water;}
+      //84 {id 59; type simpleCell;  surfaces (-4  -19); filltype mat; material water;}
+      //85 {id 60; type simpleCell;  surfaces (-5  -19); filltype mat; material water;}
+      //86 {id 61; type simpleCell;  surfaces (-6  -19); filltype mat; material water;}
+      //87 {id 62; type simpleCell;  surfaces (-7  -19); filltype mat; material water;}
+      //88 {id 63; type simpleCell;  surfaces (-8  -19); filltype mat; material water;}
+      //89 {id 64; type simpleCell;  surfaces (-9  -19); filltype mat; material water;}
+      //90 {id 90; type simpleCell;  surfaces (-10 -19); filltype mat; material water;}
+
+      //row10
+      //91 {id 91; type simpleCell;  surfaces (-1  -20); filltype mat; material water;}
+      //92 {id 92; type simpleCell;  surfaces (-2  -20); filltype mat; material water;}
+      //93 {id 93; type simpleCell;  surfaces (-3  -20); filltype mat; material water;}
+      //94 {id 94; type simpleCell;  surfaces (-4  -20); filltype mat; material water;}
+      //95 {id 95; type simpleCell;  surfaces (-5  -20); filltype mat; material water;}
+      //96 {id 96; type simpleCell;  surfaces (-6  -20); filltype mat; material water;}
+      //97 {id 97; type simpleCell;  surfaces (-7  -20); filltype mat; material water;}
+      //98 {id 98; type simpleCell;  surfaces (-8  -20); filltype mat; material water;}
+      //99 {id 99; type simpleCell;  surfaces (-9  -20); filltype mat; material water;}
+      //100 {id 100; type simpleCell;surfaces (-10 -20); filltype mat; material water;}
+
+      //inner circle
+      f_1 {id 37; type simpleCell;surfaces (-22); filltype mat; material fuel;}
+      c_1 {id 38; type simpleCell;surfaces (-23 22); filltype mat; material clad;}
+      f_2 {id 39; type simpleCell;surfaces (-24); filltype mat; material fuel;}
+      c_2 {id 40; type simpleCell;surfaces (-25 24); filltype mat; material clad;}
+      f_3 {id 41; type simpleCell;surfaces (-26); filltype mat; material fuel;}
+      c_3 {id 42; type simpleCell;surfaces (-27 26); filltype mat; material clad;}
+      f_4 {id 43; type simpleCell;surfaces (-28); filltype mat; material fuel;}
+      c_4 {id 44; type simpleCell;surfaces (-29 28); filltype mat; material clad;}
+
+      //squares
+      f_5 {id 45; type simpleCell;surfaces (-30); filltype mat; material fuel_2;}
+      c_5 {id 46; type simpleCell;surfaces (-31 30); filltype mat; material clad_2;}
+      f_6 {id 47; type simpleCell;surfaces (-32); filltype mat; material fuel_2;}
+      c_6 {id 48; type simpleCell;surfaces (-33 32); filltype mat; material clad_2;}
+      f_7 {id 49; type simpleCell;surfaces (-34); filltype mat; material fuel_2;}
+      c_7 {id 50; type simpleCell;surfaces (-35 34); filltype mat; material clad_2;}
+      f_8 {id 51; type simpleCell;surfaces (-36); filltype mat; material fuel_2;}
+      c_8 {id 52; type simpleCell;surfaces (-37 36); filltype mat; material clad_2;}
+      f_9 {id 53; type simpleCell;surfaces (-38); filltype mat; material fuel_2;}
+      c_9 {id 54; type simpleCell;surfaces (-39 38); filltype mat; material clad_2;}
+      f_10 {id 55; type simpleCell;surfaces (-40); filltype mat; material fuel_2;}
+      c_10 {id 56; type simpleCell;surfaces (-41 40); filltype mat; material clad_2;}
+      f_11 {id 57; type simpleCell;surfaces (-42); filltype mat; material fuel_2;}
+      c_11 {id 58; type simpleCell;surfaces (-43 42); filltype mat; material clad_2;}
+      f_12 {id 59; type simpleCell;surfaces (-44); filltype mat; material fuel_2;}
+      c_12 {id 60; type simpleCell;surfaces (-45 44); filltype mat; material clad_2;}
+
+      //outter circles
+      f_13 {id 61; type simpleCell;surfaces (-46); filltype mat; material fuel;}
+      c_13 {id 62; type simpleCell;surfaces (-47 46); filltype mat; material clad;}
+      f_14 {id 63; type simpleCell;surfaces (-48); filltype mat; material fuel;}
+      c_14 {id 64; type simpleCell;surfaces (-49 48); filltype mat; material clad;}
+      f_15 {id 65; type simpleCell;surfaces (-50); filltype mat; material fuel;}
+      c_15 {id 66; type simpleCell;surfaces (-51 50); filltype mat; material clad;}
+      f_16 {id 67; type simpleCell;surfaces (-52); filltype mat; material fuel;}
+      c_16 {id 68; type simpleCell;surfaces (-53 52); filltype mat; material clad;}
+      f_17 {id 69; type simpleCell;surfaces (-54); filltype mat; material fuel;}
+      c_17 {id 70; type simpleCell;surfaces (-55 54); filltype mat; material clad;}
+      f_18 {id 71; type simpleCell;surfaces (-56); filltype mat; material fuel;}
+      c_18 {id 72; type simpleCell;surfaces (-57 56); filltype mat; material clad;}
+      f_19 {id 73; type simpleCell;surfaces (-58); filltype mat; material fuel;}
+      c_19 {id 74; type simpleCell;surfaces (-59 58); filltype mat; material clad;}
+      f_20 {id 75; type simpleCell;surfaces (-60); filltype mat; material fuel;}
+      c_20 {id 76; type simpleCell;surfaces (-61 60); filltype mat; material clad;}
+      f_21 {id 77; type simpleCell;surfaces (-62); filltype mat; material fuel;}
+      c_21 {id 78; type simpleCell;surfaces (-63 62); filltype mat; material clad;}
+      f_22 {id 79; type simpleCell;surfaces (-64); filltype mat; material fuel;}
+      c_22 {id 80; type simpleCell;surfaces (-65 64); filltype mat; material clad;}
+      f_23 {id 81; type simpleCell;surfaces (-66); filltype mat; material fuel;}
+      c_23 {id 82; type simpleCell;surfaces (-67 66); filltype mat; material clad;}
+      f_24 {id 83; type simpleCell;surfaces (-68); filltype mat; material fuel;}
+      c_24 {id 84; type simpleCell;surfaces (-69 68); filltype mat; material clad;}
+
+      //triangles
+      f_25 {id 85; type simpleCell;surfaces (-70); filltype mat; material fuel_3;}
+      c_25 {id 86; type simpleCell;surfaces (-71 70); filltype mat; material clad;}
+
+      f_26 {id 87; type simpleCell;surfaces (-72); filltype mat; material fuel_3;}
+      c_26 {id 88; type simpleCell;surfaces (-73 72); filltype mat; material clad;}
+
+      f_27 {id 89; type simpleCell;surfaces (-74); filltype mat; material fuel_3;}
+      c_27 {id 90; type simpleCell;surfaces (-75 74); filltype mat; material clad;}
+
+      f_28 {id 91; type simpleCell;surfaces (-76); filltype mat; material fuel_3;}
+      c_28 {id 92; type simpleCell;surfaces (-77 76); filltype mat; material clad;}
+
+      f_29 {id 93; type simpleCell;surfaces (-78); filltype mat; material fuel_3;}
+      c_29 {id 94; type simpleCell;surfaces (-79 78); filltype mat; material clad;}
+
+      f_30 {id 95; type simpleCell;surfaces (-80); filltype mat; material fuel_3;}
+      c_30 {id 96; type simpleCell;surfaces (-81 80); filltype mat; material clad;}
+
+      f_31 {id 97; type simpleCell;surfaces (-82); filltype mat; material fuel_3;}
+      c_31 {id 98; type simpleCell;surfaces (-83 82); filltype mat; material clad;}
+
+      f_32 {id 99; type simpleCell;surfaces (-84); filltype mat; material fuel_3;}
+      c_32 {id 100; type simpleCell;surfaces (-85 84); filltype mat; material clad;}
+
+      boronRod1 {id 101; type simpleCell;surfaces (-86); filltype mat; material boron;}
+      boronRod2 {id 102; type simpleCell;surfaces (-87); filltype mat; material boron;}
+      boronRod3 {id 103; type simpleCell;surfaces (-88); filltype mat; material boron;}
+      boronRod4 {id 104; type simpleCell;surfaces (-89); filltype mat; material boron;}
+
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 21; fill u<2>;}
+      geom2{id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104);}
+    }
+}
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-7.56 -7.56 -12.6);
+    width (15.12 15.12 15.12);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material; //material
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;}}
+  materials {
+
+    water {
+      temp 75675;
+      composition {
+      1001.03    6.700E-002;
+      8016.03    3.350E-002;
+      5010.03    6.0E-006; //5.99
+      5011.03    2.224E-005; 
+
+      }
+      }
+
+     clad {
+       temp 12345;
+       composition {
+       40090.03  2.21235E-002;
+       40091.03  4.82460E-003;
+       40092.03  7.37450E-003;
+       40094.03  7.47340E-003;
+       40096.03  1.20400E-003;}
+       }
+
+    fuel {
+      temp 87476;
+       composition {
+      92235.03  5.00E-005;
+      92238.03  2.21E-002;
+      94238.03  1.50E-005;
+      94239.03  5.80E-004;
+      94240.03  2.40E-004;
+      94241.03  9.80E-005;
+      94242.03  5.40E-005;
+      95241.03  1.30E-005;
+       8016.03  4.63E-002;
+       }
+      }
+
+     clad_2 {
+       temp 9876;
+      composition {
+      13027.03  6.00E-2;}
+      }
+
+     fuel_2 {
+       temp 6786;
+       composition {
+       92235.03  5.00E-005;
+       92238.03  2.21E-002;
+       94238.03  2.40E-005;
+       94239.03  9.30E-004;
+       94240.03  3.90E-004;
+       94241.03  1.52E-004;
+       94242.03  8.40E-005;
+       95241.03  2.00E-005;
+        8016.03  4.63E-002;}
+       }
+
+
+     fuel_3 {
+       temp 8765;
+       composition {
+       92235.03  5.00E-005;
+       92238.03  2.21E-002;
+       94238.03  3.00E-005;
+       94239.03  1.16E-003;
+       94240.03  4.90E-004;
+       94241.03  1.90E-004;
+       94242.03  1.05E-004;
+       95241.03  2.50E-005;
+        8016.03  4.63E-002;}
+       }
+
+
+     boron {
+       temp 8765;
+       composition {
+      5010.03    0.13; //9.10E+03
+      
+      }
+       }
+
+
+}
+
+}

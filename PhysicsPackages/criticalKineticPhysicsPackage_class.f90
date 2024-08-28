@@ -123,8 +123,9 @@ module criticalKineticPhysicsPackage_class
     type(particleDungeon), pointer, dimension(:) :: tempTime          => null()
     type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null() 
 
-    !geometry change mid run
-    class(dictionary), pointer           :: tempDict
+    ! Kinetic geometry
+    class(dictionary), pointer, dimension(:)     :: kineticGeomDict  => null()
+    integer(shortInt), dimension(:), allocatable :: kineticGeomTimeSteps
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -147,6 +148,7 @@ module criticalKineticPhysicsPackage_class
     procedure :: populateCriticalSources
     procedure :: switchToKinetic
     procedure :: russianRoulette
+    procedure :: initKineticGeom
   end type criticalKineticPhysicsPackage
 
 contains
@@ -340,17 +342,20 @@ contains
   !!
   subroutine cyclesKinetic(self, tally, N_cycles, N_timeBins, timeIncrement)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
-    type(tallyAdmin), pointer,intent(inout)           :: tally
-    integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
-    integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
-    type(particle), save                              :: p, p_d
-    type(particleDungeon), save                       :: buffer
-    type(collisionOperator), save                     :: collOpKinetic
-    class(transportOperator),allocatable,save         :: transOpKinetic
-    type(RNG), target, save                           :: pRNG
-    real(defReal) , save                              :: decay_T
-    real(defReal)                                     :: elapsed_T, end_T, T_toEnd, w_d
-    real(defReal), intent(in)                         :: timeIncrement
+    type(tallyAdmin), pointer,intent(inout)             :: tally
+    integer(shortInt), intent(in)                       :: N_timeBins, N_cycles
+    integer(shortInt)                                   :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
+    type(particle), save                                :: p, p_d
+    type(particleDungeon), save                         :: buffer
+    type(collisionOperator), save                       :: collOpKinetic
+    class(transportOperator),allocatable,save           :: transOpKinetic
+    type(RNG), target, save                             :: pRNG
+    real(defReal) , save                                :: decay_T
+    real(defReal)                                       :: elapsed_T, end_T, T_toEnd, w_d
+    real(defReal), intent(in)                           :: timeIncrement
+    character(nameLen)                                  :: geomName
+    integer(shortInt), dimension(:), allocatable        :: kineticGeomLocs
+    integer(shortInt)                                   :: kineticGeomIdx
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
     !$omp threadprivate(p, p_d, buffer, collOpKinetic, transOpKinetic, pRNG, decay_T)
 
@@ -375,6 +380,20 @@ contains
     call timerStart(self % timerMain)
 
     do t = 1, N_timeBins
+
+      ! Handle kinetic geometry
+      if (allocated(self % kineticGeomTimeSteps) .and. ANY(self % kineticGeomTimeSteps == t)) then
+        call self % geom % kill()
+        call killGeom()
+        kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
+        kineticGeomIdx = kineticGeomLocs(1)
+        geomName = 'kineticGeom'
+        call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
+        self % geomIdx = gr_geomIdx(geomName)
+        self % geom    => gr_geomPtr(self % geomIdx)
+        p % geomIdx = self % geomIdx
+      end if
+
       do i = 1, N_cycles
 
         if ((t == 1)) call self % currentTime(i) % combing(self % pop, pRNG)
@@ -776,14 +795,13 @@ contains
     integer(longInt)                          :: seed
     character(10)                             :: time
     character(8)                              :: date
-    character(:),allocatable                  :: string
+    character(:), allocatable                 :: string
     character(nameLen)                        :: nucData, energy, geomName
     type(outputFile)                          :: test_out_critical, test_out_kinetic
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
+    logical(defBool)                          :: useKineticGeom
     character(100), parameter :: Here ='init (criticalKineticPhysicsPackage_class.f90)'
-
-    self % tempDict => dict % getDictPtr('geometry2')
 
     call cpu_time(self % CPU_time_start)
 
@@ -987,6 +1005,18 @@ contains
     tempDict => dict % getDictPtr('tally')
     allocate(self % tally)
     call self % tally % init(tempDict)
+
+    ! Initialise kinetic geometry
+    tempDict => dict % getDictPtr('kineticGeometry')
+    call tempDict % getOrDefault(useKineticGeom, 'enable', .false.)
+    if (useKineticGeom .eqv. .true.) then
+      call tempDict % get(self % kineticGeomTimeSteps, 'timeSteps')
+      allocate(self % kineticGeomDict(size(self % kineticGeomTimeSteps)))
+      do i=1, size(self % kineticGeomTimeSteps)
+        write(string, '(I0)') i
+        self % kineticGeomDict(i) = dict % getDictPtr('kineticGeom' // string)
+      end do
+    end if
 
     call self % printSettingsKinetic()
 
@@ -1249,39 +1279,42 @@ contains
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
 
-      if (self % UFS) then
-        call self % ufsField % updateMap()
-      end if
-
-      ! Normalise population
-      call self % nextCycle % normSize(self % pop, pRNG)
 
       if (mod(i-1, self % N_stepBacks + 1) /= 0) then
+
         call self % thisCycle % cleanPop()
+
+        if (self % UFS) then
+          call self % ufsField % updateMap()
+        end if
+
+        ! Normalise population
+        call self % nextCycle % normSize(self % pop, pRNG)
+
         ! Flip cycle dungeons
         self % temp_dungeon => self % nextCycle
         self % nextCycle    => self % thisCycle
         self % thisCycle    => self % temp_dungeon
+
+        ! Obtain estimate of k_eff
+        call tallyAtch % getResult(res,'keff')
+
+        select type(res)
+          class is(keffResult)
+            k_new = res % keff(1)
+
+          class default
+            call fatalError(Here, 'Invalid result has been returned')
+
+        end select
+
+        ! Load new k-eff estimate into next cycle dungeon
+        k_old = self % nextCycle % k_eff
+        self % nextCycle % k_eff = k_new
+
+        ! Used to normalise fission source of the first active cycle
+        self % keff_0 = k_new
       end if
-
-      ! Obtain estimate of k_eff
-      call tallyAtch % getResult(res,'keff')
-
-      select type(res)
-        class is(keffResult)
-          k_new = res % keff(1)
-
-        class default
-          call fatalError(Here, 'Invalid result has been returned')
-
-      end select
-
-      ! Load new k-eff estimate into next cycle dungeon
-      k_old = self % nextCycle % k_eff
-      self % nextCycle % k_eff = k_new
-
-      ! Used to normalise fission source of the first active cycle
-      self % keff_0 = k_new
   
   end do
 
@@ -1299,4 +1332,11 @@ contains
     end if
 
   end subroutine russianRoulette
+
+  subroutine initKineticGeom(self, dict)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(in)                       :: dict
+
+
+  end subroutine initKineticGeom
 end module criticalKineticPhysicsPackage_class

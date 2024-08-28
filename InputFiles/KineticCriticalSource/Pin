@@ -16,6 +16,10 @@ precursors 1;
 
 EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim space; response (5 -5); fittestFactor 0.01; nReproductions 4;}
 
+
+kineticGeometry{enable 1; timeSteps (5); }
+
+
 outputFormat asciiJSON;
 collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} 
 
@@ -103,7 +107,7 @@ geometry {
     }
 }
 
-geometry2 {
+kineticGeom1 {
     type geometryStd;
     boundary (2 2 2 2 1 1 );
     graph {type shrunk;}
@@ -121,7 +125,7 @@ geometry2 {
     {
 
       f {id 1; type simpleCell;surfaces (-2); filltype mat; material fuel;}
-      m {id 2; type simpleCell;surfaces (-1 2); filltype mat; material water;}
+      m {id 2; type simpleCell;surfaces (-1 2); filltype mat; material water2;}
 
 
 
@@ -162,7 +166,18 @@ nuclearData {
       composition {
       1001.03    6.700E-002;
       8016.03    3.350E-002;
-      5010.03    7.260E-006;  //Critical: 5.22E-006   //subcritical: 7.260E-006 //supercritical: 3.260E-006
+      5010.03    5.22E-006;  //Critical: 5.22E-006   //subcritical: 7.260E-006 //supercritical: 3.260E-006
+      5011.03    2.224E-005;
+
+      }
+      }
+
+    water2 {
+      temp 75675;
+      composition {
+      1001.03    6.700E-002;
+      8016.03    3.350E-002;
+      5010.03    3.260E-006;  //Critical: 5.22E-006   //subcritical: 7.260E-006 //supercritical: 3.260E-006
       5011.03    2.224E-005;
 
       }
