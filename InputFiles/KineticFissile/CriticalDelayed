@@ -13,9 +13,6 @@ precursors 1;
 useForcedPrecursorDecay 1;
 branchless 1;
 outputFormat asciiJSON;
-
-
-
 collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 1;}}
 
 transportOperator { type transportOperatorDT;
@@ -34,7 +31,6 @@ tally  {
     response (flux); flux {type fluxResponse;}
     }
   }
-
 geometry {
     type geometryStd;
     boundary (1 1 1 1 1 1);
@@ -73,7 +69,8 @@ nuclearData {
       composition {
       1001.03    2.01892E-05;
       92235.03   9.3472E-09;	  }
-    }
+      }
 
 }
+
 }
