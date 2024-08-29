@@ -703,6 +703,10 @@ contains
       p % w = wgt
       E_out = p % forcedPrecursorDecayE(E_d, lambda_p, f_p)
       p % E = E_out
+      if (p % E < 0) then
+        print *, E_d
+        call fatalError(Here, 'E < 0 error in grouped precursor family sampling')
+      end if
     else
       call fatalError(Here, 'Precursor should be in fissile material')
     end if
