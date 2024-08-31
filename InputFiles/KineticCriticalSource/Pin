@@ -163,7 +163,7 @@ nuclearData {
       composition {
       1001.03    6.700E-002;
       8016.03    3.350E-002;
-      5010.03    7.260E-006;  //Critical: 5.22E-006   //subcritical: 7.260E-006 //supercritical: 3.260E-006
+      5010.03    3.260E-006;  //Critical: 5.22E-006   //subcritical: 7.260E-006 //supercritical: 3.260E-006
       5011.03    2.224E-005;
 
       }

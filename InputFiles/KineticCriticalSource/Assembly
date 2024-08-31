@@ -1,6 +1,6 @@
 type criticalKineticPhysicsPackage;
 
-pop      3000; //30000
+pop      30000; //30000
 timeSteps   20; 
 XSdata   ce;
 dataType ce;
@@ -14,7 +14,7 @@ combing 1;
 decorrelationCycles 10; //50
 precursors 1;
 
-kineticGeometry{enable 1; timeSteps (5); }
+kineticGeometry{enable 1; timeSteps (8); }
 
 outputFormat asciiJSON;
 collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} 
