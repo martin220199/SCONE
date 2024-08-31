@@ -127,6 +127,9 @@ module criticalKineticPhysicsPackage_class
     class(dictionary), pointer, dimension(:)     :: kineticGeomDict  => null()
     integer(shortInt), dimension(:), allocatable :: kineticGeomTimeSteps
 
+    ! Temporary storage of dictionary for memory efficiency
+    class(dictionary), pointer                   :: dict             => null()
+
     ! Timer bins
     integer(shortInt) :: timerMain
     real (defReal)    :: time_transport = 0.0
@@ -135,23 +138,218 @@ module criticalKineticPhysicsPackage_class
 
   contains
     procedure :: init
-    procedure :: printSettingsCritical
-    procedure :: printSettingsKinetic
-    procedure :: cyclesCritical
-    procedure :: cyclesKinetic
-    procedure :: generateInitialState
-    procedure :: collectResultsCritical
-    procedure :: collectResultsKinetic
     procedure :: run
+    procedure :: printSettingsCritical
+    procedure :: generateInitialState
+    procedure :: cyclesCritical
+    procedure :: collectResultsCritical
+
+    procedure :: initKinetic
+    procedure :: printSettingsKinetic
+    procedure :: coupleKinetic
+    procedure :: normCriticalWgts
+    procedure :: cyclesKinetic
+    procedure :: collectResultsKinetic
+
+
     procedure :: kill
-    procedure :: coupleCriticalKinetic
-    procedure :: populateCriticalSources
-    procedure :: switchToKinetic
     procedure :: russianRoulette
-    procedure :: initKineticGeom
   end type criticalKineticPhysicsPackage
 
 contains
+
+  !!
+  !! Initialise from individual components and dictionaries for inactive and active tally
+  !!
+  subroutine init(self, dict)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(inout)                    :: dict
+    class(dictionary),pointer                           :: tempDict
+    character(:), allocatable                           :: string
+    type(dictionary)                                    :: locDict1, locDict2
+    integer(shortInt)                                   :: seed_temp
+    integer(longInt)                                    :: seed
+    character(10)                                       :: time
+    character(8)                                        :: date
+    character(nameLen)                                  :: nucData, energy, geomName
+    type(outputFile)                                    :: test_out_critical
+    type(visualiser)                                    :: viz
+    class(field), pointer                               :: field
+    character(100), parameter :: Here ='init (criticalKineticPhysicsPackage_class.f90)'
+
+    call cpu_time(self % CPU_time_start)
+
+    ! Initialise general + criticality calcs first
+
+    ! Read calculation settings
+    call dict % get( self % pop,'pop')
+    call dict % get( self % N_inactive,'inactive')
+    call dict % get( self % N_active,'active')
+    call dict % get( nucData, 'XSdata')
+    call dict % get( energy, 'dataType')
+
+    ! Parallel buffer size
+    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
+
+    ! Process type of data
+    select case(energy)
+      case('ce')
+        self % particleType = P_NEUTRON_CE
+      case default
+        call fatalError(Here,"dataType must be 'mg' or 'ce'.")
+    end select
+
+    ! Read outputfile path
+    call dict % getOrDefault(self % outputFileCritical,'outputFile','./outputCritical')
+
+    ! Get output format and verify
+    ! Initialise output file before calculation (so mistake in format will be cought early)
+    call dict % getOrDefault(self % outputFormatCritical, 'outputFormat', 'asciiMATLAB')
+    call test_out_critical % init(self % outputFormatCritical)
+
+    ! Register timer
+    self % timerMain = registerTimer('transportTime')
+
+    ! Initialise RNG
+    allocate(self % pRNG)
+
+    ! *** It is a bit silly but dictionary cannot store longInt for now
+    !     so seeds are limited to 32 bits (can be -ve)
+    if( dict % isPresent('seed')) then
+      call dict % get(seed_temp,'seed')
+
+    else
+      ! Obtain time string and hash it to obtain random seed
+      call date_and_time(date, time)
+      string = date // time
+      call FNV_1(string,seed_temp)
+
+    end if
+    seed = seed_temp
+    call self % pRNG % init(seed)
+
+    ! Initial k_effective guess
+    call dict % getOrDefault(self % keff_0,'keff_0', ONE)
+
+    ! Read whether to print particle source per cycle
+    call dict % getOrDefault(self % printSource, 'printSource', 0)
+
+    ! Build Nuclear Data
+    call ndReg_init(dict % getDictPtr("nuclearData"))
+
+    ! Build geometry
+    tempDict => dict % getDictPtr('geometry')
+    geomName = 'eigenGeom'
+    call new_geometry(tempDict, geomName)
+    self % geomIdx = gr_geomIdx(geomName)
+    self % geom    => gr_geomPtr(self % geomIdx)
+
+    ! Activate Nuclear Data *** All materials are active
+    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
+    self % nucData => ndReg_get(self % particleType)
+
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
+      tempDict => dict % getDictPtr('viz')
+      call viz % init(self % geom, tempDict)
+      print *, "Constructing visualisation"
+      call viz % makeViz()
+      call viz % kill()
+    endif
+
+    ! Read uniform fission site option as a geometry field
+    if (dict % isPresent('uniformFissionSites')) then
+      self % ufs = .true.
+      ! Build and initialise
+      tempDict => dict % getDictPtr('uniformFissionSites')
+      call new_field(tempDict, nameUFS)
+      ! Save UFS field
+      field => gr_fieldPtr(gr_fieldIdx(nameUFS))
+      self % ufsField => uniFissSitesField_TptrCast(field)
+      ! Initialise
+      call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)
+    end if
+
+    ! Read variance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      ! Build and initialise
+      tempDict => dict % getDictPtr('varianceReduction')
+      call new_field(tempDict, nameWW)
+    end if
+
+    ! Build collision operator
+    tempDict => dict % getDictPtr('collisionOperatorCritical')
+    call self % collOpCritical % init(tempDict)
+
+    ! Build transport operator
+    tempDict => dict % getDictPtr('transportOperatorCritical')
+    call new_transportOperator(self % transOpCritical, tempDict)
+
+    ! Initialise active & inactive tally Admins
+    tempDict => dict % getDictPtr('inactiveTally')
+    allocate(self % inactiveTally)
+    call self % inactiveTally % init(tempDict)
+
+    tempDict => dict % getDictPtr('activeTally')
+    allocate(self % activeTally)
+    call self % activeTally % init(tempDict)
+
+    ! Load Initial source
+    if (dict % isPresent('source')) then ! Load definition from file
+      call new_source(self % initSource, dict % getDictPtr('source'), self % geom)
+
+    else
+      call locDict1 % init(3)
+      call locDict1 % store('type', 'fissionSource')
+      call locDict1 % store('data', trim(energy))
+      call new_source(self % initSource, locDict1, self % geom)
+      call locDict1 % kill()
+
+    end if
+
+    ! Initialise active and inactive tally attachments
+    ! Inactive tally attachment
+    call locDict1 % init(2)
+    call locDict2 % init(2)
+
+    call locDict2 % store('type','keffAnalogClerk')
+    call locDict1 % store('keff', locDict2)
+    call locDict1 % store('display',['keff'])
+
+    allocate(self % inactiveAtch)
+    call self % inactiveAtch % init(locDict1)
+
+    call locDict2 % kill()
+    call locDict1 % kill()
+
+    ! Active tally attachment
+    call locDict1 % init(2)
+    call locDict2 % init(2)
+
+    call locDict2 % store('type','keffImplicitClerk')
+    call locDict1 % store('keff', locDict2)
+    call locDict1 % store('display',['keff'])
+
+    allocate(self % activeAtch)
+    call self % activeAtch % init(locDict1)
+
+    call locDict2 % kill()
+    call locDict1 % kill()
+
+    ! Attach attachments to result tallies
+    call self % inactiveTally % push(self % inactiveAtch)
+    call self % activeTally % push(self % activeAtch)
+
+    call dict % get( self % N_stepBacks,'decorrelationCycles')
+
+    allocate(self % dict)
+    self % dict = dict
+
+    call self % printSettingsCritical()
+
+  end subroutine init
+
 
   subroutine run(self)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
@@ -163,17 +361,28 @@ contains
     call self % cyclesCritical(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % cyclesCritical(self % activeTally, self % activeAtch, self % N_active - 1)
     call self % collectResultsCritical()
-    call self % coupleCriticalKinetic()
-    call self % populateCriticalSources(self % inactiveTally, self % inactiveAtch, self % N_stepBacks)
 
     print *
     print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
     print *
 
     print *, repeat("<>",50)
+    print *, "/\/\ INITIALISING TIME DEPENDENT /\/\"
+    call self % initKinetic()
+    print *
+    print *, "\/\/ END OF TIME DEPENDENT INITIALISATION \/\/"
+    print *
+
+    print *, repeat("<>",50)
+    print *, "/\/\ COUPLING TO TIME DEPENDENT /\/\"
+    call self % coupleKinetic(self % inactiveTally, self % inactiveAtch, self % N_stepBacks)
+    print *
+    print *, "\/\/ END OF TIME DEPENDENT COUPLING \/\/"
+    print *
+
+    print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
-    call self % switchToKinetic()
     call self % cyclesKinetic(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     call self % collectResultsKinetic()
 
@@ -181,6 +390,42 @@ contains
     print *, "\/\/ END OF TIME DEPENDENT CALCULATION \/\/"
     print *
   end subroutine
+
+  !!
+  !! Print settings of the physics package
+  !!
+  subroutine printSettingsCritical(self)
+    class(criticalKineticPhysicsPackage), intent(in) :: self
+
+    print *, repeat("<>",50)
+    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
+    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
+    print *, "Active Cycles:      ", numToChar(self % N_active)
+    print *, "Neutron Population: ", numToChar(self % pop)
+    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
+    print *
+    print *, repeat("<>",50)
+  end subroutine printSettingsCritical
+
+  !!
+  !!
+  !!
+  subroutine generateInitialState(self)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    character(100), parameter :: Here =' generateInitialState( criticalKineticPhysicsPackage_class.f90)'
+
+    ! Allocate and initialise particle Dungeons
+    allocate(self % thisCycle)
+    allocate(self % nextCycle)
+    call self % thisCycle % init(10 * self % pop)
+    call self % nextCycle % init(10 * self % pop)
+
+    ! Generate initial surce
+    print *, "GENERATING INITIAL FISSION SOURCE"
+    call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
+    print *, "DONE!"
+
+  end subroutine generateInitialState
 
   !!
   !! Critical calc
@@ -334,8 +579,320 @@ contains
     ! Load elapsed time
     self % time_transport = self % time_transport + elapsed_T
 
-
   end subroutine cyclesCritical
+
+  !!
+  !! Print calculation criticality results to file
+  !!
+  subroutine collectResultsCritical(self)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    type(outputFile)                          :: out
+    character(nameLen)                        :: name
+
+    call out % init(self % outputFormatCritical)
+
+    name = 'seed'
+    call out % printValue(self % pRNG % getSeed(),name)
+
+    name = 'pop'
+    call out % printValue(self % pop,name)
+
+    name = 'Inactive_Cycles'
+    call out % printValue(self % N_inactive,name)
+
+    name = 'Active_Cycles'
+    call out % printValue(self % N_active,name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+
+    name = 'Total_Transport_Time'
+    call out % printValue(self % time_transport,name)
+
+    ! Print Inactive tally
+    name = 'inactive'
+    call out % startBlock(name)
+    call self % inactiveTally % print(out)
+    call out % endBlock()
+
+    ! Print Active attachment
+    ! Is printed into the root block
+    call self % activeAtch % print(out)
+
+    name = 'active'
+    call out % startBlock(name)
+    call self % activeTally % print(out)
+    call out % endBlock()
+
+    call out % writeToFile(self % outputFileCritical)
+
+  end subroutine collectResultsCritical
+
+  !!
+  !! Initialise from individual components and dictionaries for inactive and active tally
+  !!
+  subroutine initKinetic(self)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    class(dictionary),pointer                           :: tempDict
+    integer(shortInt)                                   :: i
+    character(len=10)                                   :: string
+    type(outputFile)                                    :: test_out_kinetic
+    logical(defBool)                                    :: useKineticGeom
+
+    ! Read outputfile path
+    call self % dict % getOrDefault(self % outputFileKinetic,'outputFile','./outputKinetic')
+
+    ! Get output format and verify
+    ! Initialise output file before calculation (so mistake in format will be cought early)
+    call self % dict % getOrDefault(self % outputFormatKinetic, 'outputFormat', 'asciiMATLAB')
+    call test_out_kinetic % init(self % outputFormatKinetic)
+
+    call self % dict % get( self % N_cycles,'cycles')
+    call self % dict % get( self % N_timeBins,'timeSteps')
+    call self % dict % get( self % timeIncrement, 'timeIncrement')
+
+    ! Whether to use combing (default = no)
+    call self % dict % getOrDefault(self % useCombing, 'combing', .false.)
+
+    ! Whether to implement precursors (default = yes)
+    call self % dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
+
+    ! Whether to use analog or implicit kinetic (default = Analog)
+    call self % dict % getOrDefault(self % useForcedPrecursorDecay, 'useForcedPrecursorDecay', .false.)
+
+    ! Build collision operator
+    tempDict => self % dict % getDictPtr('collisionOperatorKinetic')
+    call self % collOpKinetic % init(tempDict)
+
+    ! Build transport operator
+    tempDict => self % dict % getDictPtr('transportOperatorKinetic')
+    call new_transportOperator(self % transOpKinetic, tempDict)
+
+    ! Initialise tally Admin for kinetic
+    tempDict => self % dict % getDictPtr('tally')
+    allocate(self % tally)
+    call self % tally % init(tempDict)
+
+    ! Initialise kinetic geometry
+    tempDict => self % dict % getDictPtr('kineticGeometry')
+    call tempDict % getOrDefault(useKineticGeom, 'enable', .false.)
+    if (useKineticGeom .eqv. .true.) then
+      call tempDict % get(self % kineticGeomTimeSteps, 'timeSteps')
+      allocate(self % kineticGeomDict(size(self % kineticGeomTimeSteps)))
+      do i=1, size(self % kineticGeomTimeSteps)
+        write(string, '(I10)') i
+        self % kineticGeomDict(i) = self % dict % getDictPtr('kineticGeom' // trim(adjustl(string)))
+      end do
+    end if
+
+    ! deallocate dict
+    call self % dict % kill()
+    deallocate(self % dict)
+
+    ! Size particle dungeon
+    allocate(self % currentTime(self % N_cycles))
+    allocate(self % nextTime(self % N_cycles))
+
+    do i = 1, self % N_cycles
+      call self % currentTime(i) % init(100 * self % pop)
+      call self % nextTime(i) % init(100 * self % pop)
+    end do
+
+    ! Size precursor dungeon
+    if (self % usePrecursors) then
+      allocate(self % precursorDungeons(self % N_cycles))
+      do i = 1, self % N_cycles
+        call self % precursorDungeons(i) % init(50 * self % pop)
+      end do
+    end if
+
+    call self % printSettingsKinetic()
+
+  end subroutine initKinetic
+
+  !!
+  !! Print settings of the physics package
+  !!
+  subroutine printSettingsKinetic(self)
+    class(criticalKineticPhysicsPackage), intent(in) :: self
+    real(defReal)                                    :: TStart, Tstop, Tincrement
+
+    TStart = 0.0
+    Tstop = self % timeIncrement * self % N_timeBins
+    Tincrement = self % timeIncrement
+    print *, repeat("<>",50)
+    print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
+    print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
+    print *, "Source batches:                     ", numToChar(self % N_cycles)
+    print *, "Initial Population per batch:       ", numToChar(self % pop)
+    print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
+    print *
+    print *, repeat("<>",50)
+  end subroutine printSettingsKinetic
+
+  subroutine coupleKinetic(self, tally, tallyAtch, N_stepBacks)
+    class(criticalKineticPhysicsPackage), intent(inout) :: self
+    integer(shortInt), intent(in)                       :: N_stepBacks
+    type(tallyAdmin), pointer,intent(inout)             :: tally
+    type(tallyAdmin), pointer,intent(inout)             :: tallyAtch
+    type(particleDungeon), save                         :: buffer
+    integer(shortInt)                                   :: i, n, Nstart, Nend, nParticles, Ncycles, batchIdx
+    integer(shortInt)                                   :: batchTracker
+    class(tallyResult),allocatable                      :: res
+    type(collisionOperator), save                       :: collOpCritical
+    class(transportOperator),allocatable,save           :: transOpCritical
+    type(RNG), target, save                             :: pRNG
+    type(particle), save                                :: neutron
+    real(defReal)                                       :: k_old, k_new
+    real(defReal)                                       :: elapsed_T, end_T, T_toEnd
+    character(100),parameter :: Here ='coupleKinetic (criticalKineticPhysicsPackage_class.f90)'
+    !$omp threadprivate(neutron, buffer, collOpCritical, transOpCritical, pRNG)
+
+    !$omp parallel
+    ! Initialise neutron
+    neutron % geomIdx = self % geomIdx
+
+    ! Create a collision + transport operator which can be made thread private
+    collOpCritical = self % collOpCritical
+    transOpCritical = self % transOpCritical
+    !$omp end parallel
+
+    ! Set initial k-eff
+    k_new = self % keff_0
+
+    Ncycles = self % N_cycles + N_stepBacks * (self % N_cycles - 1)
+    do i = 1, Ncycles
+      
+      batchIdx = int((i - 1) / (self % N_stepBacks + 1)) + 1
+
+      ! Send start of cycle report
+      Nstart = self % thisCycle % popSize()
+      call tally % reportCycleStart(self % thisCycle)
+
+      nParticles = self % thisCycle % popSize()
+
+      !$omp parallel do schedule(dynamic)
+      gen: do n = 1, nParticles
+
+        ! TODO: Further work to ensure reproducibility!
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
+        neutron % pRNG => pRNG
+        call neutron % pRNG % stride(n)
+
+        ! Obtain particle current cycle dungeon
+        call self % thisCycle % copy(neutron, n)
+        neutron % criticalSource = .false.
+
+        bufferLoop: do
+          call self % geom % placeCoord(neutron % coords)
+
+          ! Set k-eff for normalisation in the particle
+          neutron % k_eff = k_new
+
+          ! Save state
+          call neutron % savePreHistory()
+
+          ! Transport particle untill its death
+          history: do
+            call transOpCritical % transport(neutron, tally, buffer, self % nextCycle)
+            if(neutron % isDead) exit history
+
+            if (mod(i-1, self % N_stepBacks + 1) == 0) then
+              neutron % criticalSource = .true.
+              call collOpCritical % collide(neutron, tally, self % precursorDungeons(batchIdx), self % currentTime(batchIdx))
+            else
+              call collOpCritical % collide(neutron, tally, buffer, self % nextCycle)
+            end if
+            if(neutron % isDead) exit history
+          end do history
+
+          ! Clear out buffer
+          if (buffer % isEmpty()) then
+            exit bufferLoop
+          else
+            call buffer % release(neutron)
+          end if
+
+        end do bufferLoop
+
+      end do gen
+      !$omp end parallel do
+
+      ! Update RNG
+      call self % pRNG % stride(self % pop + 1)
+
+      ! Send end of cycle report
+      Nend = self % nextCycle % popSize()
+      call tally % reportCycleEnd(self % nextCycle)
+
+
+      if (mod(i-1, self % N_stepBacks + 1) /= 0) then
+
+        call self % thisCycle % cleanPop()
+
+        if (self % UFS) then
+          call self % ufsField % updateMap()
+        end if
+
+        ! Normalise population
+        call self % nextCycle % normSize(self % pop, pRNG)
+
+        ! Flip cycle dungeons
+        self % temp_dungeon => self % nextCycle
+        self % nextCycle    => self % thisCycle
+        self % thisCycle    => self % temp_dungeon
+
+        ! Obtain estimate of k_eff
+        call tallyAtch % getResult(res,'keff')
+
+        select type(res)
+          class is(keffResult)
+            k_new = res % keff(1)
+
+          class default
+            call fatalError(Here, 'Invalid result has been returned')
+
+        end select
+
+        ! Load new k-eff estimate into next cycle dungeon
+        k_old = self % nextCycle % k_eff
+        self % nextCycle % k_eff = k_new
+
+        ! Used to normalise fission source of the first active cycle
+        self % keff_0 = k_new
+      else
+        batchTracker = batchTracker + 1
+        print *, 'Generated critical batch: ', batchTracker, '/', self % N_cycles
+      end if
+  
+    end do
+
+    ! Normalise neutron and precursor weights to ensure dimension-less
+    call self % normCriticalWgts()
+
+    ! Free memory
+    allocate(self % thisCycle)
+    call self % thisCycle % kill()
+    deallocate(self % thisCycle)
+
+    allocate(self % nextCycle)
+    call self % nextCycle % kill()
+    deallocate(self % nextCycle)
+
+    allocate(self % temp_dungeon)
+    call self % temp_dungeon % kill()
+    deallocate(self % temp_dungeon)
+
+    call self % inactiveTally % kill()
+    call self % inactiveAtch % kill()
+    call self % activeAtch % kill()
+    call self % transOpCritical % kill()
+    if (allocated(self % transOpCritical)) deallocate(self % transOpCritical)
+    call self % collOpCritical % kill()
+
+  end subroutine coupleKinetic
 
   !!
   !!
@@ -677,74 +1234,6 @@ contains
   end subroutine cyclesKinetic
 
   !!
-  !!
-  !!
-  subroutine generateInitialState(self)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    character(100), parameter :: Here =' generateInitialState( criticalKineticPhysicsPackage_class.f90)'
-
-    ! Allocate and initialise particle Dungeons
-    allocate(self % thisCycle)
-    allocate(self % nextCycle)
-    call self % thisCycle % init(10 * self % pop)
-    call self % nextCycle % init(10 * self % pop)
-
-    ! Generate initial surce
-    print *, "GENERATING INITIAL FISSION SOURCE"
-    call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
-    print *, "DONE!"
-
-  end subroutine generateInitialState
-
-  !!
-  !! Print calculation criticality results to file
-  !!
-  subroutine collectResultsCritical(self)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    type(outputFile)                          :: out
-    character(nameLen)                        :: name
-
-    call out % init(self % outputFormatCritical)
-
-    name = 'seed'
-    call out % printValue(self % pRNG % getSeed(),name)
-
-    name = 'pop'
-    call out % printValue(self % pop,name)
-
-    name = 'Inactive_Cycles'
-    call out % printValue(self % N_inactive,name)
-
-    name = 'Active_Cycles'
-    call out % printValue(self % N_active,name)
-
-    call cpu_time(self % CPU_time_end)
-    name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
-
-    name = 'Total_Transport_Time'
-    call out % printValue(self % time_transport,name)
-
-    ! Print Inactive tally
-    name = 'inactive'
-    call out % startBlock(name)
-    call self % inactiveTally % print(out)
-    call out % endBlock()
-
-    ! Print Active attachment
-    ! Is printed into the root block
-    call self % activeAtch % print(out)
-
-    name = 'active'
-    call out % startBlock(name)
-    call self % activeTally % print(out)
-    call out % endBlock()
-
-    call out % writeToFile(self % outputFileCritical)
-
-  end subroutine collectResultsCritical
-
-  !!
   !! Print calculation criticality results to file
   !!
   subroutine collectResultsKinetic(self)
@@ -784,245 +1273,6 @@ contains
   end subroutine collectResultsKinetic
 
   !!
-  !! Initialise from individual components and dictionaries for inactive and active tally
-  !!
-  subroutine init(self, dict)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(inout)          :: dict
-    class(dictionary),pointer                 :: tempDict
-    type(dictionary)                          :: locDict1, locDict2
-    integer(shortInt)                         :: seed_temp, i
-    integer(longInt)                          :: seed
-    character(10)                             :: time
-    character(8)                              :: date
-    character(:), allocatable                 :: string
-    character(nameLen)                        :: nucData, energy, geomName
-    type(outputFile)                          :: test_out_critical, test_out_kinetic
-    type(visualiser)                          :: viz
-    class(field), pointer                     :: field
-    logical(defBool)                          :: useKineticGeom
-    character(100), parameter :: Here ='init (criticalKineticPhysicsPackage_class.f90)'
-
-    call cpu_time(self % CPU_time_start)
-
-    ! Initialise general + criticality calcs first
-
-    ! Read calculation settings
-    call dict % get( self % pop,'pop')
-    call dict % get( self % N_inactive,'inactive')
-    call dict % get( self % N_active,'active')
-    call dict % get( nucData, 'XSdata')
-    call dict % get( energy, 'dataType')
-
-    ! Parallel buffer size
-    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
-
-    ! Process type of data
-    select case(energy)
-      case('ce')
-        self % particleType = P_NEUTRON_CE
-      case default
-        call fatalError(Here,"dataType must be 'mg' or 'ce'.")
-    end select
-
-    ! Read outputfile path
-    call dict % getOrDefault(self % outputFileCritical,'outputFile','./outputCritical')
-
-    ! Get output format and verify
-    ! Initialise output file before calculation (so mistake in format will be cought early)
-    call dict % getOrDefault(self % outputFormatCritical, 'outputFormat', 'asciiMATLAB')
-    call test_out_critical % init(self % outputFormatCritical)
-
-    ! Register timer
-    self % timerMain = registerTimer('transportTime')
-
-    ! Initialise RNG
-    allocate(self % pRNG)
-
-    ! *** It is a bit silly but dictionary cannot store longInt for now
-    !     so seeds are limited to 32 bits (can be -ve)
-    if( dict % isPresent('seed')) then
-      call dict % get(seed_temp,'seed')
-
-    else
-      ! Obtain time string and hash it to obtain random seed
-      call date_and_time(date, time)
-      string = date // time
-      call FNV_1(string,seed_temp)
-
-    end if
-    seed = seed_temp
-    call self % pRNG % init(seed)
-
-    ! Initial k_effective guess
-    call dict % getOrDefault(self % keff_0,'keff_0', ONE)
-
-    ! Read whether to print particle source per cycle
-    call dict % getOrDefault(self % printSource, 'printSource', 0)
-
-    ! Build Nuclear Data
-    call ndReg_init(dict % getDictPtr("nuclearData"))
-
-    ! Build geometry
-    tempDict => dict % getDictPtr('geometry')
-    geomName = 'eigenGeom'
-    call new_geometry(tempDict, geomName)
-    self % geomIdx = gr_geomIdx(geomName)
-    self % geom    => gr_geomPtr(self % geomIdx)
-
-    ! Activate Nuclear Data *** All materials are active
-    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
-    self % nucData => ndReg_get(self % particleType)
-
-    ! Call visualisation
-    if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
-      tempDict => dict % getDictPtr('viz')
-      call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
-      call viz % makeViz()
-      call viz % kill()
-    endif
-
-    ! Read uniform fission site option as a geometry field
-    if (dict % isPresent('uniformFissionSites')) then
-      self % ufs = .true.
-      ! Build and initialise
-      tempDict => dict % getDictPtr('uniformFissionSites')
-      call new_field(tempDict, nameUFS)
-      ! Save UFS field
-      field => gr_fieldPtr(gr_fieldIdx(nameUFS))
-      self % ufsField => uniFissSitesField_TptrCast(field)
-      ! Initialise
-      call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)
-    end if
-
-    ! Read variance reduction option as a geometry field
-    if (dict % isPresent('varianceReduction')) then
-      ! Build and initialise
-      tempDict => dict % getDictPtr('varianceReduction')
-      call new_field(tempDict, nameWW)
-    end if
-
-    ! Build collision operator
-    tempDict => dict % getDictPtr('collisionOperatorCritical')
-    call self % collOpCritical % init(tempDict)
-
-    ! Build transport operator
-    tempDict => dict % getDictPtr('transportOperatorCritical')
-    call new_transportOperator(self % transOpCritical, tempDict)
-
-    ! Initialise active & inactive tally Admins
-    tempDict => dict % getDictPtr('inactiveTally')
-    allocate(self % inactiveTally)
-    call self % inactiveTally % init(tempDict)
-
-    tempDict => dict % getDictPtr('activeTally')
-    allocate(self % activeTally)
-    call self % activeTally % init(tempDict)
-
-    ! Load Initial source
-    if (dict % isPresent('source')) then ! Load definition from file
-      call new_source(self % initSource, dict % getDictPtr('source'), self % geom)
-
-    else
-      call locDict1 % init(3)
-      call locDict1 % store('type', 'fissionSource')
-      call locDict1 % store('data', trim(energy))
-      call new_source(self % initSource, locDict1, self % geom)
-      call locDict1 % kill()
-
-    end if
-
-    ! Initialise active and inactive tally attachments
-    ! Inactive tally attachment
-    call locDict1 % init(2)
-    call locDict2 % init(2)
-
-    call locDict2 % store('type','keffAnalogClerk')
-    call locDict1 % store('keff', locDict2)
-    call locDict1 % store('display',['keff'])
-
-    allocate(self % inactiveAtch)
-    call self % inactiveAtch % init(locDict1)
-
-    call locDict2 % kill()
-    call locDict1 % kill()
-
-    ! Active tally attachment
-    call locDict1 % init(2)
-    call locDict2 % init(2)
-
-    call locDict2 % store('type','keffImplicitClerk')
-    call locDict1 % store('keff', locDict2)
-    call locDict1 % store('display',['keff'])
-
-    allocate(self % activeAtch)
-    call self % activeAtch % init(locDict1)
-
-    call locDict2 % kill()
-    call locDict1 % kill()
-
-    ! Attach attachments to result tallies
-    call self % inactiveTally % push(self % inactiveAtch)
-    call self % activeTally % push(self % activeAtch)
-
-    call dict % get( self % N_stepBacks,'decorrelationCycles')
-
-    call self % printSettingsCritical()
-
-    ! Initialise kinetic calcs
-    ! Read outputfile path
-    call dict % getOrDefault(self % outputFileKinetic,'outputFile','./outputKinetic')
-
-    ! Get output format and verify
-    ! Initialise output file before calculation (so mistake in format will be cought early)
-    call dict % getOrDefault(self % outputFormatKinetic, 'outputFormat', 'asciiMATLAB')
-    call test_out_kinetic % init(self % outputFormatKinetic)
-
-    call dict % get( self % N_cycles,'cycles')
-    call dict % get( self % N_timeBins,'timeSteps')
-    call dict % get( self % timeIncrement, 'timeIncrement')
-
-    ! Whether to use combing (default = no)
-    call dict % getOrDefault(self % useCombing, 'combing', .false.)
-
-    ! Whether to implement precursors (default = yes)
-    call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
-
-    ! Whether to use analog or implicit kinetic (default = Analog)
-    call dict % getOrDefault(self % useForcedPrecursorDecay, 'useForcedPrecursorDecay', .false.)
-
-    ! Build collision operator
-    tempDict => dict % getDictPtr('collisionOperatorKinetic')
-    call self % collOpKinetic % init(tempDict)
-
-    ! Build transport operator
-    tempDict => dict % getDictPtr('transportOperatorKinetic')
-    call new_transportOperator(self % transOpKinetic, tempDict)
-
-    ! Initialise tally Admin for kinetic
-    tempDict => dict % getDictPtr('tally')
-    allocate(self % tally)
-    call self % tally % init(tempDict)
-
-    ! Initialise kinetic geometry
-    tempDict => dict % getDictPtr('kineticGeometry')
-    call tempDict % getOrDefault(useKineticGeom, 'enable', .false.)
-    if (useKineticGeom .eqv. .true.) then
-      call tempDict % get(self % kineticGeomTimeSteps, 'timeSteps')
-      allocate(self % kineticGeomDict(size(self % kineticGeomTimeSteps)))
-      do i=1, size(self % kineticGeomTimeSteps)
-        write(string, '(I0)') i
-        self % kineticGeomDict(i) = dict % getDictPtr('kineticGeom' // string)
-      end do
-    end if
-
-    call self % printSettingsKinetic()
-
-  end subroutine init
-
-  !!
   !! Deallocate memory
   !!
   subroutine kill(self)
@@ -1033,292 +1283,33 @@ contains
   end subroutine kill
 
   !!
-  !! Print settings of the physics package
+  !! Normalise particle weighs pre-kinetic calculations
   !!
-  subroutine printSettingsCritical(self)
-    class(criticalKineticPhysicsPackage), intent(in) :: self
-
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
-    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
-    print *, "Active Cycles:      ", numToChar(self % N_active)
-    print *, "Neutron Population: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
-  end subroutine printSettingsCritical
-
-  !!
-  !! Print settings of the physics package
-  !!
-  subroutine printSettingsKinetic(self)
-    class(criticalKineticPhysicsPackage), intent(in) :: self
-    real(defReal)                                    :: TStart, Tstop, Tincrement
-
-    TStart = 0.0
-    Tstop = self % timeIncrement * self % N_timeBins
-    Tincrement = self % timeIncrement
-    print *, repeat("<>",50)
-    print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
-    print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
-    print *, "Source batches:                     ", numToChar(self % N_cycles)
-    print *, "Initial Population per batch:       ", numToChar(self % pop)
-    print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
-  end subroutine printSettingsKinetic
-
-  !!
-  !! Initialise Kinetic calcs
-  !!
-  subroutine coupleCriticalKinetic(self)
+  subroutine normCriticalWgts(self)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
     integer(shortInt)                                   :: i
+    real(defReal), save                                 :: nWgt, pWgt, totWgt, normFactor
+    !$omp threadprivate(nWgt, pWgt, totWgt, normFactor)
 
-    ! Size particle dungeon
-    allocate(self % currentTime(self % N_cycles))
-    allocate(self % nextTime(self % N_cycles))
-
+    !$omp parallel do schedule(dynamic)
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(100 * self % pop)
-      call self % nextTime(i) % init(100 * self % pop)
-    end do
-
-    ! Size precursor dungeon
-    if (self % usePrecursors) then
-      allocate(self % precursorDungeons(self % N_cycles))
-      do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(50 * self % pop)
-      end do
-    end if
-
-  end subroutine coupleCriticalKinetic
-
-  !!
-  !! Initialise Kinetic calcs
-  !!
-  subroutine switchToKinetic(self)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    integer(shortInt)                                   :: i, n, j
-    real(defReal)                                       :: wgtaccumulator, normFactor
-    !type(particle), save                                :: neutronTemp, precursorTemp
-    type(particle)                                      :: neutronTemp, precursorTemp
-    !remove!$omp threadprivate(neutronTemp, precursorTemp)
-
-    !Normalise particle weighs pre kinetic
-    do i = 1, self % N_cycles
-      wgtaccumulator = ZERO
       if (self % usePrecursors .eqv. .true.) then
-        n = max(self % currentTime(i) % popSize(), self % precursorDungeons(i) % popSize())
-      else
-        n = self % currentTime(i) % popSize()
+        nWgt = self % currentTime(i) % popWeight()
+        pWgt = self % precursorDungeons(i) % popWeight()
+        totWgt = nWgt + pWgt
+        normFactor = totWgt / (self % precursorDungeons(i) % popSize() + self % currentTime(i) % popSize())
+        call self % currentTime(i) % scaleWeight(ONE / normFactor)
+        call self % precursorDungeons(i) % scaleWeight(ONE / normFactor)
+      else 
+        nWgt = self % currentTime(i) % popWeight()
+        totWgt = nWgt
+        normFactor = totWgt / (self % currentTime(i) % popSize())
+        call self % currentTime(i) % scaleWeight(ONE / normFactor)
       end if
-
-      !remove!$omp parallel do schedule(dynamic)
-      do j = 1,n
-        if (j <= self % currentTime(i) % popSize()) then
-          call self % currentTime(i) % copy(neutronTemp, j)
-          !remove!$omp critical
-          wgtaccumulator = wgtaccumulator + neutronTemp % w
-          !remove!$omp end critical
-        end if
-
-        if (self % usePrecursors .eqv. .true.) then
-          if (j <= self % precursorDungeons(i) % popSize()) then
-            call self % precursorDungeons(i) % copy(precursorTemp, j)
-        !    !remove!$omp critical
-            wgtaccumulator = wgtaccumulator + precursorTemp % w
-        !    !remove!$omp end critical
-          end if
-        end if
-      end do
-      !remove!$omp end parallel do
-
-      if (self % usePrecursors .eqv. .true.) then
-        normFactor = wgtaccumulator / (self % precursorDungeons(i) % popSize() + self % currentTime(i) % popSize())
-      else
-        normFactor = wgtaccumulator / (self % currentTime(i) % popSize())
-      end if
-
-      !remove!$omp parallel do schedule(dynamic)
-      do j = 1,n
-
-        if (j <= self % currentTime(i) % popSize()) then
-          call self % currentTime(i) % copy(neutronTemp, j)
-          neutronTemp % w = neutronTemp % w / normFactor
-          call self % currentTime(i) % replace(neutronTemp, j)
-        end if
-
-        if (self % usePrecursors .eqv. .true.) then
-          if (j <= self % precursorDungeons(i) % popSize()) then
-            call self % precursorDungeons(i) % copy(precursorTemp, j)
-            precursorTemp % w = precursorTemp % w / normFactor
-            call self % precursorDungeons(i) % replace(precursorTemp, j)
-          end if
-        end if
-      end do
-      !remove!$omp end parallel do
     end do
+    !$omp end parallel do
 
-    allocate(self % thisCycle)
-    call self % thisCycle % kill()
-    deallocate(self % thisCycle)
-
-    allocate(self % nextCycle)
-    call self % nextCycle % kill()
-    deallocate(self % nextCycle)
-
-    allocate(self % temp_dungeon)
-    call self % temp_dungeon % kill()
-    deallocate(self % temp_dungeon)
-
-    call self % inactiveTally % kill()
-    call self % inactiveAtch % kill()
-    call self % activeAtch % kill()
-    call self % transOpCritical % kill()
-    if (allocated(self % transOpCritical)) deallocate(self % transOpCritical)
-    call self % collOpCritical % kill()
-
-  end subroutine switchToKinetic
-
-  !!
-  !! Populate critical source for kinetic calc
-  !!
-  subroutine populateCriticalSources(self, tally, tallyAtch, N_stepBacks)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    integer(shortInt), intent(in)                       :: N_stepBacks
-    type(tallyAdmin), pointer,intent(inout)             :: tally
-    type(tallyAdmin), pointer,intent(inout)             :: tallyAtch
-    type(particleDungeon), save                         :: buffer
-    integer(shortInt)                                   :: i, n, Nstart, Nend, nParticles, Ncycles, batchIdx
-    class(tallyResult),allocatable                      :: res
-    type(collisionOperator), save                       :: collOpCritical
-    class(transportOperator),allocatable,save           :: transOpCritical
-    type(RNG), target, save                             :: pRNG
-    type(particle), save                                :: neutron
-    real(defReal)                                       :: k_old, k_new
-    real(defReal)                                       :: elapsed_T, end_T, T_toEnd
-    character(100),parameter :: Here ='populateCriticalSources (criticalKineticPhysicsPackage_class.f90)'
-    !$omp threadprivate(neutron, buffer, collOpCritical, transOpCritical, pRNG)
-
-    !$omp parallel
-    ! Initialise neutron
-    neutron % geomIdx = self % geomIdx
-
-    ! Create a collision + transport operator which can be made thread private
-    collOpCritical = self % collOpCritical
-    transOpCritical = self % transOpCritical
-    !$omp end parallel
-
-    ! Set initial k-eff
-    k_new = self % keff_0
-
-    Ncycles = self % N_cycles + N_stepBacks * (self % N_cycles - 1)
-    do i = 1, Ncycles
-      
-      batchIdx = int((i - 1) / (self % N_stepBacks + 1)) + 1
-
-      ! Send start of cycle report
-      Nstart = self % thisCycle % popSize()
-      call tally % reportCycleStart(self % thisCycle)
-
-      nParticles = self % thisCycle % popSize()
-
-      !$omp parallel do schedule(dynamic)
-      gen: do n = 1, nParticles
-
-        ! TODO: Further work to ensure reproducibility!
-        ! Create RNG which can be thread private
-        pRNG = self % pRNG
-        neutron % pRNG => pRNG
-        call neutron % pRNG % stride(n)
-
-        ! Obtain particle current cycle dungeon
-        call self % thisCycle % copy(neutron, n)
-        neutron % criticalSource = .false.
-
-        bufferLoop: do
-          call self % geom % placeCoord(neutron % coords)
-
-          ! Set k-eff for normalisation in the particle
-          neutron % k_eff = k_new
-
-          ! Save state
-          call neutron % savePreHistory()
-
-          ! Transport particle untill its death
-          history: do
-            call transOpCritical % transport(neutron, tally, buffer, self % nextCycle)
-            if(neutron % isDead) exit history
-
-            if (mod(i-1, self % N_stepBacks + 1) == 0) then
-              neutron % criticalSource = .true.
-              call collOpCritical % collide(neutron, tally, self % precursorDungeons(batchIdx), self % currentTime(batchIdx))
-            else
-              call collOpCritical % collide(neutron, tally, buffer, self % nextCycle)
-            end if
-            if(neutron % isDead) exit history
-          end do history
-
-          ! Clear out buffer
-          if (buffer % isEmpty()) then
-            exit bufferLoop
-          else
-            call buffer % release(neutron)
-          end if
-
-        end do bufferLoop
-
-      end do gen
-      !$omp end parallel do
-
-      ! Update RNG
-      call self % pRNG % stride(self % pop + 1)
-
-      ! Send end of cycle report
-      Nend = self % nextCycle % popSize()
-      call tally % reportCycleEnd(self % nextCycle)
-
-
-      if (mod(i-1, self % N_stepBacks + 1) /= 0) then
-
-        call self % thisCycle % cleanPop()
-
-        if (self % UFS) then
-          call self % ufsField % updateMap()
-        end if
-
-        ! Normalise population
-        call self % nextCycle % normSize(self % pop, pRNG)
-
-        ! Flip cycle dungeons
-        self % temp_dungeon => self % nextCycle
-        self % nextCycle    => self % thisCycle
-        self % thisCycle    => self % temp_dungeon
-
-        ! Obtain estimate of k_eff
-        call tallyAtch % getResult(res,'keff')
-
-        select type(res)
-          class is(keffResult)
-            k_new = res % keff(1)
-
-          class default
-            call fatalError(Here, 'Invalid result has been returned')
-
-        end select
-
-        ! Load new k-eff estimate into next cycle dungeon
-        k_old = self % nextCycle % k_eff
-        self % nextCycle % k_eff = k_new
-
-        ! Used to normalise fission source of the first active cycle
-        self % keff_0 = k_new
-      end if
-  
-  end do
-
-  end subroutine populateCriticalSources
+  end subroutine normCriticalWgts
 
   subroutine russianRoulette(self, p, avWgt)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
@@ -1333,10 +1324,4 @@ contains
 
   end subroutine russianRoulette
 
-  subroutine initKineticGeom(self, dict)
-    class(criticalKineticPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(in)                       :: dict
-
-
-  end subroutine initKineticGeom
 end module criticalKineticPhysicsPackage_class

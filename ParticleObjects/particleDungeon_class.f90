@@ -85,6 +85,7 @@ module particleDungeon_class
     !! Misc Procedures
     procedure  :: isEmpty
     procedure  :: normWeight
+    procedure  :: scaleWeight
     procedure  :: normSize
     procedure  :: combing
     procedure  :: cleanPop
@@ -394,6 +395,17 @@ contains
     self % prisoners % wgt = self % prisoners % wgt * factor
 
   end subroutine normWeight
+
+  !!
+  !! scale total weight of the particles in the dungeon by the provided value
+  !!
+  subroutine scaleWeight(self,factor)
+    class(particleDungeon), intent(inout) :: self
+    real(defReal), intent(in)             :: factor
+
+    self % prisoners % wgt = self % prisoners % wgt * factor
+
+  end subroutine scaleWeight
 
   !!
   !! Normalise total number of particles in the dungeon to match the provided number.
