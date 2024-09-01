@@ -1,34 +1,45 @@
-type timeDependentPhysicsPackage;
+type criticalKineticPhysicsPackage;
 
-pop      10000; //10000
+pop      7000; //1000
+
+
 timeSteps   500; //500
+
+active   500; //500
+inactive 200; //200
 XSdata   ce;
 dataType ce;
-timeIncrement 8.E-10; //8.E-10
-cycles 100; //100
-buffer 300000;
-combing 0; //toggle on or off
-//precursors 0; //toggle on or off
-// need to implement number of batches!! and compute statistics thereof, look at fixed source
+
+timeIncrement 8.E-10; 
+cycles 100; //200
+buffer 100000;
+combing 1;
+precursors 0;
+decorrelationCycles 50; //50
+
+kineticGeometry{enable 0; timeSteps (8); }
 
 outputFormat asciiJSON;
-collisionOperator { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20;}}
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0;}} 
 
-transportOperator { type transportOperatorKineticDT; //currently will only support this
+transportOperatorCritical { type transportOperatorDT; //currently will only support this
                   }
 
-source {
-  type pointSource;
-  r (0.0 0.0 0.0);
-  //dir (0.0 0.0 0.0); no dir, isentropic
-  particle neutron;
-  E 1.0;
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0;}} //precursors 1;
+
+transportOperatorKinetic { type transportOperatorKineticDT; //currently will only support this
 }
 
+//source {
+//  type pointSource;
+//  r (0.0 0.0 0.0);
+  //dir (0.0 0.0 0.0); no dir, isentropic
+//  particle neutron;
+//  E 1.0;
+//}
+
 tally  {
-  //bootstrap 100;
-  //timeSteps  70;
-  //modified 1;
+
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     map { type multiMap; maps (map1 map2);
     map1 { type timeMap; grid lin; min 0.0; max 400E-09; N 500;} // max 400E-09; N 500;} 
@@ -38,6 +49,21 @@ tally  {
     //handleVirtual 1;
   }
   }
+
+inactiveTally {
+              }
+
+activeTally  {
+                display (k_eff);
+                //norm fiss;
+                //normVal 100.0;
+                k_eff { type keffAnalogClerk;}
+                //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                //flux { type collisionClerk;
+                //        map { type energyMap; grid log; min 0.001; max 20; N 300;}
+                //        response (flux); flux {type fluxResponse;}
+                //      }
+        }
 
 geometry {
     type geometryStd;
@@ -87,12 +113,6 @@ nuclearData {
         92234.03 0.0000026438; 
         92235.03 0.0003461000; 
         92238.03 0.0477210000;
-
-
-        //92234.03 0.018;
-        //13027.03 0.018;
-
-
         }
 
     }

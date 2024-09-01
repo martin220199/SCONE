@@ -695,15 +695,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(100 * self % pop)
-      call self % nextTime(i) % init(100 * self % pop)
+      call self % currentTime(i) % init(50 * self % pop)
+      call self % nextTime(i) % init(50 * self % pop)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(50 * self % pop)
+        call self % precursorDungeons(i) % init(10 * self % pop)
       end do
     end if
 
@@ -957,7 +957,11 @@ contains
         nParticles = self % currentTime(i) % popSize()
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          nPrecuCount = self % precursorDungeons(i) % popSize() + 1
+          if (t == 1) then
+            nPrecuCount = 1
+          else 
+            nPrecuCount = self % precursorDungeons(i) % popSize() + 1
+          end if
         end if
 
         call tally % reportCycleStart(self % currentTime(i))

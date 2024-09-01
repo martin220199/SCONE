@@ -283,7 +283,6 @@ contains
       pTemp % r   = r
       pTemp % dir = dir
       pTemp % E   = E_out
-      pTemp % wgt = wgt
       pTemp % time = pTemp % time + decayT
       pTemp % type = P_PRECURSOR
 
