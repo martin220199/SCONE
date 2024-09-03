@@ -108,6 +108,7 @@ module criticalKineticPhysicsPackage_class
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: N_timeBins
     real(defReal)      :: timeIncrement
+    logical(defBool)   :: criticalWgtNorm
     logical(defBool)   :: useCombing
     logical(defBool)   :: usePrecursors
     logical(defBool)   :: useForcedPrecursorDecay
@@ -652,6 +653,9 @@ contains
     call self % dict % get( self % N_timeBins,'timeSteps')
     call self % dict % get( self % timeIncrement, 'timeIncrement')
 
+    ! Whether to use implicit for weight normalisation (default = no)
+    call self % dict % getOrDefault(self % criticalWgtNorm, 'criticalWgtNorm', .false.)
+
     ! Whether to use combing (default = no)
     call self % dict % getOrDefault(self % useCombing, 'combing', .false.)
 
@@ -695,15 +699,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(50 * self % pop)
-      call self % nextTime(i) % init(50 * self % pop)
+      call self % currentTime(i) % init(100 * self % pop)
+      call self % nextTime(i) % init(100 * self % pop)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(10 * self % pop)
+        call self % precursorDungeons(i) % init(50 * self % pop)
       end do
     end if
 
@@ -869,8 +873,8 @@ contains
   
     end do
 
-    ! Normalise neutron and precursor weights to ensure dimension-less
-    call self % normCriticalWgts()
+    ! Normalise neutron and precursor weights to ensure dimension-less (only if implicit)
+    if (self % criticalWgtNorm .eqv. .true.) call self % normCriticalWgts()
 
     ! Free memory
     allocate(self % thisCycle)
@@ -901,14 +905,15 @@ contains
     class(criticalKineticPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)             :: tally
     integer(shortInt), intent(in)                       :: N_timeBins, N_cycles
-    integer(shortInt)                                   :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
+    integer(shortInt)                                   :: i, t, n
+    integer(shortInt)                                   :: nParticles, nDelayedParticles, nPrecuCount
     type(particle), save                                :: p, p_d
     type(particleDungeon), save                         :: buffer
     type(collisionOperator), save                       :: collOpKinetic
     class(transportOperator),allocatable,save           :: transOpKinetic
     type(RNG), target, save                             :: pRNG
     real(defReal) , save                                :: decay_T
-    real(defReal)                                       :: elapsed_T, end_T, T_toEnd, w_d
+    real(defReal)                                       :: elapsed_T, end_T, T_toEnd
     real(defReal), intent(in)                           :: timeIncrement
     character(nameLen)                                  :: geomName
     integer(shortInt), dimension(:), allocatable        :: kineticGeomLocs
@@ -939,21 +944,24 @@ contains
     do t = 1, N_timeBins
 
       ! Handle kinetic geometry
-      if (allocated(self % kineticGeomTimeSteps) .and. ANY(self % kineticGeomTimeSteps == t)) then
-        call self % geom % kill()
-        call killGeom()
-        kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
-        kineticGeomIdx = kineticGeomLocs(1)
-        geomName = 'kineticGeom'
-        call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
-        self % geomIdx = gr_geomIdx(geomName)
-        self % geom    => gr_geomPtr(self % geomIdx)
-        p % geomIdx = self % geomIdx
+      if (allocated(self % kineticGeomTimeSteps)) then
+        if (ANY(self % kineticGeomTimeSteps == t)) then
+          call self % geom % kill()
+          call killGeom()
+          kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
+          kineticGeomIdx = kineticGeomLocs(1)
+          geomName = 'kineticGeom'
+          call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
+          self % geomIdx = gr_geomIdx(geomName)
+          self % geom    => gr_geomPtr(self % geomIdx)
+          p % geomIdx = self % geomIdx
+        end if
       end if
 
       do i = 1, N_cycles
 
-        if ((t == 1)) call self % currentTime(i) % combing(self % pop, pRNG)
+        if ((t == 1) .and. (self % useCombing)) call self % currentTime(i) % combing(self % pop, pRNG)
+
         nParticles = self % currentTime(i) % popSize()
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
@@ -1014,7 +1022,7 @@ contains
         end do gen
         !$omp end parallel do
 
-        if (self % usePrecursors .and. (self % useForcedPrecursorDecay .eqv. .false.)) then
+        if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .false.)) then
 
           ! Analog delayed neutron handling
           nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -1093,7 +1101,7 @@ contains
               decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
 
               ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
+              p % w = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
 
               pRNG = self % pRNG
               p % pRNG => pRNG
@@ -1102,7 +1110,6 @@ contains
               ! Update parameters
               p % type = P_NEUTRON
               p % time = decay_T
-              p % w = w_d
               p % fate = no_FATE
 
               bufferLoopDelayedImp: do
@@ -1174,7 +1181,7 @@ contains
               decay_T = timeIncrement * (t+pRNG % get())
 
               ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
+              p % w = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
 
               pRNG = self % pRNG
               p % pRNG => pRNG
@@ -1183,7 +1190,6 @@ contains
               ! Update parameters
               p % type = P_NEUTRON
               p % time = decay_T
-              p % w = w_d
               p % fate = no_FATE
 
               ! Add to current dungeon

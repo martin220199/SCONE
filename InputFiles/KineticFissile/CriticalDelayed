@@ -16,9 +16,9 @@ outputFormat asciiJSON;
 
 
 
-collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 1;}}
+collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 0;}}
 
-transportOperator { type transportOperatorDT;
+transportOperator { type transportOperatorKineticDT;
                   }
 
 source {
@@ -72,7 +72,7 @@ nuclearData {
       temp 12345;
       composition {
       1001.03    2.01892E-05;
-      92235.03   9.3472E-09;	  }
+      92235.03   9.368E-09;	  }
     }
 
 }

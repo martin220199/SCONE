@@ -11,8 +11,11 @@ combing 0; //toggle on or off
 //precursors 0; //toggle on or off
 // need to implement number of batches!! and compute statistics thereof, look at fixed source
 
+precursors 1;
+useForcedPrecursorDecay 1;
+
 outputFormat asciiJSON;
-collisionOperator { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20;}}
+collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
 
 transportOperator { type transportOperatorKineticDT; //currently will only support this
                   }

@@ -255,15 +255,12 @@ contains
     else if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .true.) .and. (self % usePrecursors .eqv. .true.)) then
 
       r   = p % rGlobal()
-      call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
-      sig_tot    = microXSs % total
-      sig_fiss   = microXSs % fission
 
       ! Get fission Reaction
       fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
-      call fission % sampleDelayed(mu, phi, E_out, p % E, p % pRNG, lambda)
+      call fission % sampleDelayedCritical(mu, phi, E_out, p % E, p % pRNG, lambda)
       dir = rotateVector(p % dirGlobal(), mu, phi)
       call fission % samplePrecursorDecayT(lambda, p % pRNG, decayT)
 
@@ -272,18 +269,16 @@ contains
       ! Copy extra detail from parent particle (i.e. time, flags ect.)
       pTemp       = p
 
-      ! Handle Precursors
+      ! Handle Precursor
       call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
-
       pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
-                        (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda) * &
-                         fission % getDelayedWeight(decayT, lambda)
+                        (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda)
 
       ! Overwrite position, direction, energy and weight
       pTemp % r   = r
       pTemp % dir = dir
       pTemp % E   = E_out
-      pTemp % time = pTemp % time + decayT
+      pTemp % time = decayT
       pTemp % type = P_PRECURSOR
 
       call thisCycle % detain(pTemp)

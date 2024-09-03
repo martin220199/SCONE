@@ -1,18 +1,22 @@
 type criticalKineticPhysicsPackage;
 
-pop      1000; //200000, 5000
+pop      2000; //200000, 5000
 timeSteps   200; 
 XSdata   ce;
 dataType ce;
 timeIncrement 0.1;
-cycles 20; //100
+cycles 100; //100
 buffer 1000;
-active   200; //500
+active   500; //500
 inactive 200; //200
 
-decorrelationCycles 10; //50
-
+combing 1;
 precursors 1;
+useForcedPrecursorDecay 0;
+criticalWgtNorm 0;
+
+decorrelationCycles 50; //50
+
 
 kineticGeometry{enable 0; timeSteps (8); }
 
@@ -22,7 +26,7 @@ collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; max
 transportOperatorCritical { type transportOperatorDT; //currently will only support this
                   }
 
-collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} //precursors 1;
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; branchless 0;}} //precursors 1;
 
 transportOperatorKinetic { type transportOperatorKineticDT; //currently will only support this
 }
@@ -89,7 +93,7 @@ nuclearData {
       temp 12345;
       composition {
       1001.03    2.01892E-05;
-      92235.03   9.3472E-09;	  }
+      92235.03   9.368E-09;	  } //92235.03   9.3472E-09
       }
 
 }

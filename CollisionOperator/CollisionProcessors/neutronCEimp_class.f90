@@ -8,7 +8,7 @@ module neutronCEimp_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -105,6 +105,8 @@ module neutronCEimp_class
     real(defReal) :: avWgt
     real(defReal) :: thresh_E
     real(defReal) :: thresh_A
+    logical(defBool) :: usePrecursors
+
     ! Variance reduction options
     logical(defBool) :: weightWindows
     logical(defBool) :: splitting
@@ -203,6 +205,9 @@ contains
       self % weightWindowsMap => weightWindowsField_TptrCast(gr_fieldPtr(idx))
     end if
 
+    ! Whether to implement precursors (default = yes)
+    call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
+
   end subroutine init
 
   !!
@@ -271,10 +276,11 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi, decayT, lambda
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
-                                            sig_scatter, totalElastic
+                                            sig_scatter, totalElastic, sig_fiss
     logical(defBool)                     :: fiss_and_implicit
+    type(neutronMacroXSs)                :: macroXSs
     character(100),parameter             :: Here = 'implicit (neutronCEimp_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -337,17 +343,13 @@ contains
     else if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .true.) .and. (self % usePrecursors .eqv. .true.)) then
 
       r   = p % rGlobal()
-      call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
-      sig_tot    = microXSs % total
-      sig_fiss   = microXSs % fission
 
       ! Get fission Reaction
       fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
-      call fission % sampleDelayed(mu, phi, E_out, p % E, p % pRNG, lambda)
+      call fission % sampleDelayedCritical(mu, phi, E_out, p % E, p % pRNG, lambda)
       dir = rotateVector(p % dirGlobal(), mu, phi)
-      call fission % samplePrecursorDecayT(lambda, p % pRNG, decayT)
 
       if (E_out > self % maxE) E_out = self % maxE
 
@@ -356,16 +358,15 @@ contains
 
       ! Handle Precursors
       call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
-
       pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
-                        (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda)
+                        (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda) 
 
       ! Overwrite position, direction, energy and weight
       pTemp % r   = r
       pTemp % dir = dir
       pTemp % E   = E_out
       pTemp % type = P_PRECURSOR
-      pTemp % time = p % time
+      pTemp % time = ZERO
       pTemp % lambda = lambda
 
       call thisCycle % detain(pTemp)
