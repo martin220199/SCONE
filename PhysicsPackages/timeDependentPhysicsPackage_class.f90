@@ -54,6 +54,9 @@ module timeDependentPhysicsPackage_class
   use transportOperatorFactory_func,  only : new_transportOperator
   use sourceFactory_func,             only : new_source
 
+  ! Visualisation
+  use visualiser_class,               only : visualiser
+
   implicit none
   private
 
@@ -142,7 +145,7 @@ contains
     real(defReal), intent(inout)                      :: simTime
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
-    type(particle), save                              :: p, p_d
+    type(particle), save                              :: p
     type(particleDungeon), save                       :: buffer
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
@@ -151,7 +154,7 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd, w_d
     real(defReal), intent(in)                         :: timeIncrement
     character(100), parameter:: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, decay_T)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, decay_T)
 
     !$omp parallel
     ! Create particle buffer
@@ -555,15 +558,16 @@ contains
   subroutine init(self, dict)
     class(timeDependentPhysicsPackage), intent(inout):: self
     class(dictionary), intent(inout)                :: dict
-    class(dictionary), pointer                       :: tempDict
-    integer(shortInt)                               :: seed_temp, i
+    class(dictionary),pointer                       :: tempDict
+    integer(shortInt)                               :: seed_temp, i, bankSize
     integer(longInt)                                :: seed
     character(10)                                   :: time
     character(8)                                    :: date
     character(:), allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    character(100), parameter:: Here ='init (timeDependentPhysicsPackage_class.f90)'
+    type(visualiser)                                :: viz
+    character(100), parameter :: Here ='init (timeDependentPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
 
@@ -643,6 +647,16 @@ contains
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
 
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
+      tempDict => dict % getDictPtr('viz')
+      call viz % init(self % geom, tempDict)
+      print *, "Constructing visualisation"
+      call viz % makeViz()
+      call viz % kill()
+    endif
+
     ! Read particle source definition
     tempDict => dict % getDictPtr('source')
     call new_source(self % fixedSource, tempDict, self % geom)
@@ -651,7 +665,7 @@ contains
       tempDict => dict % getDictPtr('poissonSource')
       call new_source(self % poissonSource, tempDict, self % geom)
     end if
-    
+
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
@@ -670,16 +684,19 @@ contains
     allocate(self % currentTime(self % N_cycles))
     allocate(self % nextTime(self % N_cycles))
 
+    ! Get size of dungeon from input to save memory
+    call dict % getOrDefault(bankSize, 'bankSize', 10)
+
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % bufferSize)
-      call self % nextTime(i) % init(self % bufferSize)
+      call self % currentTime(i) % init(bankSize * self % pop)
+      call self % nextTime(i) % init(bankSize * self % pop)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(self % bufferSize)
+        call self % precursorDungeons(i) % init(bankSize * self % pop)
       end do
     end if
 

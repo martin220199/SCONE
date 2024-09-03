@@ -58,6 +58,8 @@ module pointSource_class
     private
     real(defReal),dimension(3)                :: r   = ZERO
     real(defReal),dimension(3)                :: dir = ZERO
+    real(defReal)                             :: time
+    real(defReal)                             :: deltaT
     real(defReal)                             :: E   = ZERO
     integer(shortInt)                         :: G   = 0
     real(defReal), dimension(:), allocatable  :: probG
@@ -146,13 +148,18 @@ contains
     call dict % getOrDefault(self % isPoisson, 'poissonSource', .false.)
     call dict % getOrDefault(self % finalPoissonTime, 'finalTime', -ONE)
     call dict % getOrDefault(self % poissonIntensity, 'poissonIntensity', -ONE)
-    if ((self % isPoisson) .and. (self % poissonIntensity == -ONE)) then 
+    if ((self % isPoisson) .and. (self % poissonIntensity == -ONE)) then
       call fatalError(Here, 'Poisson Source requires intensity')
     else if ((self % isPoisson) .and. (self % finalPoissonTime == -ONE)) then
       call fatalError(Here, 'Poisson Source final time needs to be defined')
     else if ((.not. self % isPoisson) .and. ((self % poissonIntensity /= -ONE) .or. (self % finalPoissonTime /= -ONE))) then
       call fatalError(Here, 'Poisson source needs to be defined')
     end if
+
+    ! Initial time and potential (uniform) time interval
+    call dict % getOrDefault(self % time, 'time', ZERO)
+    call dict % getOrDefault(self % deltaT, 'deltaT', ZERO)
+    if (self % deltaT < self % time) call fatalError(Here, 'Negative time interval')
 
     ! Get particle energy/group
     isCE = dict % isPresent('E')
@@ -293,15 +300,22 @@ contains
     class(RNG), intent(inout)           :: rand
     real(defReal)                       :: r, nextTime
 
-    if ((self % isPoisson)) then
+    if (self % deltaT /= ZERO) then
+      p % time = (self % deltaT - self % time) * rand % get()
+
+    elseif ((self % isPoisson)) then
       r = rand % get()
       nextTime = self % poissonTime - ONE / self % poissonIntensity * log(r)
       p % time = nextTime
       self % poissonTime = nextTime
       if (nextTime > self % finalPoissonTime) p % isDead = .true.
+
     else
-      p % time = ZERO
+      p % time = self % time
+
     end if
+
+    p % timeBirth = p % time
 
   end subroutine sampleTime
 
