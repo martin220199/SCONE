@@ -60,6 +60,7 @@ module collisionOperator_class
 
     ! Use procedures
     procedure :: collide
+    procedure :: decayP
 
 
   end type collisionOperator
@@ -140,5 +141,43 @@ contains
     call self % physicsTable(idx) % proc % collide(p, tally, thisCycle, nextCycle)
 
   end subroutine collide
+
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decayP(self, p, tally, thisCycle, nextCycle)
+    class(collisionOperator), intent(inout) :: self
+    class(particle), intent(inout)           :: p
+    type(tallyAdmin), intent(inout)          :: tally
+    class(particleDungeon),intent(inout)     :: thisCycle
+    class(particleDungeon),intent(inout)     :: nextCycle
+    integer(shortInt)                        :: idx, procType
+    character(100), parameter :: Here = 'decay (collisionOperator_class.f90)'
+
+    p % type = P_NEUTRON
+    ! Select processing index with ternary expression
+    if(p % isMG) then
+      procType = P_MG
+    else
+      procType = P_CE
+    end if
+
+    ! Varify that type is valid
+    if( p % type <= 0 .or. p % type > MAX_P_ID) then
+      call fatalError(Here, 'Type of the particle is invalid: ' // numToChar(p % type))
+    end if
+
+    ! Get index
+    idx = self % lookupTable(procType, p % type)
+
+    ! Verify index
+    if(idx == UNDEF_PHYSICS) then
+      call fatalError(Here,'Physics is not defined for particle of type : '// p % typeToChar())
+    end if
+
+    ! Call physics
+    call self % physicsTable(idx) % proc % decayP(p, tally, thisCycle, nextCycle)
+
+  end subroutine decayP
     
 end module collisionOperator_class

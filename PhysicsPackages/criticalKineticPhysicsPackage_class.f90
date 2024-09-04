@@ -1098,10 +1098,16 @@ contains
               ! Force decay at this time interval if generated in this time interval
               call self % precursorDungeons(i) % copy(p, n)
 
-              decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
+              p_d = p
 
-              ! Weight adjustment
-              p % w = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
+              decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
+              p % lambda = decay_T !Lambda not needed for grouped precursor so used to store decay time instead
+              p % deltaT = t*timeIncrement - p % time
+              p % timeMax = t*timeIncrement
+              call self % geom % placeCoord(p % coords)
+              call collOpKinetic % decayP(p, tally, buffer, buffer)
+              p_d % w_timed = p % w_timed
+              call self % precursorDungeons(i) % replace(p_d, n)
 
               pRNG = self % pRNG
               p % pRNG => pRNG
@@ -1111,6 +1117,7 @@ contains
               p % type = P_NEUTRON
               p % time = decay_T
               p % fate = no_FATE
+              p % criticalSource = .false.
 
               bufferLoopDelayedImp: do
 
@@ -1171,17 +1178,24 @@ contains
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
+            ! pass to next time interval for Forced Precursor Decay
             !$omp parallel do schedule(dynamic)
             genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
 
               call self % precursorDungeons(i) % copy(p, n)
+
+              p_d = p
 
               ! Sample decay time
               decay_T = timeIncrement * (t+pRNG % get())
 
-              ! Weight adjustment
-              p % w = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
+              p % lambda = decay_T
+              p % deltaT = timeIncrement
+              call self % geom % placeCoord(p % coords)
+              p % timeMax = (t + 1)*timeIncrement
+              call collOpKinetic % decayP(p, tally, buffer, buffer)
+              p_d % w_timed = p % w_timed
+              call self % precursorDungeons(i) % replace(p_d, n)
 
               pRNG = self % pRNG
               p % pRNG => pRNG
@@ -1191,6 +1205,7 @@ contains
               p % type = P_NEUTRON
               p % time = decay_T
               p % fate = no_FATE
+              p % criticalSource = .false.
 
               ! Add to current dungeon
               call self % nextTime(i) % detain(p)

@@ -129,6 +129,7 @@ module neutronCEimp_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: decay
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -246,6 +247,7 @@ contains
       pTemp % wgt = pTemp % wgt / (p % getSpeed() * macroXSs % total)
       pTemp % time = ZERO
       pTemp % fate = NO_FATE
+      pTemp % criticalSource = .false.
       call nextCycle % detain(pTemp)
     end if
 
@@ -276,7 +278,7 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, rand1, E_out, mu, phi, decayT, lambda
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic, sig_fiss
     logical(defBool)                     :: fiss_and_implicit
@@ -334,6 +336,7 @@ contains
         pTemp % dir = dir
         pTemp % E   = E_out
         pTemp % wgt = wgt
+        pTemp % criticalSource = .false.
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
@@ -348,15 +351,14 @@ contains
       fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
-      call fission % sampleDelayedCritical(mu, phi, E_out, p % E, p % pRNG, lambda)
+      call fission % sampleDelayedGrouped(mu, phi, p % E, p % pRNG)
       dir = rotateVector(p % dirGlobal(), mu, phi)
-
-      if (E_out > self % maxE) E_out = self % maxE
 
       ! Copy extra detail from parent particle (i.e. time, flags ect.)
       pTemp       = p
 
       ! Handle Precursors
+      lambda = fission % getAvgLambda(p % E)
       call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
       pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
                         (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda) 
@@ -364,10 +366,11 @@ contains
       ! Overwrite position, direction, energy and weight
       pTemp % r   = r
       pTemp % dir = dir
-      pTemp % E   = E_out
+      pTemp % E   = p % E
       pTemp % type = P_PRECURSOR
       pTemp % time = ZERO
-      pTemp % lambda = lambda
+      pTemp % nucIdx = collDat % nucIdx
+      pTemp % criticalSource = .true.
 
       call thisCycle % detain(pTemp)
 
@@ -474,6 +477,7 @@ contains
         pTemp % dir = dir
         pTemp % E   = E_out
         pTemp % wgt = wgt
+        pTemp % criticalSource = .false.
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
@@ -756,5 +760,14 @@ contains
     collDat % muL = dot_product(dir_pre, dir_post)
   end subroutine scatterFromMoving
 
-
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decay(self, p, collDat, thisCycle, nextCycle)
+    class(neutronCEimp), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+  end subroutine decay
 end module neutronCEimp_class

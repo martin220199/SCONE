@@ -109,6 +109,7 @@ module neutronCEkineticimp_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: decay
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -234,8 +235,8 @@ contains
     type(particleState)                       :: pTemp
     real(defReal),dimension(3)                :: r, dir
     integer(shortInt)                         :: n, i
-    real(defReal)                             :: wgt, w0, E_out, mu, phi, lambda, wgtFactor
-    real(defReal)                             :: sig_nuPromptfiss, sig_nuDelayedfiss, sig_tot, k_eff
+    real(defReal)                             :: wgt, w0, E_out, mu, phi, wgtFactor, delayed_frac
+    real(defReal)                             :: sig_nuPromptfiss, sig_nufiss, sig_tot, k_eff
     character(100),parameter                  :: Here = 'implicit (neutronCEkineticimp_class.f90)'
 
     if (self % branchless .eqv. .true.) then
@@ -297,18 +298,17 @@ contains
       if (self % usePrecursors) then
 
         ! Handle delayed neutrons using Forced Decay
-        sig_nuDelayedfiss = fiss % releaseDelayed(p % E) * microXSs % fission
-        n = int(abs( (wgt * sig_nuDelayedfiss) / (w0 * sig_tot * k_eff)) + p % pRNG % get(), shortInt)
+        sig_nufiss = fiss % releaseDelayed(p % E) * microXSs % fission
+        n = int(abs( (wgt * sig_nufiss) / (w0 * sig_tot * k_eff)) + p % pRNG % get(), shortInt)
+        !delayed_frac = fiss % releaseDelayed(p % E) / fiss % release(p % E)
 
         if (n >= 1) then
           wgt =  sign(w0, wgt)
           r   = p % rGlobal()
           do i = 1, n
-            call fiss % sampleDelayed(mu, phi, E_out, p % E, p % pRNG, lambda)
+            call fiss % sampleDelayedGrouped(mu, phi, p % E, p % pRNG)
 
             dir = rotateVector(p % dirGlobal(), mu, phi)
-
-            if (E_out > self % maxE) E_out = self % maxE
 
             ! Copy extra detail from parent particle (i.e. time, flags ect.)
             pTemp       = p
@@ -316,11 +316,11 @@ contains
             ! Overwrite particle attributes
             pTemp % r   = r
             pTemp % dir = dir
-            pTemp % E   = E_out
+            pTemp % E   = p % E
             pTemp % type = P_PRECURSOR
-            pTemp % wgt = wgt
-            pTemp % time = p % time
-            pTemp % lambda = lambda
+            pTemp % wgt = wgt !* delayed_frac
+            pTemp % nucIdx = collDat % nucIdx
+            !pTemp % time = p % time
 
             call thisCycle % detain(pTemp)
           end do
@@ -357,7 +357,7 @@ contains
     type(neutronMicroXSs)                     :: microXSs
     type(particleState)                       :: pTemp
     real(defReal),dimension(3)                :: r, dir
-    real(defReal)                             :: wgt, w0, E_out, mu, phi, lambda, rand, probabilityOfPrompt, k_eff
+    real(defReal)                             :: wgt, w0, E_out, mu, phi, rand, probabilityOfPrompt, k_eff
     character(100),parameter                  :: Here = 'fission (neutronCEkineticimp_class.f90)'
 
     if ((self % branchless .eqv. .true.) .and. (self % nuc % isFissile() .eqv. .true.)) then
@@ -395,8 +395,7 @@ contains
       else if (self % usePrecursors) then
 
         r   = p % rGlobal()
-        call fiss % sampleDelayed(mu, phi, E_out, p % E, p % pRNG, lambda)
-        if (E_out > self % maxE) E_out = self % maxE
+        call fiss % sampleDelayedGrouped(mu, phi, p % E, p % pRNG)
 
         dir = rotateVector(p % dirGlobal(), mu, phi)
 
@@ -406,10 +405,10 @@ contains
         ! Overwrite particle attributes
         pTemp % r   = r
         pTemp % dir = dir
-        pTemp % E   = E_out
+        pTemp % E   = p % E
         pTemp % type = P_PRECURSOR
         pTemp % time = p % time
-        pTemp % lambda = lambda
+        pTemp % nucIdx = collDat % nucIdx
 
         call thisCycle % detain(pTemp)
 
@@ -662,5 +661,62 @@ contains
 
   end subroutine scatterFromMoving
 
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decay(self, p, collDat, thisCycle, nextCycle)
+    class(neutronCEkineticimp), intent(inout) :: self
+    class(particle), intent(inout)            :: p
+    type(collisionData), intent(inout)        :: collDat
+    class(particleDungeon),intent(inout)      :: thisCycle
+    class(particleDungeon),intent(inout)      :: nextCycle
+    type(fissionCE), pointer                  :: fiss
+    real(defReal)                             :: E_out, wgt, w_timed
+    real(defReal), dimension(precursorGroups) :: E_d, lambda_p, f_p
+    character(100),parameter                  :: Here = 'decay (neutronCEkineticimp_class.f90)'
+
+    ! Verify that particle is CE neutron
+    if(p % isMG .or. p % type /= P_NEUTRON) then
+      call fatalError(Here, 'Supports only CE Neutron. Was given MG '//printType(p % type))
+    end if
+
+    ! Verify and load nuclear data pointer
+    self % xsData => ndReg_getNeutronCE()
+    if(.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
+
+    ! Verify and load material pointer
+    self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
+
+    ! Select collision nuclide
+    collDat % nucIdx = p % nucIdx
+
+    self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
+    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+
+    p % type = P_PRECURSOR
+    if (self % nuc % isFissile()) then
+      fiss => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
+      if(.not.associated(fiss)) call fatalError(Here, "Failed to get fissionCE")
+
+      call fiss % sampleDecayGrouped(p % E, self % maxE, self % minE, E_d, lambda_p, f_p, p % pRNG, p % criticalSource)
+
+      w_timed = p % timedWgt(lambda_p, f_p)
+      p % w_timed = w_timed
+      wgt = p % forcedPrecursorDecayWgt(lambda_p, f_p)
+
+      p % w = wgt
+      E_out = p % forcedPrecursorDecayE(E_d, lambda_p, f_p)
+      p % E = E_out
+
+      if (p % E <= ZERO) then
+        print *, E_d
+        call fatalError(Here, 'E < 0 error in grouped precursor family sampling')
+      end if
+    else
+      call fatalError(Here, 'Precursor should be in fissile material')
+    end if
+
+  end subroutine decay
 
 end module neutronCEkineticimp_class

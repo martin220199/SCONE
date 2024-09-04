@@ -67,6 +67,7 @@ module neutronMGstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: decay
   end type neutronMGstd
 
 contains
@@ -272,5 +273,17 @@ contains
     ! Do nothing
 
   end subroutine cutoffs
+
+  !!
+  !! Decay precursor particle
+  !!
+  subroutine decay(self, p, collDat, thisCycle, nextCycle)
+    class(neutronMGstd), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+  end subroutine decay
+
 
 end module neutronMGstd_class

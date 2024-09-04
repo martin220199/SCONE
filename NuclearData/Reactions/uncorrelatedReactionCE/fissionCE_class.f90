@@ -2,7 +2,7 @@ module fissionCE_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,           only : shake, precursorGroups
+  use universalVariables,           only : shake
   use genericProcedures,            only : fatalError, numToChar
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
@@ -83,6 +83,9 @@ module fissionCE_class
     procedure :: sampleOut
     procedure :: samplePrompt
     procedure :: sampleDelayed
+    procedure :: sampleDelayedGrouped
+    procedure :: sampleDecayGrouped
+    procedure :: getAvgLambda
     procedure :: sampleDelayedCritical
     procedure :: samplePrecursorDecayT
     procedure :: probOf
@@ -370,6 +373,88 @@ contains
     lambda = self % delayed(N) % lambda
 
   end subroutine sampleDelayed
+
+  !!
+  !! Samples mu, phi for a delayed neutron (implicit)
+  !!
+  subroutine sampleDelayedGrouped(self, mu, phi, E_in, rand)
+    class(fissionCE), intent(in)                           :: self
+    real(defReal), intent(out)                             :: mu
+    real(defReal), intent(out)                             :: phi
+    real(defReal), intent(in)                              :: E_in
+    class(RNG), intent(inout)                              :: rand
+    character(100),parameter :: Here = 'sampleDelayedGrouped (fissionCE_class.f90)'
+
+    ! Sample mu
+    mu = TWO * rand % get() - ONE
+
+    ! Sample phi
+    phi = TWO_PI * rand % get()
+
+  end subroutine sampleDelayedGrouped
+
+  !!
+  !! Samples w, E_out for a delayed neutron (implicit)
+  !!
+  subroutine sampleDecayGrouped(self, E_in, maxE, minE, E_d, lambda_p, f_p, rand, criticalSource)
+    class(fissionCE), intent(in)                                :: self
+    real(defReal), intent(in)                                   :: E_in, maxE, minE
+    real(defReal), dimension(:), intent(out)                    :: E_d, lambda_p, f_p
+    class(RNG), intent(inout)                                   :: rand
+    logical(defBool)                                            :: criticalSource
+    integer(shortInt)                                           :: i
+    real(defReal)                                               :: lambda_avg, ratio
+    character(100),parameter :: Here = 'sampleDecayGrouped (fissionCE_class.f90)'
+
+    lambda_avg = ZERO
+    ! Loop over precursor groups
+    precursors: do i=1, size(self % delayed)
+      E_d(i) = self % delayed(i) % eLaw % sample(E_in, rand)
+      if (E_d(i) > maxE) E_d(i) = maxE
+      if (E_d(i) < minE) E_d(i) = minE
+
+      lambda_p(i) = self % delayed(i) % lambda
+
+      if (criticalSource .eqv. .true.) then
+        ratio = self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
+        lambda_avg = lambda_avg + ratio
+        f_p(i) = ratio
+      else
+        f_p(i) = self % delayed(i) % prob % at(E_in)
+      end if
+
+    end do precursors
+
+    if (criticalSource .eqv. .true.) then
+      lambda_avg = ONE / lambda_avg
+      f_p = f_p * lambda_avg
+    end if
+
+  end subroutine sampleDecayGrouped
+
+  !!
+  !! Avg lambda
+  !!
+  function getAvgLambda(self, E_in) result(lambda_avg)
+    class(fissionCE), intent(in)                           :: self
+    real(defReal), intent(in)                              :: E_in
+    integer(shortInt)                                      :: i
+    real(defReal)                                          :: lambda_avg, ratio
+    character(100),parameter :: Here = 'getAvgLambda (fissionCE_class.f90)'
+
+    lambda_avg = ZERO
+    ! Loop over precursor groups
+    precursors: do i=1, size(self % delayed)
+
+      ratio = self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
+      lambda_avg = lambda_avg + ratio
+
+    end do precursors
+  
+    lambda_avg = ONE / lambda_avg
+
+  end function getAvgLambda
+
 
   !!
   !! Samples mu, phi, E_out for a delayed neutron in Critical Source Sampling (analog)
