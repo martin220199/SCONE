@@ -70,7 +70,7 @@ module universalVariables
                                   NOT_FOUND         = -3
 
   ! Number of neutron precusor groups
-  integer(shortInt), parameter :: precursorGroups = 6
+  integer(shortInt), parameter :: precursorGroups = 8
 
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2

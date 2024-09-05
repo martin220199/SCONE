@@ -253,6 +253,7 @@ contains
 
     ! Select collision nuclide
     collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
+    p % nucIdx = collDat % nucIdx
 
     self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
     if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')

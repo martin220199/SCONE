@@ -1098,6 +1098,10 @@ contains
               ! Force decay at this time interval if generated in this time interval
               call self % precursorDungeons(i) % copy(p, n)
 
+              pRNG = self % pRNG
+              p % pRNG => pRNG
+              call p % pRNG % stride(n)
+
               p_d = p
 
               decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
@@ -1109,9 +1113,6 @@ contains
               p_d % w_timed = p % w_timed
               call self % precursorDungeons(i) % replace(p_d, n)
 
-              pRNG = self % pRNG
-              p % pRNG => pRNG
-              call p % pRNG % stride(n)
 
               ! Update parameters
               p % type = P_NEUTRON
@@ -1184,6 +1185,10 @@ contains
 
               call self % precursorDungeons(i) % copy(p, n)
 
+              pRNG = self % pRNG
+              p % pRNG => pRNG
+              call p % pRNG % stride(n)
+
               p_d = p
 
               ! Sample decay time
@@ -1196,10 +1201,6 @@ contains
               call collOpKinetic % decayP(p, tally, buffer, buffer)
               p_d % w_timed = p % w_timed
               call self % precursorDungeons(i) % replace(p_d, n)
-
-              pRNG = self % pRNG
-              p % pRNG => pRNG
-              call p % pRNG % stride(n)
 
               ! Update parameters
               p % type = P_NEUTRON

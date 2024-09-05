@@ -2,7 +2,7 @@ module fissionCE_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,           only : shake
+  use universalVariables,           only : shake, precursorGroups
   use genericProcedures,            only : fatalError, numToChar
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
@@ -403,8 +403,9 @@ contains
     class(RNG), intent(inout)                                   :: rand
     logical(defBool)                                            :: criticalSource
     integer(shortInt)                                           :: i
-    real(defReal)                                               :: lambda_avg, ratio
+    real(defReal), save                                         :: lambda_avg
     character(100),parameter :: Here = 'sampleDecayGrouped (fissionCE_class.f90)'
+    !$omp threadprivate(lambda_avg)
 
     lambda_avg = ZERO
     ! Loop over precursor groups
@@ -416,9 +417,8 @@ contains
       lambda_p(i) = self % delayed(i) % lambda
 
       if (criticalSource .eqv. .true.) then
-        ratio = self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
-        lambda_avg = lambda_avg + ratio
-        f_p(i) = ratio
+        lambda_avg = lambda_avg + self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
+        f_p(i) = self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
       else
         f_p(i) = self % delayed(i) % prob % at(E_in)
       end if
@@ -428,6 +428,7 @@ contains
     if (criticalSource .eqv. .true.) then
       lambda_avg = ONE / lambda_avg
       f_p = f_p * lambda_avg
+      if ((sum(f_p) < 0.99) .or. (sum(f_p) > 1.01)) call fatalError(Here, 'PROB DISTRIBUTION SHOULD BE NORMALISED WTF')
     end if
 
   end subroutine sampleDecayGrouped

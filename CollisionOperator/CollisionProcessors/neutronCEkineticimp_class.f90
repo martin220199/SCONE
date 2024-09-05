@@ -205,6 +205,8 @@ contains
 
     ! Select collision nuclide
     collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
+    p % nucIdx = collDat % nucIdx 
+    !if (collDat % nucIdx == 3) print *, 'NUC 3 OTHER WAY'
 
     self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
     if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
@@ -665,15 +667,15 @@ contains
   !! Decay precursor particle
   !!
   subroutine decay(self, p, collDat, thisCycle, nextCycle)
-    class(neutronCEkineticimp), intent(inout) :: self
-    class(particle), intent(inout)            :: p
-    type(collisionData), intent(inout)        :: collDat
-    class(particleDungeon),intent(inout)      :: thisCycle
-    class(particleDungeon),intent(inout)      :: nextCycle
-    type(fissionCE), pointer                  :: fiss
-    real(defReal)                             :: E_out, wgt, w_timed
-    real(defReal), dimension(precursorGroups) :: E_d, lambda_p, f_p
-    character(100),parameter                  :: Here = 'decay (neutronCEkineticimp_class.f90)'
+    class(neutronCEkineticimp), intent(inout)       :: self
+    class(particle), intent(inout)                  :: p
+    type(collisionData), intent(inout)              :: collDat
+    class(particleDungeon),intent(inout)            :: thisCycle
+    class(particleDungeon),intent(inout)            :: nextCycle
+    type(fissionCE), pointer                        :: fiss
+    real(defReal), dimension(precursorGroups), save :: E_d = ZERO, lambda_p = ZERO, f_p = ZERO
+    character(100),parameter                        :: Here = 'decay (neutronCEkineticimp_class.f90)'
+    !$omp threadprivate(E_d, lambda_p, f_p)
 
     ! Verify that particle is CE neutron
     if(p % isMG .or. p % type /= P_NEUTRON) then
@@ -701,13 +703,9 @@ contains
 
       call fiss % sampleDecayGrouped(p % E, self % maxE, self % minE, E_d, lambda_p, f_p, p % pRNG, p % criticalSource)
 
-      w_timed = p % timedWgt(lambda_p, f_p)
-      p % w_timed = w_timed
-      wgt = p % forcedPrecursorDecayWgt(lambda_p, f_p)
-
-      p % w = wgt
-      E_out = p % forcedPrecursorDecayE(E_d, lambda_p, f_p)
-      p % E = E_out
+      p % w_timed = p % timedWgt(lambda_p, f_p) 
+      p % w = p % forcedPrecursorDecayWgt(lambda_p, f_p)
+      p % E = p % forcedPrecursorDecayE(E_d, lambda_p, f_p)
 
       if (p % E <= ZERO) then
         print *, E_d
