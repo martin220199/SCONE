@@ -88,9 +88,11 @@ module particleDungeon_class
     procedure  :: scaleWeight
     procedure  :: normSize
     procedure  :: combing
+    procedure  :: fitness_combing
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
+    procedure  :: popImportance
     procedure  :: setSize
     procedure  :: printToFile
 
@@ -513,6 +515,70 @@ contains
   end subroutine combing
 
   !!
+  !! Normalise the population using combing
+  !! Presevers total weight
+  !!
+  subroutine fitness_combing(self, N, rand)
+    class(particleDungeon), intent(inout)    :: self
+    integer(shortInt), intent(in)            :: N
+    integer(shortInt)                        :: i, j
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: u_av, w_av, nextTooth, curU
+    !real(defReal), dimension(self % pop)     :: w_array
+    type(particleState), dimension(N)        :: newPrisoners
+    character(100), parameter :: Here =' fitness_combing (particleDungeon_class.f90)'
+
+    ! Protect against invalid N
+    if( N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greather then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Get new particle weight
+    u_av = self % popImportance() / N
+    w_av = self % popWeight() / N
+
+    !print *, u_av, self % popImportance(), N
+
+    ! Fill array with each prisoner weight (probably neater way to do this)
+    !do i=1, self % pop
+    !  w_array(i) = self % prisoners(i) % wgt
+    !end do
+
+    ! Get the location of the first tooth
+    nextTooth = rand % get() * u_av
+
+    ! Set variable to store current sum of prisoners weight
+    curU = ZERO
+
+    j=1
+    do i=1, N
+      ! Iterate over current particles
+      ! until a tooth falls within bounds of particle weight
+      do while (curU + self % prisoners(j) % wgt * self % prisoners(j) % fitness < nextTooth)
+        curU = curU + self % prisoners(j) % wgt * self % prisoners(j) % fitness
+        j = j + 1
+      end do
+
+      ! When a particle has been found...
+      newPrisoners(i) = self % prisoners(j)                ! Add to new array
+      !print *, 'w_avg, wimp', w_av, u_av / (newPrisoners(i) % wgt * newPrisoners(i) % fitness)
+      newPrisoners(i) % wgt = u_av / (newPrisoners(i) % fitness)  !w_av! Update weight
+      nextTooth = nextTooth + u_av                         ! Update position of tooth
+    end do
+
+    ! Re-size the dungeon to new size
+    call self % setSize(N)
+
+    ! Replace the particle at each index with the new particles
+    do i=1, N
+      call self % replace_particleState(newPrisoners(i), i)
+    end do
+  end subroutine fitness_combing
+
+  !!
   !! Normalises precusor population by combing
   !! Done according to expected neutron weight for forced decay in ntext time interval
   !!
@@ -613,6 +679,17 @@ contains
     wgt = sum( self % prisoners(1:self % pop) % wgt )
 
   end function popWeight
+
+  !!
+  !! Returns total population weight
+  !!
+  function popImportance(self) result(U)
+    class(particleDungeon), intent(in) :: self
+    real(defReal)                      :: U
+
+    U = sum( self % prisoners(1:self % pop) % wgt * self % prisoners(1:self % pop) % fitness)
+
+  end function popImportance
 
   !!
   !! Set size of the dungeon to n
