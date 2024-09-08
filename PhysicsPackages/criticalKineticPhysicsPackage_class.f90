@@ -706,10 +706,6 @@ contains
       end do
     end if
 
-    ! deallocate dict
-    call self % dict % kill()
-    deallocate(self % dict)
-
     ! Size particle dungeon
     allocate(self % currentTime(self % N_cycles))
     allocate(self % nextTime(self % N_cycles))
@@ -727,10 +723,14 @@ contains
       end do
     end if
 
-    call self % printSettingsKinetic()
-  
     tempDict => self % dict % getDictPtr('EPC')
     call self % initEPC(tempDict)
+
+    ! deallocate dict
+    call self % dict % kill()
+    deallocate(self % dict)
+
+    call self % printSettingsKinetic()
 
   end subroutine initKinetic
 
@@ -979,8 +979,7 @@ contains
 
       do i = 1, N_cycles
 
-        if ((t == 1) .and. (self % useCombing)) call self % currentTime(i) % combing(self % pop, pRNG)
-
+        if (t == 1) call self % currentTime(i) % combing(self % pop, pRNG)
         nParticles = self % currentTime(i) % popSize()
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
@@ -1776,14 +1775,14 @@ contains
 
   subroutine initEPC(self, dict)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(in)                     :: dict
-    class(dictionary), pointer                        :: tempDict
-    integer(shortInt)                                 :: i, EPCResponse
-    character(5)                                      :: responseDim
-    real(defReal), dimension(:), allocatable          :: responseReal
-    real(defReal), dimension(1)                       :: responseRealDummy
-    integer(shortInt),dimension(:), allocatable       :: responseInt
-    integer(shortInt)                                 :: responseVal
+    class(dictionary), intent(in)                       :: dict
+    class(dictionary), pointer                          :: tempDict
+    integer(shortInt)                                   :: i, EPCResponse
+    character(5)                                        :: responseDim
+    real(defReal), dimension(:), allocatable            :: responseReal
+    real(defReal), dimension(1)                         :: responseRealDummy
+    integer(shortInt),dimension(:), allocatable         :: responseInt
+    integer(shortInt)                                   :: responseVal
     character(100), parameter :: Here ='init (initEPC.f90)'
 
     call dict % getOrDefault( self % useEPC, 'useEPC', .false.)
