@@ -6,7 +6,7 @@ module transportOperatorHT_class
   use universalVariables
 
   use genericProcedures,          only : fatalError, numToChar
-  use particle_class,             only : particle
+  use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
@@ -38,6 +38,7 @@ module transportOperatorHT_class
     procedure :: transit => tracking_selection
     procedure, private :: deltaTracking
     procedure, private :: surfaceTracking
+    procedure :: processParticlePrediction
   end type transportOperatorHT
 
 contains
@@ -193,6 +194,18 @@ contains
     call tally % reportTrans(p)
 
   end subroutine surfaceTracking
+
+  subroutine processParticlePrediction(self, p, p_p, maxT)
+    class(transportOperatorHT), intent(inout) :: self
+    type(particle), intent(in)                :: p
+    type(particle), intent(out)               :: p_p
+    real(defReal), intent(in)                 :: maxT
+    type(particleState)                       :: temp_p
+    real(defReal)                             :: distance
+
+    !Do nothing
+
+  end subroutine processParticlePrediction
 
 
 end module transportOperatorHT_class

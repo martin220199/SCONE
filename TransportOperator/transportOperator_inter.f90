@@ -4,7 +4,7 @@ module transportOperator_inter
   use universalVariables
   use genericProcedures,          only : fatalError
 
-  use particle_class,             only : particle
+  use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
 
@@ -58,6 +58,7 @@ module transportOperator_inter
 
     ! Customisable deferred procedures
     procedure(transit), deferred :: transit
+    procedure(processParticlePrediction), deferred :: processParticlePrediction
 
   end type transportOperator
 
@@ -83,6 +84,19 @@ module transportOperator_inter
       class(particleDungeon), intent(inout)   :: thisCycle
       class(particleDungeon), intent(inout)   :: nextCycle
     end subroutine transit
+
+  subroutine processParticlePrediction(self, p, p_p, maxT)
+    import :: transportOperator, & 
+              particle, &
+              defReal, &
+              particleState
+    class(transportOperator), intent(inout) :: self
+    type(particle), intent(in)              :: p
+    type(particle), intent(out)             :: p_p
+    real(defReal), intent(in)               :: maxT
+    type(particleState)                     :: temp_p
+    real(defReal)                           :: distance
+  end subroutine processParticlePrediction
   end interface
 
 contains
@@ -138,6 +152,5 @@ contains
     self % xsData => null()
 
   end subroutine kill
-
 
 end module transportOperator_inter

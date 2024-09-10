@@ -6,7 +6,7 @@ module transportOperatorST_class
   use universalVariables
 
   use genericProcedures,          only : fatalError
-  use particle_class,             only : particle
+  use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use RNG_class,                  only : RNG
@@ -38,6 +38,7 @@ module transportOperatorST_class
   contains
     procedure :: transit => surfaceTracking
     procedure :: init
+    procedure :: processParticlePrediction
   end type transportOperatorST
 
 contains
@@ -121,5 +122,18 @@ contains
     end if
 
   end subroutine init
+
+  subroutine processParticlePrediction(self, p, p_p, maxT)
+    class(transportOperatorST), intent(inout) :: self
+    type(particle), intent(in)                :: p
+    type(particle), intent(out)          :: p_p
+    real(defReal), intent(in)                 :: maxT
+    type(particleState)                       :: temp_p
+    real(defReal)                             :: distance
+
+    !Do nothing
+
+  end subroutine processParticlePrediction
+
 
 end module transportOperatorST_class

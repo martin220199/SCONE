@@ -6,7 +6,7 @@ module transportOperatorDT_class
   use universalVariables
 
   use genericProcedures,          only : fatalError, numToChar
-  use particle_class,             only : particle
+  use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
@@ -33,6 +33,7 @@ module transportOperatorDT_class
   type, public, extends(transportOperator) :: transportOperatorDT
   contains
     procedure :: transit => deltaTracking
+    procedure :: processParticlePrediction
   end type transportOperatorDT
 
 contains
@@ -61,7 +62,6 @@ contains
         p % fate = AGED_FATE
         p % time = p % timeMax
         call self % geom % teleport(p % coords, distance)
-        !print *, 'transport: AGED'
         return
       endif
 
@@ -105,6 +105,29 @@ contains
 
     call tally % reportTrans(p)
   end subroutine deltaTracking
+
+  subroutine processParticlePrediction(self, p, p_p, maxT)
+    class(transportOperatorDT), intent(inout) :: self
+    type(particle), intent(in)                :: p
+    type(particle), intent(out)               :: p_p
+    real(defReal), intent(in)                 :: maxT
+    type(particleState)                       :: temp_p
+    real(defReal)                             :: distance
+    character(100), parameter :: Here = 'processParticlePrediction (transportOperatorDT_class.f90)'
+
+    temp_p = p
+    p_p = temp_p
+    distance = ONE / self % xsData % getMajorantXS(p) !self % xsData % getTotalMatXS(p, p % matIdx()) !
+    !print *, self % xsData % getMajorantXS(p)
+
+    !if (p % time + distance / p % getSpeed() > maxT) p_p % fate = LEAK_FATE
+
+    call self % geom % teleport(p_p % coords, distance)
+    if (p_p % matIdx() == OUTSIDE_FILL) p_p % fate = LEAK_FATE
+
+    if (p_p % matIdx() == UNDEF_MAT) call fatalError(Here, "Particle is in undefined material")
+
+  end subroutine processParticlePrediction
 
 
 end module transportOperatorDT_class

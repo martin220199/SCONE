@@ -90,6 +90,7 @@ module timeDependentPhysicsPackage_class
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
     integer(shortInt)  :: fitnessHandling !0 - sorting, 1 - combing, 2 - simple
+    logical(defBool)   :: predictive
 
     real(defReal) :: minWgt = 0.25
     real(defReal) :: maxWgt = 1.25
@@ -153,7 +154,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
-    type(particle), save                              :: p, p_d
+    type(particle), save                              :: p
     type(particleDungeon), save                       :: buffer
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
@@ -162,7 +163,7 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd, w_d
     real(defReal), intent(in)                         :: timeIncrement
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, decay_T)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, decay_T)
 
     !$omp parallel
     ! Create particle buffer
@@ -478,8 +479,7 @@ contains
     integer(shortInt)                                 :: i, n, nParticles, nDelayedParticles, Nfittest, t2
     integer(shortInt)                                 :: j, nPrecuCount
     integer(longInt)                                  :: t
-    type(particle), save                              :: p, p_d
-    type(particleState), save                         :: stateTemp
+    type(particle), save                              :: p, p_p
     type(particleDungeon), save                       :: buffer
     type(collisionOperator), save                     :: collOp
     class(transportOperator), allocatable, save       :: transOp
@@ -488,7 +488,7 @@ contains
     real(defReal)                                     :: elapsed_T, end_T, T_toEnd, w_d, fitness1
     real(defReal), intent(in)                         :: timeIncrement
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
-    !$omp threadprivate(p, p_d, buffer, collOp, transOp, pRNG, stateTemp, decay_T)
+    !$omp threadprivate(p, p_p, buffer, collOp, transOp, pRNG, decay_T)
 
     !$omp parallel
     ! Create particle buffer
@@ -562,10 +562,8 @@ contains
 
           if (n <= self % currentTime(i) % popSize()) then
             call self % currentTime(i) % copy(p, n)
-            stateTemp = p
           else
             call self % fittestParticlesCurrent(i) % copy(p, n-self % currentTime(i) % popSize())
-            stateTemp = p
           end if
 
           p % timeMax = t * timeIncrement
@@ -588,7 +586,12 @@ contains
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                call tally % processEvolutionaryParticle(p, t)
+                if (self % predictive .eqv. .true.) then
+                  call transOp % processParticlePrediction(p, p_p, N_timeBins * timeIncrement * 10000)
+                  call tally % processEvolutionaryParticle(p, p_p)
+                else
+                  call tally % processEvolutionaryParticle(p)
+                end if
 
                 if (self % fitnessHandling == 0_shortInt) then
                   !$OMP CRITICAL
@@ -653,7 +656,12 @@ contains
                     call transOp % transport(p, tally, buffer, buffer)
                     if(p % isDead) exit historyDelayed
                     if(p % fate == AGED_FATE) then
-                      call tally % processEvolutionaryParticle(p, t)
+                      if (self % predictive .eqv. .true.) then
+                        call transOp % processParticlePrediction(p, p_p, N_timeBins * timeIncrement * 100000)
+                        call tally % processEvolutionaryParticle(p, p_p)
+                      else
+                        call tally % processEvolutionaryParticle(p)
+                      end if
 
                       if (self % fitnessHandling == 0_shortInt) then
                         !$OMP CRITICAL
@@ -735,7 +743,12 @@ contains
                   call transOp % transport(p, tally, buffer, buffer)
                   if(p % isDead) exit historyDelayedImp
                   if(p % fate == AGED_FATE) then
-                    call tally % processEvolutionaryParticle(p, t)
+                    if (self % predictive .eqv. .true.) then
+                      call transOp % processParticlePrediction(p, p_p, N_timeBins * timeIncrement * 1000000)
+                      call tally % processEvolutionaryParticle(p, p_p)
+                    else
+                      call tally % processEvolutionaryParticle(p)
+                    end if
 
                     if (self % fitnessHandling == 0_shortInt) then
                       !$OMP CRITICAL
@@ -1052,6 +1065,7 @@ contains
     real(defReal), dimension(1)                       :: responseRealDummy
     integer(shortInt),dimension(:), allocatable       :: responseInt
     integer(shortInt)                                 :: responseVal
+    logical(defBool)                                  :: predictive = .false.
     character(100), parameter :: Here ='init (initEPC.f90)'
 
     call dict % getOrDefault( self % useEPC, 'useEPC', .false.)
@@ -1082,10 +1096,12 @@ contains
 
     else if (responseDim == 'space' .and. EPCResponse == 1_shortInt) then
       call dict % get(responseReal, 'response')
+      call dict % getOrDefault(self % predictive, 'predictive', .false.)
       call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseReal)
 
     else if (responseDim == 'space' .and. EPCResponse == 0_shortInt) then
+      call dict % getOrDefault(self % predictive, 'predictive', .false.)
       call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseRealDummy)
 

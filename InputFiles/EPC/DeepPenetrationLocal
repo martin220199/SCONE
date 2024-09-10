@@ -5,10 +5,11 @@ timeSteps   100; //50
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-08;
-cycles 10; //10
-combing 1;
-                                                                                                    //0.0001
-EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim space; response (110 0); fittestFactor 0.0001; nReproductions 2;}
+cycles 15; //10
+buffer 300000;
+combing 0;
+                                                                                                    //0.00001
+EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim space; response (110 0); fittestFactor 0.00001; nReproductions 2;}
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}

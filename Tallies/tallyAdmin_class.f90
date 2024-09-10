@@ -842,11 +842,10 @@ contains
 
   end subroutine addToReports
 
-  subroutine processEvolutionaryParticle(self, p, timeBinIdx)
+  subroutine processEvolutionaryParticle(self, p, p_p)
     class(tallyAdmin),intent(inout)                      :: self
-    class(particle), intent(inout)                       :: p
-    integer(longInt), intent(in)                         :: timeBinIdx
-    real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
+    type(particle), intent(inout)                        :: p
+    type(particle), intent(in), optional                 :: p_p
     integer(shortInt)                                    :: i
     real(defReal)                                        :: s
     real(defReal)                                        :: epsilon = 0.01_defReal
@@ -855,6 +854,19 @@ contains
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
     state = p
+
+    if(present(p_p)) then
+      if (p_p % fate == LEAK_FATE) then
+        p % fitness = ONE / (10000000.0 + self % fittestFactor)!ZERO
+        return
+      else
+        state % r = p_p % rGlobal()
+      end if
+
+      !print *, p_p % fate
+
+    end if
+
     !sorting, local, cell
     if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 1_shortInt) &
          .and. (.not. allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
@@ -931,6 +943,8 @@ contains
     call fatalError(Here, 'combing, global, space not implemented yet')
 
     end if
+
+    !if (p % fitness > 1.243e-2) print *, p % rglobal(), p % fitness, p % dirglobal()
 
   end subroutine processEvolutionaryParticle
 
