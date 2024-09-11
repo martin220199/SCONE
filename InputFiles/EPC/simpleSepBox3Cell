@@ -6,12 +6,15 @@ XSdata   ce;
 dataType ce;
 timeIncrement 1.E-07;
 cycles 10; //10
+buffer 50000;
 combing 1;
 
+//omp 5 for EPC2s
+
 //global:
-                                         //responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01;
-                        //extinction    //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 30;
-                                         //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001; nReproductions 15;
+                                         //fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01;
+  //requires combing     //extinction    //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01; nReproductions 4;
+                                         //fitnessHandling 0; responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.01; nReproductions 2;
 
 //local:
                                          //responseType 0; responseDim cells; response (1 2 3); fittestFactor 0.001;
