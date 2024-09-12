@@ -1,0 +1,149 @@
+type timeDependentPhysicsPackage;
+
+pop      30000; //300000
+timeSteps   100; //100
+XSdata   ce;
+dataType ce;
+timeIncrement 5.E-05; //5e-5
+cycles 10; //10
+buffer 30000;
+combing 0;
+                                                                                                    //0.00001
+EPC {predictive 1; useEPC 1; fitnessHandling 1; responseType 1; responseDim space; response (0 0); fittestFactor 0.00001; nReproductions 2;}
+
+outputFormat asciiJSON;
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator { type transportOperatorDT;
+                  }
+
+source {
+  type pointSource;
+  r (0.0 0.0 0.0);
+  //dir (1.0 0.0 0.0);
+  particle neutron;
+  E 1e-6;
+}
+
+tally  {
+
+  flux_time { type collisionClerk;
+    map { type multiMap; maps (map1 map2 map3 map4);
+    // NB this has to be this order: cells first, then time
+    map1 { type spaceMap; axis x; grid lin; min -300; max 300; N 31;}
+    map2 { type spaceMap; axis y; grid lin; min -300; max 300; N 31;}
+    map3 { type spaceMap; axis z; grid lin; min -300; max 300; N 1;}
+    map4 { type timeMap; grid lin; min 0.0; max 5E-03; N 100;} //5e-4
+    }
+    response (flux); flux {type fluxResponse;}
+    handleVirtual 0;
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0 ); //(1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { id 1; type box; origin (0.0 0.0 0.0); halfwidth (300.0 300.0 300);}
+
+      //concreteUniverse { id 2; type box; origin (0.0 0.0 0.0); halfwidth (140.0 140.0 90.0);}
+
+      personCylinderOne {id 3; type sphere; origin (0 0 0); radius 20;}
+      AlcanInner {id 4; type sphere; origin (0 0 0); radius 30;}
+      AlcanOuter {id 5; type sphere; origin (0 0 0); radius 31;}
+      //concreteBox { id 6; type box; origin (0.0 0.0 0.0); halfwidth (20.0 140.0 90.0);}
+
+    } 
+
+    cells
+    {
+    PersonOne { id 1; type simpleCell; surfaces (-3); filltype mat; material m4;} //m4
+    CanOne { id 3; type simpleCell; surfaces (-5 4); filltype mat; material m1;}  //m2
+    Medium1 { id 5; type simpleCell; surfaces (3 -4); filltype mat; material m4;} 
+
+    Medium2 { id 6; type simpleCell; surfaces (-1 5); filltype mat; material m4;} //m4
+    //ConcreteWall { id 6; type simpleCell; surfaces (-6); filltype mat; material m3;} 
+    //ConcreteBoundary { id 7; type simpleCell; surfaces (-1 2); filltype mat; material m3;} 
+
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 1; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 3 5 6 );}
+
+    }
+}
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-10.71 -10.71 -0.5);
+    width (21.42 21.42 1.0);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    //width (25.0 25.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+    // Water
+    m1 {
+      temp 293;
+      composition {
+        1001.03  6.6766E-2;  //H
+        08016.03  3.3383E-2; //O
+        }
+    }
+
+    // Aluminium-Boron
+    m2 {
+      temp 293;
+      composition {
+        13027.03  0.06022;
+        }
+    }
+
+    // Concrete
+    m3 {
+      temp 293;
+      composition {
+        01001.03  1.4868E-2;  // H
+        06012.03  3.8144E-3;  // C
+        08016.03  4.1519E-2;  // O
+        11023.03  3.0400E-4;  // Na
+        12024.03  5.8700E-4;  // Mg
+        13027.03  7.3500E-4;  // Al
+        14028.03  6.0370E-3;  // Si
+        20040.03  1.1588E-2;  // Ca
+        26056.03  1.9680E-4;  // Fe
+        }
+    }
+
+    // Air
+    m4 {
+      temp 293;
+      composition {
+        07014.03  4.1985E-5;
+        08016.03  1.1263E-5;
+        }
+    }
+
+}
+}
