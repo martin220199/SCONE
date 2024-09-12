@@ -1,16 +1,20 @@
 type timeDependentPhysicsPackage;
 
-seed 1782860664;
-
 pop      5000; //5000
 timeSteps   100;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-07;
 cycles 10; //10
-combing 0;
-                                                                                               //0.01
-EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.01; nReproductions 2;}
+combing 1;
+buffer 20000;
+
+EPC {useEPC 0; fitnessHandling 0; responseType 1; responseDim cells; response 2; fittestFactor 0.01; nReproductions 2;}
+//useEPC 1;
+//responseType 2; // space
+//fittestFactor 0.01;//0.01; //0.01
+//nReproductions 2; //2
+//useQuickSort 0; //0
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
