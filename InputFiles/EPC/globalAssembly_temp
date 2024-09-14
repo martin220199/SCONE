@@ -1,0 +1,980 @@
+type criticalKineticPhysicsPackage;
+
+pop      1000; //1000
+timeSteps   150; //100
+XSdata   ce;
+dataType ce;
+timeIncrement 1.0e-5; //1.0e-4
+cycles 15; //15
+buffer 50000;//50000;
+active   200;
+inactive 200;
+
+//responseType 1; responseDim space; response (9 -9); fittestFactor 0.0001
+//responseType 1; responseDim cells; response 100; fittestFactor 0.01;
+//responseType 0; responseDim cells; response (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100); fittestFactor 0.01
+//responseType 0; responseDim cells; response (36 37 38 39 40 44 48 49 50 55 56 57 58 59 60 67 68 69 70 77 78 79 80 87 88 89 90 98 99 100); fittestFactor 0.01;
+
+//responseType 0; responseDim cells; response (125 126 127 128 129 130 138 139 140 141 142 143 151 152 153 154 155 156 164 165 166 167 168 169); fittestFactor 0.01;
+
+combing 0; //1
+precursors 1; //1
+useForcedPrecursorDecay 0; //0
+criticalWgtNorm 1; // 1
+kineticGeometry{enable 1; timeSteps (40 80); }
+decorrelationCycles 20; //20
+
+EPC {useEPC 1; fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169); fittestFactor 0.00001; nReproductions 4;}
+
+//1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169
+//10 11 12 13 23 24 25 26 36 37 38 39 49 50 51 52 62 63 64 65 75 76 77 78 88 89 90 91 101 102 103 104 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169
+//1 2 3 4 5 14 15 16 17 18 27 28 29 30 31 40 41 42 43 44 53 54 55 56 57 126 127 128 129 130 139 140 141 142 143 152 153 154 155 156 165 166 167 168 169
+//1 2 3 4 5 6 7 8 9 19 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 14 15 27 28 40 41 53 54 66 67 79 80 92 93 105 106 118 119 131 132 25 26 38 39 51 52 64 65 77 78 90 91 103 104 116 117 129 130 142 143 23 24 36 37 49 59 62 63 75 76 88 89 101 102 114 115 127 128 140 141 126 139 125 138 124 137 123 136 122 135 121 134 120 133 107 108 94 95 81 82 68 69 55 56 42 43 29 30
+
+outputFormat asciiJSON;
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} //0.1
+
+transportOperatorCritical { type transportOperatorDT;
+                  }
+
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} //precursors 1;
+
+transportOperatorKinetic { type transportOperatorKineticDT;
+}
+
+tally  {
+
+  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+
+    map { type timeMap; grid lin; min 0.0; max 1.50e-3; N 150;}
+    response (flux); flux {type fluxResponse;}
+
+    }
+
+  //flux_space { type collisionClerk;
+  //  map { type multiMap; maps (map1 map2);
+    // NB this has to be this order: cells first, then time
+  //  map1 { type cellMap; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169);}
+  //  map2 { type timeMap; grid lin; min 0.0; max 10.0; N 100;}
+   // }
+   // response (flux); flux {type fluxResponse;}
+  //}
+  flux_space { type collisionClerk; 
+    map { type multiMap; maps (map1 map2 map3);
+    map1 { type spaceMap;  axis y;  grid lin; min -13; max 13; N 40;} //try 30
+    map2 { type spaceMap;  axis x;  grid lin;  min -13; max 13; N 40;}
+    map3 { type timeMap; grid lin; min 0.0; max 1.50e-3; N 150;}
+    }
+    response (flux); flux {type fluxResponse;}
+    }
+
+
+  }
+
+  inactiveTally {
+  }
+activeTally  {
+    display (k_eff);
+    k_eff { type keffAnalogClerk;}
+
+flux_time { type collisionClerk; 
+map { type multiMap; maps (map1 map2);
+map1 { type spaceMap;  axis y;  grid lin; min -13; max 13; N 26;} 
+map2 { type spaceMap;  axis x;  grid lin;  min -13; max 13; N 26;}
+}
+response (flux); flux {type fluxResponse;}
+}
+}
+
+
+
+
+
+//can group together cells. Makes EPC global better.
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1 ); //(1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { id 27; type box; origin (0.0 0.0 0.0); halfwidth (13.0 13.0 150.0);}
+
+      //columns
+      c_one   { id 1; type box; origin (-12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_two   { id 2; type box; origin (-10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_three { id 3; type box; origin (-8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_four  { id 4; type box; origin (-6.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_five  { id 5; type box; origin (-4.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_six   { id 6; type box; origin (-2.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+      c_seven { id 7; type box; origin (0.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+      c_eight { id 8; type box; origin (2.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+      c_nine  { id 9; type box; origin (4.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+      c_ten   { id 10; type box; origin (6.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+      c_eleven { id 11; type box; origin (8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_twelve { id 12; type box; origin (10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+      c_thirteen { id 13; type box; origin (12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+
+      //rows
+      r_one   { id 14; type box; origin (0.0 12.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_two   { id 15; type box; origin (0.0 10.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_three { id 16; type box; origin (0.0 8.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_four  { id 17; type box; origin (0.0 6.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_five  { id 18; type box; origin (0.0 4.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_six   { id 19; type box; origin (0.0 2.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_seven { id 20; type box; origin (0.0 0.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_eight { id 21; type box; origin (0.0 -2.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_nine  { id 22; type box; origin (0.0 -4.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_ten   { id 23; type box; origin (0.0 -6.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_eleven   { id 24; type box; origin (0.0 -8.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_twelve   { id 25; type box; origin (0.0 -10.0 0.0); halfwidth (13.0 1.0 150.0);}
+      r_thirteen   { id 26; type box; origin (0.0 -12.0 0.0); halfwidth (13.0 1.0 150.0);}
+    } 
+
+    cells
+    {
+      //row 1
+      1  {id 1; type simpleCell;   surfaces (-1  -14); filltype mat; material fuel;}
+      2  {id 2; type simpleCell;   surfaces (-2  -14); filltype mat; material water;}
+      3  {id 3; type simpleCell;   surfaces (-3  -14); filltype mat; material fuel_2;}
+      4  {id 4; type simpleCell;   surfaces (-4  -14); filltype mat; material water;}
+      5  {id 5; type simpleCell;   surfaces (-5  -14); filltype mat; material water;}
+      6  {id 6; type simpleCell;   surfaces (-6  -14); filltype mat; material water;}
+      7  {id 7; type simpleCell;   surfaces (-7  -14); filltype mat; material water;}
+      8  {id 8; type simpleCell;   surfaces (-8  -14); filltype mat; material water;}
+      9  {id 9; type simpleCell;   surfaces (-9  -14); filltype mat; material water;}
+      10 {id 10; type simpleCell;  surfaces (-10 -14); filltype mat; material water;}
+      11 {id 11; type simpleCell;  surfaces (-11 -14); filltype mat; material water;}
+      12 {id 12; type simpleCell;  surfaces (-12 -14); filltype mat; material water;}
+      13 {id 13; type simpleCell;  surfaces (-13 -14); filltype mat; material water;}
+
+      //row 2
+      14  {id 14; type simpleCell;   surfaces (-1  -15); filltype mat; material water;}
+      15  {id 15; type simpleCell;   surfaces (-2  -15); filltype mat; material water;}
+      16  {id 16; type simpleCell;   surfaces (-3  -15); filltype mat; material water;}
+      17  {id 17; type simpleCell;   surfaces (-4  -15); filltype mat; material water;}
+      18  {id 18; type simpleCell;   surfaces (-5  -15); filltype mat; material fuel_3;}
+      19  {id 19; type simpleCell;   surfaces (-6  -15); filltype mat; material water;}
+      20  {id 20; type simpleCell;   surfaces (-7  -15); filltype mat; material water;}
+      21  {id 21; type simpleCell;   surfaces (-8  -15); filltype mat; material water;}
+      22  {id 22; type simpleCell;   surfaces (-9  -15); filltype mat; material water;}
+      23 {id 23; type simpleCell;  surfaces (-10 -15); filltype mat; material water;}
+      24 {id 24; type simpleCell;  surfaces (-11 -15); filltype mat; material water;}
+      25 {id 25; type simpleCell;  surfaces (-12 -15); filltype mat; material water;}
+      26 {id 26; type simpleCell;  surfaces (-13 -15); filltype mat; material water;}
+
+      //row 3
+      27  {id 27; type simpleCell;   surfaces (-1  -16); filltype mat; material fuel_2;}
+      28  {id 28; type simpleCell;   surfaces (-2  -16); filltype mat; material water;}
+      29  {id 29; type simpleCell;   surfaces (-3  -16); filltype mat; material fuel_2;}
+      30  {id 30; type simpleCell;   surfaces (-4  -16); filltype mat; material water;}
+      31  {id 31; type simpleCell;   surfaces (-5  -16); filltype mat; material water;}
+      32  {id 32; type simpleCell;   surfaces (-6  -16); filltype mat; material water;}
+      33  {id 33; type simpleCell;   surfaces (-7  -16); filltype mat; material water;}
+      34  {id 34; type simpleCell;   surfaces (-8  -16); filltype mat; material water;}
+      35  {id 35; type simpleCell;   surfaces (-9  -16); filltype mat; material water;}
+      36 {id 36; type simpleCell;  surfaces   (-10 -16); filltype mat; material water;}
+      37 {id 37; type simpleCell;  surfaces   (-11 -16); filltype mat; material water;}
+      38 {id 38; type simpleCell;  surfaces   (-12 -16); filltype mat; material water;}
+      39 {id 39; type simpleCell;  surfaces   (-13 -16); filltype mat; material water;}
+
+
+
+
+
+      //row4
+      40  {id 40; type simpleCell;   surfaces (-1  -17); filltype mat; material water;}
+      41  {id 41; type simpleCell;   surfaces (-2  -17); filltype mat; material water;}
+      42  {id 42; type simpleCell;   surfaces (-3  -17); filltype mat; material water;}
+      43  {id 43; type simpleCell;   surfaces (-4  -17); filltype mat; material water;}
+      44  {id 44; type simpleCell;   surfaces (-5  -17); filltype mat; material water;}
+      45  {id 45; type simpleCell;   surfaces (-6  -17); filltype mat; material water;}
+      46  {id 46; type simpleCell;   surfaces (-7  -17); filltype mat; material water;}
+      47  {id 47; type simpleCell;   surfaces (-8  -17); filltype mat; material water;}
+      48  {id 48; type simpleCell;   surfaces (-9  -17); filltype mat; material water;}
+      49 {id 49; type simpleCell;  surfaces   (-10 -17); filltype mat; material water;}
+      50 {id 50; type simpleCell;  surfaces   (-11 -17); filltype mat; material water;}
+      51 {id 51; type simpleCell;  surfaces   (-12 -17); filltype mat; material water;}
+      52 {id 52; type simpleCell;  surfaces   (-13 -17); filltype mat; material water;}
+
+
+      //row5
+      53  {id 53; type simpleCell;   surfaces (-1  -18); filltype mat; material water;}
+      54  {id 54; type simpleCell;   surfaces (-2  -18); filltype mat; material fuel_3;}
+      55  {id 55; type simpleCell;   surfaces (-3  -18); filltype mat; material water;}
+      56  {id 56; type simpleCell;   surfaces (-4  -18); filltype mat; material water;}
+      57  {id 57; type simpleCell;   surfaces (-5  -18); filltype mat; material fuel_3;}
+      58  {id 58; type simpleCell;   surfaces (-6  -18); filltype mat; material water;}
+      59  {id 59; type simpleCell;   surfaces (-7  -18); filltype mat; material water;}
+      60  {id 60; type simpleCell;   surfaces (-8  -18); filltype mat; material water;}
+      61  {id 61; type simpleCell;   surfaces (-9  -18); filltype mat; material water;}
+      62 {id 62; type simpleCell;  surfaces   (-10 -18); filltype mat; material water;}
+      63 {id 63; type simpleCell;  surfaces   (-11 -18); filltype mat; material water;}
+      64 {id 64; type simpleCell;  surfaces   (-12 -18); filltype mat; material water;}
+      65 {id 65; type simpleCell;  surfaces   (-13 -18); filltype mat; material water;}
+
+
+
+      //row6
+      66  {id 66; type simpleCell;   surfaces (-1  -19); filltype mat; material water;}
+      67  {id 67; type simpleCell;   surfaces (-2  -19); filltype mat; material water;}
+      68  {id 68; type simpleCell;   surfaces (-3  -19); filltype mat; material water;}
+      69  {id 69; type simpleCell;   surfaces (-4  -19); filltype mat; material water;}
+      70  {id 70; type simpleCell;   surfaces (-5  -19); filltype mat; material water;}
+      71  {id 71; type simpleCell;   surfaces (-6  -19); filltype mat; material water;}
+      72  {id 72; type simpleCell;   surfaces (-7  -19); filltype mat; material water;}
+      73  {id 73; type simpleCell;   surfaces (-8  -19); filltype mat; material water;}
+      74  {id 74; type simpleCell;   surfaces (-9  -19); filltype mat; material water;}
+      75 {id 75; type simpleCell;  surfaces   (-10 -19); filltype mat; material water;}
+      76 {id 76; type simpleCell;  surfaces   (-11 -19); filltype mat; material water;}
+      77 {id 77; type simpleCell;  surfaces   (-12 -19); filltype mat; material water;}
+      78 {id 78; type simpleCell;  surfaces   (-13 -19); filltype mat; material water;}
+
+
+
+      //row7
+      79  {id 79; type simpleCell;   surfaces (-1  -20); filltype mat; material water;}
+      80  {id 80; type simpleCell;   surfaces (-2  -20); filltype mat; material water;}
+      81  {id 81; type simpleCell;   surfaces (-3  -20); filltype mat; material water;}
+      82  {id 82; type simpleCell;   surfaces (-4  -20); filltype mat; material water;}
+      83  {id 83; type simpleCell;   surfaces (-5  -20); filltype mat; material water;}
+      84  {id 84; type simpleCell;   surfaces (-6  -20); filltype mat; material water;}
+      85  {id 85; type simpleCell;   surfaces (-7  -20); filltype mat; material water;}
+      86  {id 86; type simpleCell;   surfaces (-8  -20); filltype mat; material water;}
+      87  {id 87; type simpleCell;   surfaces (-9  -20); filltype mat; material water;}
+      88 {id 88; type simpleCell;  surfaces   (-10 -20); filltype mat; material water;}
+      89 {id 89; type simpleCell;  surfaces   (-11 -20); filltype mat; material water;}
+      90 {id 90; type simpleCell;  surfaces   (-12 -20); filltype mat; material water;}
+      91 {id 91; type simpleCell;  surfaces   (-13 -20); filltype mat; material water;}
+
+
+
+      //row8
+      92  {id 92; type simpleCell;   surfaces (-1  -21); filltype mat; material water;}
+      93  {id 93; type simpleCell;   surfaces (-2  -21); filltype mat; material water;}
+      94  {id 94; type simpleCell;   surfaces (-3  -21); filltype mat; material water;}
+      95  {id 95; type simpleCell;   surfaces (-4  -21); filltype mat; material water;}
+      96  {id 96; type simpleCell;   surfaces (-5  -21); filltype mat; material water;}
+      97  {id 97; type simpleCell;   surfaces (-6  -21); filltype mat; material water;}
+      98  {id 98; type simpleCell;   surfaces (-7  -21); filltype mat; material water;}
+      99  {id 99; type simpleCell;   surfaces (-8  -21); filltype mat; material water;}
+      100  {id 100; type simpleCell;   surfaces (-9  -21); filltype mat; material water;}
+      101 {id 101; type simpleCell;  surfaces   (-10 -21); filltype mat; material water;}
+      102 {id 102; type simpleCell;  surfaces   (-11 -21); filltype mat; material water;}
+      103 {id 103; type simpleCell;  surfaces   (-12 -21); filltype mat; material water;}
+      104 {id 104; type simpleCell;  surfaces   (-13 -21); filltype mat; material water;}
+
+
+
+      //row9
+      105  {id 105; type simpleCell;   surfaces (-1  -22); filltype mat; material water;}
+      106  {id 106; type simpleCell;   surfaces (-2  -22); filltype mat; material water;}
+      107  {id 107; type simpleCell;   surfaces (-3  -22); filltype mat; material water;}
+      108  {id 108; type simpleCell;   surfaces (-4  -22); filltype mat; material water;}
+      109  {id 109; type simpleCell;   surfaces (-5  -22); filltype mat; material water;}
+      110  {id 110; type simpleCell;   surfaces (-6  -22); filltype mat; material water;}
+      111  {id 111; type simpleCell;   surfaces (-7  -22); filltype mat; material water;}
+      112  {id 112; type simpleCell;   surfaces (-8  -22); filltype mat; material water;}
+      113  {id 113; type simpleCell;   surfaces (-9  -22); filltype mat; material water;}
+      114 {id 114; type simpleCell;  surfaces   (-10 -22); filltype mat; material water;}
+      115 {id 115; type simpleCell;  surfaces   (-11 -22); filltype mat; material water;}
+      116 {id 116; type simpleCell;  surfaces   (-12 -22); filltype mat; material water;}
+      117 {id 117; type simpleCell;  surfaces   (-13 -22); filltype mat; material water;}
+
+      //row10
+      118  {id 118; type simpleCell;   surfaces (-1   -23); filltype mat; material water;}
+      119  {id 119; type simpleCell;   surfaces (-2   -23); filltype mat; material water;}
+      120  {id 120; type simpleCell;   surfaces (-3   -23); filltype mat; material water;}
+      121  {id 121; type simpleCell;   surfaces (-4   -23); filltype mat; material water;}
+      122  {id 122; type simpleCell;   surfaces (-5   -23); filltype mat; material water;}
+      123  {id 123; type simpleCell;   surfaces (-6   -23); filltype mat; material water;}
+      124  {id 124; type simpleCell;   surfaces (-7   -23); filltype mat; material water;}
+      125  {id 125; type simpleCell;   surfaces (-8   -23); filltype mat; material water;}
+      126  {id 126; type simpleCell;   surfaces (-9   -23); filltype mat; material water;}
+      127  {id 127; type simpleCell;  surfaces   (-10 -23); filltype mat; material water;}
+      128  {id 128; type simpleCell;  surfaces   (-11 -23); filltype mat; material water;}
+      129  {id 129; type simpleCell;  surfaces   (-12 -23); filltype mat; material water;}
+      130 { id 130; type simpleCell;  surfaces   (-13 -23); filltype mat; material water;}
+
+      //row11
+      131  {id 131; type simpleCell;   surfaces (-1   -24); filltype mat; material water;}
+      132  {id 132; type simpleCell;   surfaces (-2   -24); filltype mat; material water;}
+      133  {id 133; type simpleCell;   surfaces (-3   -24); filltype mat; material water;}
+      134  {id 134; type simpleCell;   surfaces (-4   -24); filltype mat; material water;}
+      135  {id 135; type simpleCell;   surfaces (-5   -24); filltype mat; material water;}
+      136  {id 136; type simpleCell;   surfaces (-6   -24); filltype mat; material water;}
+      137  {id 137; type simpleCell;   surfaces (-7   -24); filltype mat; material water;}
+      138  {id 138; type simpleCell;   surfaces (-8   -24); filltype mat; material water;}
+      139  {id 139; type simpleCell;   surfaces (-9   -24); filltype mat; material water;}
+      140  {id 140; type simpleCell;  surfaces   (-10 -24); filltype mat; material water;}
+      141  {id 141; type simpleCell;  surfaces   (-11 -24); filltype mat; material water;}
+      142  {id 142; type simpleCell;  surfaces   (-12 -24); filltype mat; material water;}
+      143 { id 143; type simpleCell;  surfaces   (-13 -24); filltype mat; material water;}
+
+      //row12
+      144  {id 144; type simpleCell;   surfaces (-1   -25); filltype mat; material water;}
+      145  {id 145; type simpleCell;   surfaces (-2   -25); filltype mat; material water;}
+      146  {id 146; type simpleCell;   surfaces (-3   -25); filltype mat; material water;}
+      147  {id 147; type simpleCell;   surfaces (-4   -25); filltype mat; material water;}
+      148  {id 148; type simpleCell;   surfaces (-5   -25); filltype mat; material water;}
+      149  {id 149; type simpleCell;   surfaces (-6   -25); filltype mat; material water;}
+      150  {id 150; type simpleCell;   surfaces (-7   -25); filltype mat; material water;}
+      151  {id 151; type simpleCell;   surfaces (-8   -25); filltype mat; material water;}
+      152  {id 152; type simpleCell;   surfaces (-9   -25); filltype mat; material water;}
+      153  {id 153; type simpleCell;  surfaces   (-10 -25); filltype mat; material water;}
+      154  {id 154; type simpleCell;  surfaces   (-11 -25); filltype mat; material water;}
+      155  {id 155; type simpleCell;  surfaces   (-12 -25); filltype mat; material water;}
+      156 { id 156; type simpleCell;  surfaces   (-13 -25); filltype mat; material water;}
+
+      //row13
+      157  {id 157; type simpleCell;   surfaces (-1   -26); filltype mat; material water;}
+      158  {id 158; type simpleCell;   surfaces (-2   -26); filltype mat; material water;}
+      159  {id 159; type simpleCell;   surfaces (-3   -26); filltype mat; material water;}
+      160  {id 160; type simpleCell;   surfaces (-4   -26); filltype mat; material water;}
+      161  {id 161; type simpleCell;   surfaces (-5   -26); filltype mat; material water;}
+      162  {id 162; type simpleCell;   surfaces (-6   -26); filltype mat; material water;}
+      163  {id 163; type simpleCell;   surfaces (-7   -26); filltype mat; material water;}
+      164  {id 164; type simpleCell;   surfaces (-8   -26); filltype mat; material water;}
+      165  {id 165; type simpleCell;   surfaces (-9   -26); filltype mat; material water;}
+      166  {id 166; type simpleCell;  surfaces   (-10 -26); filltype mat; material water;}
+      167  {id 167; type simpleCell;  surfaces   (-11 -26); filltype mat; material water;}
+      168  {id 168; type simpleCell;  surfaces   (-12 -26); filltype mat; material water;}
+      169 { id 169; type simpleCell;  surfaces   (-13 -26); filltype mat; material water;}
+
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 27; fill u<2>;}
+      geom { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169);}
+
+    }
+}
+
+
+
+kineticGeom1 {
+  type geometryStd;
+  boundary (1 1 1 1 1 1 ); //(1 1 1 1 1 1);
+  graph {type shrunk;}
+
+  surfaces
+  {
+    universeBox { id 27; type box; origin (0.0 0.0 0.0); halfwidth (13.0 13.0 150.0);}
+
+    //columns
+    c_one   { id 1; type box; origin (-12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_two   { id 2; type box; origin (-10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_three { id 3; type box; origin (-8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_four  { id 4; type box; origin (-6.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_five  { id 5; type box; origin (-4.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_six   { id 6; type box; origin (-2.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_seven { id 7; type box; origin (0.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_eight { id 8; type box; origin (2.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+    c_nine  { id 9; type box; origin (4.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+    c_ten   { id 10; type box; origin (6.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_eleven { id 11; type box; origin (8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_twelve { id 12; type box; origin (10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_thirteen { id 13; type box; origin (12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+
+    //rows
+    r_one   { id 14; type box; origin (0.0 12.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_two   { id 15; type box; origin (0.0 10.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_three { id 16; type box; origin (0.0 8.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_four  { id 17; type box; origin (0.0 6.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_five  { id 18; type box; origin (0.0 4.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_six   { id 19; type box; origin (0.0 2.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_seven { id 20; type box; origin (0.0 0.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_eight { id 21; type box; origin (0.0 -2.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_nine  { id 22; type box; origin (0.0 -4.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_ten   { id 23; type box; origin (0.0 -6.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_eleven   { id 24; type box; origin (0.0 -8.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_twelve   { id 25; type box; origin (0.0 -10.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_thirteen   { id 26; type box; origin (0.0 -12.0 0.0); halfwidth (13.0 1.0 150.0);}
+  } 
+
+  cells
+  {
+    //row 1
+    1  {id 1; type simpleCell;   surfaces (-1  -14); filltype mat; material fuel;}
+    2  {id 2; type simpleCell;   surfaces (-2  -14); filltype mat; material water;}
+    3  {id 3; type simpleCell;   surfaces (-3  -14); filltype mat; material fuel_2;}
+    4  {id 4; type simpleCell;   surfaces (-4  -14); filltype mat; material water;}
+    5  {id 5; type simpleCell;   surfaces (-5  -14); filltype mat; material water;}
+    6  {id 6; type simpleCell;   surfaces (-6  -14); filltype mat; material water;}
+    7  {id 7; type simpleCell;   surfaces (-7  -14); filltype mat; material water;}
+    8  {id 8; type simpleCell;   surfaces (-8  -14); filltype mat; material water;}
+    9  {id 9; type simpleCell;   surfaces (-9  -14); filltype mat; material water;}
+    10 {id 10; type simpleCell;  surfaces (-10 -14); filltype mat; material water;}
+    11 {id 11; type simpleCell;  surfaces (-11 -14); filltype mat; material water;}
+    12 {id 12; type simpleCell;  surfaces (-12 -14); filltype mat; material water;}
+    13 {id 13; type simpleCell;  surfaces (-13 -14); filltype mat; material water;}
+
+    //row 2
+    14  {id 14; type simpleCell;   surfaces (-1  -15); filltype mat; material water;}
+    15  {id 15; type simpleCell;   surfaces (-2  -15); filltype mat; material water;}
+    16  {id 16; type simpleCell;   surfaces (-3  -15); filltype mat; material water;}
+    17  {id 17; type simpleCell;   surfaces (-4  -15); filltype mat; material water;}
+    18  {id 18; type simpleCell;   surfaces (-5  -15); filltype mat; material fuel_3;}
+    19  {id 19; type simpleCell;   surfaces (-6  -15); filltype mat; material water;}
+    20  {id 20; type simpleCell;   surfaces (-7  -15); filltype mat; material water;}
+    21  {id 21; type simpleCell;   surfaces (-8  -15); filltype mat; material water;}
+    22  {id 22; type simpleCell;   surfaces (-9  -15); filltype mat; material water;}
+    23 {id 23; type simpleCell;  surfaces (-10 -15); filltype mat; material water;}
+    24 {id 24; type simpleCell;  surfaces (-11 -15); filltype mat; material water;}
+    25 {id 25; type simpleCell;  surfaces (-12 -15); filltype mat; material water;}
+    26 {id 26; type simpleCell;  surfaces (-13 -15); filltype mat; material water;}
+
+    //row 3
+    27  {id 27; type simpleCell;   surfaces (-1  -16); filltype mat; material fuel_2;}
+    28  {id 28; type simpleCell;   surfaces (-2  -16); filltype mat; material water;}
+    29  {id 29; type simpleCell;   surfaces (-3  -16); filltype mat; material fuel_2;}
+    30  {id 30; type simpleCell;   surfaces (-4  -16); filltype mat; material water;}
+    31  {id 31; type simpleCell;   surfaces (-5  -16); filltype mat; material water;}
+    32  {id 32; type simpleCell;   surfaces (-6  -16); filltype mat; material water;}
+    33  {id 33; type simpleCell;   surfaces (-7  -16); filltype mat; material water;}
+    34  {id 34; type simpleCell;   surfaces (-8  -16); filltype mat; material water;}
+    35  {id 35; type simpleCell;   surfaces (-9  -16); filltype mat; material water;}
+    36 {id 36; type simpleCell;  surfaces   (-10 -16); filltype mat; material water;}
+    37 {id 37; type simpleCell;  surfaces   (-11 -16); filltype mat; material water;}
+    38 {id 38; type simpleCell;  surfaces   (-12 -16); filltype mat; material water;}
+    39 {id 39; type simpleCell;  surfaces   (-13 -16); filltype mat; material water;}
+
+
+
+
+
+    //row4
+    40  {id 40; type simpleCell;   surfaces (-1  -17); filltype mat; material water;}
+    41  {id 41; type simpleCell;   surfaces (-2  -17); filltype mat; material water;}
+    42  {id 42; type simpleCell;   surfaces (-3  -17); filltype mat; material water;}
+    43  {id 43; type simpleCell;   surfaces (-4  -17); filltype mat; material water;}
+    44  {id 44; type simpleCell;   surfaces (-5  -17); filltype mat; material water;}
+    45  {id 45; type simpleCell;   surfaces (-6  -17); filltype mat; material water;}
+    46  {id 46; type simpleCell;   surfaces (-7  -17); filltype mat; material water;}
+    47  {id 47; type simpleCell;   surfaces (-8  -17); filltype mat; material water;}
+    48  {id 48; type simpleCell;   surfaces (-9  -17); filltype mat; material water;}
+    49 {id 49; type simpleCell;  surfaces   (-10 -17); filltype mat; material water;}
+    50 {id 50; type simpleCell;  surfaces   (-11 -17); filltype mat; material water;}
+    51 {id 51; type simpleCell;  surfaces   (-12 -17); filltype mat; material water;}
+    52 {id 52; type simpleCell;  surfaces   (-13 -17); filltype mat; material water;}
+
+
+    //row5
+    53  {id 53; type simpleCell;   surfaces (-1  -18); filltype mat; material water;}
+    54  {id 54; type simpleCell;   surfaces (-2  -18); filltype mat; material fuel_3;}
+    55  {id 55; type simpleCell;   surfaces (-3  -18); filltype mat; material water;}
+    56  {id 56; type simpleCell;   surfaces (-4  -18); filltype mat; material water;}
+    57  {id 57; type simpleCell;   surfaces (-5  -18); filltype mat; material fuel_3;}
+    58  {id 58; type simpleCell;   surfaces (-6  -18); filltype mat; material water;}
+    59  {id 59; type simpleCell;   surfaces (-7  -18); filltype mat; material water;}
+    60  {id 60; type simpleCell;   surfaces (-8  -18); filltype mat; material water;}
+    61  {id 61; type simpleCell;   surfaces (-9  -18); filltype mat; material water;}
+    62 {id 62; type simpleCell;  surfaces   (-10 -18); filltype mat; material water;}
+    63 {id 63; type simpleCell;  surfaces   (-11 -18); filltype mat; material water;}
+    64 {id 64; type simpleCell;  surfaces   (-12 -18); filltype mat; material water;}
+    65 {id 65; type simpleCell;  surfaces   (-13 -18); filltype mat; material water;}
+
+
+
+    //row6
+    66  {id 66; type simpleCell;   surfaces (-1  -19); filltype mat; material water;}
+    67  {id 67; type simpleCell;   surfaces (-2  -19); filltype mat; material water;}
+    68  {id 68; type simpleCell;   surfaces (-3  -19); filltype mat; material water;}
+    69  {id 69; type simpleCell;   surfaces (-4  -19); filltype mat; material water;}
+    70  {id 70; type simpleCell;   surfaces (-5  -19); filltype mat; material water;}
+    71  {id 71; type simpleCell;   surfaces (-6  -19); filltype mat; material water;}
+    72  {id 72; type simpleCell;   surfaces (-7  -19); filltype mat; material water;}
+    73  {id 73; type simpleCell;   surfaces (-8  -19); filltype mat; material water;}
+    74  {id 74; type simpleCell;   surfaces (-9  -19); filltype mat; material water;}
+    75 {id 75; type simpleCell;  surfaces   (-10 -19); filltype mat; material water;}
+    76 {id 76; type simpleCell;  surfaces   (-11 -19); filltype mat; material water;}
+    77 {id 77; type simpleCell;  surfaces   (-12 -19); filltype mat; material water;}
+    78 {id 78; type simpleCell;  surfaces   (-13 -19); filltype mat; material water;}
+
+
+
+    //row7
+    79  {id 79; type simpleCell;   surfaces (-1  -20); filltype mat; material water;}
+    80  {id 80; type simpleCell;   surfaces (-2  -20); filltype mat; material water;}
+    81  {id 81; type simpleCell;   surfaces (-3  -20); filltype mat; material water;}
+    82  {id 82; type simpleCell;   surfaces (-4  -20); filltype mat; material water;}
+    83  {id 83; type simpleCell;   surfaces (-5  -20); filltype mat; material water;}
+    84  {id 84; type simpleCell;   surfaces (-6  -20); filltype mat; material water;}
+    85  {id 85; type simpleCell;   surfaces (-7  -20); filltype mat; material water;}
+    86  {id 86; type simpleCell;   surfaces (-8  -20); filltype mat; material water;}
+    87  {id 87; type simpleCell;   surfaces (-9  -20); filltype mat; material water;}
+    88 {id 88; type simpleCell;  surfaces   (-10 -20); filltype mat; material water;}
+    89 {id 89; type simpleCell;  surfaces   (-11 -20); filltype mat; material water;}
+    90 {id 90; type simpleCell;  surfaces   (-12 -20); filltype mat; material water;}
+    91 {id 91; type simpleCell;  surfaces   (-13 -20); filltype mat; material water;}
+
+
+
+    //row8
+    92  {id 92; type simpleCell;   surfaces (-1  -21); filltype mat; material water;}
+    93  {id 93; type simpleCell;   surfaces (-2  -21); filltype mat; material water;}
+    94  {id 94; type simpleCell;   surfaces (-3  -21); filltype mat; material water;}
+    95  {id 95; type simpleCell;   surfaces (-4  -21); filltype mat; material water;}
+    96  {id 96; type simpleCell;   surfaces (-5  -21); filltype mat; material water;}
+    97  {id 97; type simpleCell;   surfaces (-6  -21); filltype mat; material water;}
+    98  {id 98; type simpleCell;   surfaces (-7  -21); filltype mat; material water;}
+    99  {id 99; type simpleCell;   surfaces (-8  -21); filltype mat; material water;}
+    100  {id 100; type simpleCell;   surfaces (-9  -21); filltype mat; material water;}
+    101 {id 101; type simpleCell;  surfaces   (-10 -21); filltype mat; material water;}
+    102 {id 102; type simpleCell;  surfaces   (-11 -21); filltype mat; material water;}
+    103 {id 103; type simpleCell;  surfaces   (-12 -21); filltype mat; material water;}
+    104 {id 104; type simpleCell;  surfaces   (-13 -21); filltype mat; material water;}
+
+
+
+    //row9
+    105  {id 105; type simpleCell;   surfaces (-1  -22); filltype mat; material water;}
+    106  {id 106; type simpleCell;   surfaces (-2  -22); filltype mat; material water;}
+    107  {id 107; type simpleCell;   surfaces (-3  -22); filltype mat; material water;}
+    108  {id 108; type simpleCell;   surfaces (-4  -22); filltype mat; material water;}
+    109  {id 109; type simpleCell;   surfaces (-5  -22); filltype mat; material water;}
+    110  {id 110; type simpleCell;   surfaces (-6  -22); filltype mat; material water;}
+    111  {id 111; type simpleCell;   surfaces (-7  -22); filltype mat; material water;}
+    112  {id 112; type simpleCell;   surfaces (-8  -22); filltype mat; material water;}
+    113  {id 113; type simpleCell;   surfaces (-9  -22); filltype mat; material fuel_3;}
+    114 {id 114; type simpleCell;  surfaces   (-10 -22); filltype mat; material water;}
+    115 {id 115; type simpleCell;  surfaces   (-11 -22); filltype mat; material water;}
+    116 {id 116; type simpleCell;  surfaces   (-12 -22); filltype mat; material fuel_3;}
+    117 {id 117; type simpleCell;  surfaces   (-13 -22); filltype mat; material water;}
+
+    //row10
+    118  {id 118; type simpleCell;   surfaces (-1   -23); filltype mat; material water;}
+    119  {id 119; type simpleCell;   surfaces (-2   -23); filltype mat; material water;}
+    120  {id 120; type simpleCell;   surfaces (-3   -23); filltype mat; material water;}
+    121  {id 121; type simpleCell;   surfaces (-4   -23); filltype mat; material water;}
+    122  {id 122; type simpleCell;   surfaces (-5   -23); filltype mat; material water;}
+    123  {id 123; type simpleCell;   surfaces (-6   -23); filltype mat; material water;}
+    124  {id 124; type simpleCell;   surfaces (-7   -23); filltype mat; material water;}
+    125  {id 125; type simpleCell;   surfaces (-8   -23); filltype mat; material water;}
+    126  {id 126; type simpleCell;   surfaces (-9   -23); filltype mat; material water;}
+    127  {id 127; type simpleCell;  surfaces   (-10 -23); filltype mat; material water;}
+    128  {id 128; type simpleCell;  surfaces   (-11 -23); filltype mat; material water;}
+    129  {id 129; type simpleCell;  surfaces   (-12 -23); filltype mat; material water;}
+    130 { id 130; type simpleCell;  surfaces   (-13 -23); filltype mat; material water;}
+
+    //row11
+    131  {id 131; type simpleCell;   surfaces (-1   -24); filltype mat; material water;}
+    132  {id 132; type simpleCell;   surfaces (-2   -24); filltype mat; material water;}
+    133  {id 133; type simpleCell;   surfaces (-3   -24); filltype mat; material water;}
+    134  {id 134; type simpleCell;   surfaces (-4   -24); filltype mat; material water;}
+    135  {id 135; type simpleCell;   surfaces (-5   -24); filltype mat; material water;}
+    136  {id 136; type simpleCell;   surfaces (-6   -24); filltype mat; material water;}
+    137  {id 137; type simpleCell;   surfaces (-7   -24); filltype mat; material water;}
+    138  {id 138; type simpleCell;   surfaces (-8   -24); filltype mat; material water;}
+    139  {id 139; type simpleCell;   surfaces (-9   -24); filltype mat; material water;}
+    140  {id 140; type simpleCell;  surfaces   (-10 -24); filltype mat; material water;}
+    141  {id 141; type simpleCell;  surfaces   (-11 -24); filltype mat; material fuel_2;}
+    142  {id 142; type simpleCell;  surfaces   (-12 -24); filltype mat; material water;}
+    143 { id 143; type simpleCell;  surfaces   (-13 -24); filltype mat; material fuel_2;}
+
+    //row12
+    144  {id 144; type simpleCell;   surfaces (-1   -25); filltype mat; material water;}
+    145  {id 145; type simpleCell;   surfaces (-2   -25); filltype mat; material water;}
+    146  {id 146; type simpleCell;   surfaces (-3   -25); filltype mat; material water;}
+    147  {id 147; type simpleCell;   surfaces (-4   -25); filltype mat; material water;}
+    148  {id 148; type simpleCell;   surfaces (-5   -25); filltype mat; material water;}
+    149  {id 149; type simpleCell;   surfaces (-6   -25); filltype mat; material water;}
+    150  {id 150; type simpleCell;   surfaces (-7   -25); filltype mat; material water;}
+    151  {id 151; type simpleCell;   surfaces (-8   -25); filltype mat; material water;}
+    152  {id 152; type simpleCell;   surfaces (-9   -25); filltype mat; material fuel_3;}
+    153  {id 153; type simpleCell;  surfaces   (-10 -25); filltype mat; material water;}
+    154  {id 154; type simpleCell;  surfaces   (-11 -25); filltype mat; material water;}
+    155  {id 155; type simpleCell;  surfaces   (-12 -25); filltype mat; material water;}
+    156 { id 156; type simpleCell;  surfaces   (-13 -25); filltype mat; material water;}
+
+    //row13
+    157  {id 157; type simpleCell;   surfaces (-1   -26); filltype mat; material water;}
+    158  {id 158; type simpleCell;   surfaces (-2   -26); filltype mat; material water;}
+    159  {id 159; type simpleCell;   surfaces (-3   -26); filltype mat; material water;}
+    160  {id 160; type simpleCell;   surfaces (-4   -26); filltype mat; material water;}
+    161  {id 161; type simpleCell;   surfaces (-5   -26); filltype mat; material water;}
+    162  {id 162; type simpleCell;   surfaces (-6   -26); filltype mat; material water;}
+    163  {id 163; type simpleCell;   surfaces (-7   -26); filltype mat; material water;}
+    164  {id 164; type simpleCell;   surfaces (-8   -26); filltype mat; material water;}
+    165  {id 165; type simpleCell;   surfaces (-9   -26); filltype mat; material water;}
+    166  {id 166; type simpleCell;  surfaces   (-10 -26); filltype mat; material water;}
+    167  {id 167; type simpleCell;  surfaces   (-11 -26); filltype mat; material fuel_2;}
+    168  {id 168; type simpleCell;  surfaces   (-12 -26); filltype mat; material water;}
+    169 { id 169; type simpleCell;  surfaces   (-13 -26); filltype mat; material fuel;}
+
+  }
+
+  universes
+  {
+
+    root{id 1; type rootUniverse; border 27; fill u<2>;}
+    geom { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169);}
+
+  }
+}
+
+
+
+kineticGeom2 {
+  type geometryStd;
+  boundary (1 1 1 1 1 1 ); //(1 1 1 1 1 1);
+  graph {type shrunk;}
+
+  surfaces
+  {
+    universeBox { id 27; type box; origin (0.0 0.0 0.0); halfwidth (13.0 13.0 150.0);}
+
+    //columns
+    c_one   { id 1; type box; origin (-12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_two   { id 2; type box; origin (-10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_three { id 3; type box; origin (-8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_four  { id 4; type box; origin (-6.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_five  { id 5; type box; origin (-4.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_six   { id 6; type box; origin (-2.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_seven { id 7; type box; origin (0.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_eight { id 8; type box; origin (2.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+    c_nine  { id 9; type box; origin (4.0 0.0 0.0); halfwidth   (1.0 13.0 150.0);}
+    c_ten   { id 10; type box; origin (6.0 0.0 0.0); halfwidth  (1.0 13.0 150.0);}
+    c_eleven { id 11; type box; origin (8.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_twelve { id 12; type box; origin (10.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+    c_thirteen { id 13; type box; origin (12.0 0.0 0.0); halfwidth (1.0 13.0 150.0);}
+
+    //rows
+    r_one   { id 14; type box; origin (0.0 12.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_two   { id 15; type box; origin (0.0 10.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_three { id 16; type box; origin (0.0 8.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_four  { id 17; type box; origin (0.0 6.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_five  { id 18; type box; origin (0.0 4.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_six   { id 19; type box; origin (0.0 2.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_seven { id 20; type box; origin (0.0 0.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_eight { id 21; type box; origin (0.0 -2.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_nine  { id 22; type box; origin (0.0 -4.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_ten   { id 23; type box; origin (0.0 -6.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_eleven   { id 24; type box; origin (0.0 -8.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_twelve   { id 25; type box; origin (0.0 -10.0 0.0); halfwidth (13.0 1.0 150.0);}
+    r_thirteen   { id 26; type box; origin (0.0 -12.0 0.0); halfwidth (13.0 1.0 150.0);}
+  } 
+
+  cells
+  {
+    //row 1
+    1  {id 1; type simpleCell;   surfaces (-1  -14); filltype mat; material water;}
+    2  {id 2; type simpleCell;   surfaces (-2  -14); filltype mat; material water;}
+    3  {id 3; type simpleCell;   surfaces (-3  -14); filltype mat; material water;}
+    4  {id 4; type simpleCell;   surfaces (-4  -14); filltype mat; material water;}
+    5  {id 5; type simpleCell;   surfaces (-5  -14); filltype mat; material water;}
+    6  {id 6; type simpleCell;   surfaces (-6  -14); filltype mat; material water;}
+    7  {id 7; type simpleCell;   surfaces (-7  -14); filltype mat; material water;}
+    8  {id 8; type simpleCell;   surfaces (-8  -14); filltype mat; material water;}
+    9  {id 9; type simpleCell;   surfaces (-9  -14); filltype mat; material water;}
+    10 {id 10; type simpleCell;  surfaces (-10 -14); filltype mat; material water;}
+    11 {id 11; type simpleCell;  surfaces (-11 -14); filltype mat; material water;}
+    12 {id 12; type simpleCell;  surfaces (-12 -14); filltype mat; material water;}
+    13 {id 13; type simpleCell;  surfaces (-13 -14); filltype mat; material water;}
+
+    //row 2
+    14  {id 14; type simpleCell;   surfaces (-1  -15); filltype mat; material water;}
+    15  {id 15; type simpleCell;   surfaces (-2  -15); filltype mat; material water;}
+    16  {id 16; type simpleCell;   surfaces (-3  -15); filltype mat; material water;}
+    17  {id 17; type simpleCell;   surfaces (-4  -15); filltype mat; material water;}
+    18  {id 18; type simpleCell;   surfaces (-5  -15); filltype mat; material water;}
+    19  {id 19; type simpleCell;   surfaces (-6  -15); filltype mat; material water;}
+    20  {id 20; type simpleCell;   surfaces (-7  -15); filltype mat; material water;}
+    21  {id 21; type simpleCell;   surfaces (-8  -15); filltype mat; material water;}
+    22  {id 22; type simpleCell;   surfaces (-9  -15); filltype mat; material water;}
+    23 {id 23; type simpleCell;  surfaces (-10 -15); filltype mat; material water;}
+    24 {id 24; type simpleCell;  surfaces (-11 -15); filltype mat; material water;}
+    25 {id 25; type simpleCell;  surfaces (-12 -15); filltype mat; material water;}
+    26 {id 26; type simpleCell;  surfaces (-13 -15); filltype mat; material water;}
+
+    //row 3
+    27  {id 27; type simpleCell;   surfaces (-1  -16); filltype mat; material water;}
+    28  {id 28; type simpleCell;   surfaces (-2  -16); filltype mat; material water;}
+    29  {id 29; type simpleCell;   surfaces (-3  -16); filltype mat; material water;}
+    30  {id 30; type simpleCell;   surfaces (-4  -16); filltype mat; material water;}
+    31  {id 31; type simpleCell;   surfaces (-5  -16); filltype mat; material water;}
+    32  {id 32; type simpleCell;   surfaces (-6  -16); filltype mat; material water;}
+    33  {id 33; type simpleCell;   surfaces (-7  -16); filltype mat; material water;}
+    34  {id 34; type simpleCell;   surfaces (-8  -16); filltype mat; material water;}
+    35  {id 35; type simpleCell;   surfaces (-9  -16); filltype mat; material water;}
+    36 {id 36; type simpleCell;  surfaces   (-10 -16); filltype mat; material water;}
+    37 {id 37; type simpleCell;  surfaces   (-11 -16); filltype mat; material water;}
+    38 {id 38; type simpleCell;  surfaces   (-12 -16); filltype mat; material water;}
+    39 {id 39; type simpleCell;  surfaces   (-13 -16); filltype mat; material water;}
+
+
+
+
+
+    //row4
+    40  {id 40; type simpleCell;   surfaces (-1  -17); filltype mat; material water;}
+    41  {id 41; type simpleCell;   surfaces (-2  -17); filltype mat; material water;}
+    42  {id 42; type simpleCell;   surfaces (-3  -17); filltype mat; material water;}
+    43  {id 43; type simpleCell;   surfaces (-4  -17); filltype mat; material water;}
+    44  {id 44; type simpleCell;   surfaces (-5  -17); filltype mat; material water;}
+    45  {id 45; type simpleCell;   surfaces (-6  -17); filltype mat; material water;}
+    46  {id 46; type simpleCell;   surfaces (-7  -17); filltype mat; material water;}
+    47  {id 47; type simpleCell;   surfaces (-8  -17); filltype mat; material water;}
+    48  {id 48; type simpleCell;   surfaces (-9  -17); filltype mat; material water;}
+    49 {id 49; type simpleCell;  surfaces   (-10 -17); filltype mat; material water;}
+    50 {id 50; type simpleCell;  surfaces   (-11 -17); filltype mat; material water;}
+    51 {id 51; type simpleCell;  surfaces   (-12 -17); filltype mat; material water;}
+    52 {id 52; type simpleCell;  surfaces   (-13 -17); filltype mat; material water;}
+
+
+    //row5
+    53  {id 53; type simpleCell;   surfaces (-1  -18); filltype mat; material water;}
+    54  {id 54; type simpleCell;   surfaces (-2  -18); filltype mat; material water;}
+    55  {id 55; type simpleCell;   surfaces (-3  -18); filltype mat; material water;}
+    56  {id 56; type simpleCell;   surfaces (-4  -18); filltype mat; material water;}
+    57  {id 57; type simpleCell;   surfaces (-5  -18); filltype mat; material water;}
+    58  {id 58; type simpleCell;   surfaces (-6  -18); filltype mat; material water;}
+    59  {id 59; type simpleCell;   surfaces (-7  -18); filltype mat; material water;}
+    60  {id 60; type simpleCell;   surfaces (-8  -18); filltype mat; material water;}
+    61  {id 61; type simpleCell;   surfaces (-9  -18); filltype mat; material water;}
+    62 {id 62; type simpleCell;  surfaces   (-10 -18); filltype mat; material water;}
+    63 {id 63; type simpleCell;  surfaces   (-11 -18); filltype mat; material water;}
+    64 {id 64; type simpleCell;  surfaces   (-12 -18); filltype mat; material water;}
+    65 {id 65; type simpleCell;  surfaces   (-13 -18); filltype mat; material water;}
+
+
+
+    //row6
+    66  {id 66; type simpleCell;   surfaces (-1  -19); filltype mat; material water;}
+    67  {id 67; type simpleCell;   surfaces (-2  -19); filltype mat; material water;}
+    68  {id 68; type simpleCell;   surfaces (-3  -19); filltype mat; material water;}
+    69  {id 69; type simpleCell;   surfaces (-4  -19); filltype mat; material water;}
+    70  {id 70; type simpleCell;   surfaces (-5  -19); filltype mat; material water;}
+    71  {id 71; type simpleCell;   surfaces (-6  -19); filltype mat; material water;}
+    72  {id 72; type simpleCell;   surfaces (-7  -19); filltype mat; material water;}
+    73  {id 73; type simpleCell;   surfaces (-8  -19); filltype mat; material water;}
+    74  {id 74; type simpleCell;   surfaces (-9  -19); filltype mat; material water;}
+    75 {id 75; type simpleCell;  surfaces   (-10 -19); filltype mat; material water;}
+    76 {id 76; type simpleCell;  surfaces   (-11 -19); filltype mat; material water;}
+    77 {id 77; type simpleCell;  surfaces   (-12 -19); filltype mat; material water;}
+    78 {id 78; type simpleCell;  surfaces   (-13 -19); filltype mat; material water;}
+
+
+
+    //row7
+    79  {id 79; type simpleCell;   surfaces (-1  -20); filltype mat; material water;}
+    80  {id 80; type simpleCell;   surfaces (-2  -20); filltype mat; material water;}
+    81  {id 81; type simpleCell;   surfaces (-3  -20); filltype mat; material water;}
+    82  {id 82; type simpleCell;   surfaces (-4  -20); filltype mat; material water;}
+    83  {id 83; type simpleCell;   surfaces (-5  -20); filltype mat; material water;}
+    84  {id 84; type simpleCell;   surfaces (-6  -20); filltype mat; material water;}
+    85  {id 85; type simpleCell;   surfaces (-7  -20); filltype mat; material water;}
+    86  {id 86; type simpleCell;   surfaces (-8  -20); filltype mat; material water;}
+    87  {id 87; type simpleCell;   surfaces (-9  -20); filltype mat; material water;}
+    88 {id 88; type simpleCell;  surfaces   (-10 -20); filltype mat; material water;}
+    89 {id 89; type simpleCell;  surfaces   (-11 -20); filltype mat; material water;}
+    90 {id 90; type simpleCell;  surfaces   (-12 -20); filltype mat; material water;}
+    91 {id 91; type simpleCell;  surfaces   (-13 -20); filltype mat; material water;}
+
+
+
+    //row8
+    92  {id 92; type simpleCell;   surfaces (-1  -21); filltype mat; material water;}
+    93  {id 93; type simpleCell;   surfaces (-2  -21); filltype mat; material water;}
+    94  {id 94; type simpleCell;   surfaces (-3  -21); filltype mat; material water;}
+    95  {id 95; type simpleCell;   surfaces (-4  -21); filltype mat; material water;}
+    96  {id 96; type simpleCell;   surfaces (-5  -21); filltype mat; material water;}
+    97  {id 97; type simpleCell;   surfaces (-6  -21); filltype mat; material water;}
+    98  {id 98; type simpleCell;   surfaces (-7  -21); filltype mat; material water;}
+    99  {id 99; type simpleCell;   surfaces (-8  -21); filltype mat; material water;}
+    100  {id 100; type simpleCell;   surfaces (-9  -21); filltype mat; material water;}
+    101 {id 101; type simpleCell;  surfaces   (-10 -21); filltype mat; material water;}
+    102 {id 102; type simpleCell;  surfaces   (-11 -21); filltype mat; material water;}
+    103 {id 103; type simpleCell;  surfaces   (-12 -21); filltype mat; material water;}
+    104 {id 104; type simpleCell;  surfaces   (-13 -21); filltype mat; material water;}
+
+
+
+    //row9
+    105  {id 105; type simpleCell;   surfaces (-1  -22); filltype mat; material water;}
+    106  {id 106; type simpleCell;   surfaces (-2  -22); filltype mat; material water;}
+    107  {id 107; type simpleCell;   surfaces (-3  -22); filltype mat; material water;}
+    108  {id 108; type simpleCell;   surfaces (-4  -22); filltype mat; material water;}
+    109  {id 109; type simpleCell;   surfaces (-5  -22); filltype mat; material water;}
+    110  {id 110; type simpleCell;   surfaces (-6  -22); filltype mat; material water;}
+    111  {id 111; type simpleCell;   surfaces (-7  -22); filltype mat; material water;}
+    112  {id 112; type simpleCell;   surfaces (-8  -22); filltype mat; material water;}
+    113  {id 113; type simpleCell;   surfaces (-9  -22); filltype mat; material fuel_3;}
+    114 {id 114; type simpleCell;  surfaces   (-10 -22); filltype mat; material water;}
+    115 {id 115; type simpleCell;  surfaces   (-11 -22); filltype mat; material water;}
+    116 {id 116; type simpleCell;  surfaces   (-12 -22); filltype mat; material fuel_3;}
+    117 {id 117; type simpleCell;  surfaces   (-13 -22); filltype mat; material water;}
+
+    //row10
+    118  {id 118; type simpleCell;   surfaces (-1   -23); filltype mat; material water;}
+    119  {id 119; type simpleCell;   surfaces (-2   -23); filltype mat; material water;}
+    120  {id 120; type simpleCell;   surfaces (-3   -23); filltype mat; material water;}
+    121  {id 121; type simpleCell;   surfaces (-4   -23); filltype mat; material water;}
+    122  {id 122; type simpleCell;   surfaces (-5   -23); filltype mat; material water;}
+    123  {id 123; type simpleCell;   surfaces (-6   -23); filltype mat; material water;}
+    124  {id 124; type simpleCell;   surfaces (-7   -23); filltype mat; material water;}
+    125  {id 125; type simpleCell;   surfaces (-8   -23); filltype mat; material water;}
+    126  {id 126; type simpleCell;   surfaces (-9   -23); filltype mat; material water;}
+    127  {id 127; type simpleCell;  surfaces   (-10 -23); filltype mat; material water;}
+    128  {id 128; type simpleCell;  surfaces   (-11 -23); filltype mat; material water;}
+    129  {id 129; type simpleCell;  surfaces   (-12 -23); filltype mat; material water;}
+    130 { id 130; type simpleCell;  surfaces   (-13 -23); filltype mat; material water;}
+
+    //row11
+    131  {id 131; type simpleCell;   surfaces (-1   -24); filltype mat; material water;}
+    132  {id 132; type simpleCell;   surfaces (-2   -24); filltype mat; material water;}
+    133  {id 133; type simpleCell;   surfaces (-3   -24); filltype mat; material water;}
+    134  {id 134; type simpleCell;   surfaces (-4   -24); filltype mat; material water;}
+    135  {id 135; type simpleCell;   surfaces (-5   -24); filltype mat; material water;}
+    136  {id 136; type simpleCell;   surfaces (-6   -24); filltype mat; material water;}
+    137  {id 137; type simpleCell;   surfaces (-7   -24); filltype mat; material water;}
+    138  {id 138; type simpleCell;   surfaces (-8   -24); filltype mat; material water;}
+    139  {id 139; type simpleCell;   surfaces (-9   -24); filltype mat; material water;}
+    140  {id 140; type simpleCell;  surfaces   (-10 -24); filltype mat; material water;}
+    141  {id 141; type simpleCell;  surfaces   (-11 -24); filltype mat; material fuel_2;}
+    142  {id 142; type simpleCell;  surfaces   (-12 -24); filltype mat; material water;}
+    143 { id 143; type simpleCell;  surfaces   (-13 -24); filltype mat; material fuel_2;}
+
+    //row12
+    144  {id 144; type simpleCell;   surfaces (-1   -25); filltype mat; material water;}
+    145  {id 145; type simpleCell;   surfaces (-2   -25); filltype mat; material water;}
+    146  {id 146; type simpleCell;   surfaces (-3   -25); filltype mat; material water;}
+    147  {id 147; type simpleCell;   surfaces (-4   -25); filltype mat; material water;}
+    148  {id 148; type simpleCell;   surfaces (-5   -25); filltype mat; material water;}
+    149  {id 149; type simpleCell;   surfaces (-6   -25); filltype mat; material water;}
+    150  {id 150; type simpleCell;   surfaces (-7   -25); filltype mat; material water;}
+    151  {id 151; type simpleCell;   surfaces (-8   -25); filltype mat; material water;}
+    152  {id 152; type simpleCell;   surfaces (-9   -25); filltype mat; material fuel_3;}
+    153  {id 153; type simpleCell;  surfaces   (-10 -25); filltype mat; material water;}
+    154  {id 154; type simpleCell;  surfaces   (-11 -25); filltype mat; material water;}
+    155  {id 155; type simpleCell;  surfaces   (-12 -25); filltype mat; material water;}
+    156 { id 156; type simpleCell;  surfaces   (-13 -25); filltype mat; material water;}
+
+    //row13
+    157  {id 157; type simpleCell;   surfaces (-1   -26); filltype mat; material water;}
+    158  {id 158; type simpleCell;   surfaces (-2   -26); filltype mat; material water;}
+    159  {id 159; type simpleCell;   surfaces (-3   -26); filltype mat; material water;}
+    160  {id 160; type simpleCell;   surfaces (-4   -26); filltype mat; material water;}
+    161  {id 161; type simpleCell;   surfaces (-5   -26); filltype mat; material water;}
+    162  {id 162; type simpleCell;   surfaces (-6   -26); filltype mat; material water;}
+    163  {id 163; type simpleCell;   surfaces (-7   -26); filltype mat; material water;}
+    164  {id 164; type simpleCell;   surfaces (-8   -26); filltype mat; material water;}
+    165  {id 165; type simpleCell;   surfaces (-9   -26); filltype mat; material water;}
+    166  {id 166; type simpleCell;  surfaces   (-10 -26); filltype mat; material water;}
+    167  {id 167; type simpleCell;  surfaces   (-11 -26); filltype mat; material fuel_2;}
+    168  {id 168; type simpleCell;  surfaces   (-12 -26); filltype mat; material water;}
+    169 { id 169; type simpleCell;  surfaces   (-13 -26); filltype mat; material fuel;}
+
+  }
+
+  universes
+  {
+
+    root{id 1; type rootUniverse; border 27; fill u<2>;}
+    geom { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169);}
+
+  }
+}
+
+
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-150 -150 -150);
+    width (300 300 300);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+
+
+    water {
+      temp 75675;
+      composition {
+      1001.03    6.700E-002;
+      8016.03    3.350E-002;
+
+      92238.03  0.000000000000000001;
+      }
+      }
+
+    fuel {
+      temp 87476;
+       composition {
+       92235.03  4.15E-003;
+       92238.03  2.21E-002;
+       94238.03  1.50E-005;
+       94239.03  5.80E-004;
+       94240.03  1.5E-004;
+       94241.03  5.0E-003;
+       94242.03  5.40E-004;
+       95241.03  1.30E-004;
+        8016.03  4.63E-002; 
+    
+       }
+      }
+
+
+      
+      fuel_2 {
+        temp 87476;
+         composition {
+          92235.03  4.00E-003;
+          92238.03  2.21E-002;
+          94238.03  2.40E-005;
+          94239.03  9.30E-004;
+          94240.03  1.5E-004;
+          94241.03  1.52E-003;
+          94242.03  8.40E-004;
+          95241.03  2.00E-004;
+           8016.03  4.63E-002;
+      
+         }
+        }
+
+      
+      fuel_3 {
+        temp 87476;
+         composition {
+          92235.03  4.00E-003;
+          92238.03  2.21E-002;
+          94238.03  3.00E-005;
+          94239.03  1.16E-003;
+          94240.03  1.5E-004;
+          94241.03  1.90E-004;
+          94242.03  1.05E-003;
+          95241.03  2.50E-003;
+           8016.03  4.63E-002;
+      
+         }
+        }
+
+      boron {
+        temp 8765;
+        composition {
+       5010.03    0.0001;//1.3;//0.13; 
+       //5011.03    2.3;
+       //92238.03  1.0E-030;
+       }
+        }
+
+}
+}

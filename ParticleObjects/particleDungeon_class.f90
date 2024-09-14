@@ -580,7 +580,7 @@ contains
 
   !!
   !! Normalises precusor population by combing
-  !! Done according to expected neutron weight for forced decay in ntext time interval
+  !! Done according to expected neutron weight for forced decay in next time interval
   !!
   subroutine precursorCombing(self, N, rand, t)
     class(particleDungeon), intent(inout)    :: self

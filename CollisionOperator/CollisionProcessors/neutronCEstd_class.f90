@@ -78,6 +78,7 @@ module neutronCEstd_class
     real(defReal)    :: thresh_E
     real(defReal)    :: thresh_A
     logical(defBool) :: usePrecursors
+    real(defReal)    :: couplingRatio
 
   contains
     ! Initialisation procedure
@@ -129,6 +130,7 @@ contains
 
     ! Whether to implement precursors (default = yes)
     call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
+    call dict % getOrDefault(self % couplingRatio, 'couplingRatio', ONE)
 
   end subroutine init
 
@@ -161,7 +163,7 @@ contains
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Critical Source Kinetic Coupling
-    if (p % criticalSource .eqv. .true.) then
+    if ((p % criticalSource .eqv. .true.) .and. (p % pRNG % get() <= self % couplingRatio)) then
       ! Handle Neutrons
       pTemp = p
       call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
@@ -252,7 +254,8 @@ contains
         call nextCycle % detain(pTemp)
       end do
 
-    else if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .true.) .and. (self % usePrecursors .eqv. .true.)) then
+    else if ((self % nuc % isFissile()) .and. (p % criticalSource .eqv. .true.) .and. & 
+            (self % usePrecursors .eqv. .true.) .and. (p % pRNG % get() <= self % couplingRatio)) then
 
       r   = p % rGlobal()
 

@@ -755,6 +755,11 @@ contains
     ! Close cycle multipling all scores by multiplication factor
     call self % mem % closeCycle(normFactor)
 
+    if (allocated(self % entropy)) then
+      !print *, self % entropy(1) / real(sum(self % entropy(:))), &
+      !self % entropy(size(self % entropy(:))) / real(sum(self % entropy(:)))
+      !print *, self % entropy(:), sum(self % entropy(:))
+    end if
     if (allocated(self % entropy)) self % entropy(:) = 0
 
   end subroutine reportCycleEnd
@@ -945,6 +950,7 @@ contains
     call fatalError(Here, 'combing, global, space not implemented yet')
 
     end if
+    !print *, p % fitness, state % cellIdx
 
     ! OH SHIT!! TODO: Ok reason why not as good: cell 3 is boron. It is included
     ! but not in tally output, so FoM high for particles in the middle. Not problem for 
@@ -989,15 +995,9 @@ contains
     character(100),parameter :: Here = 'initEPCScalar (tallyAdmin_class.f90)'
 
     self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
-
-    if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
-      self % entropy(:) = 0
-    end if
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
@@ -1017,11 +1017,6 @@ contains
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
-
-    if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
-      self % entropy(:) = 0
-    end if
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
@@ -1044,7 +1039,7 @@ contains
     self % fittestFactor = fittestFactor
 
     if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
+      allocate(self % entropy(maxval(response)))
       self % entropy(:) = 0
     end if
 
