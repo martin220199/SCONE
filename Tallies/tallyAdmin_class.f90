@@ -168,6 +168,8 @@ module tallyAdmin_class
 
     procedure :: processEvolutionaryParticle
 
+    procedure :: processGlobalEvolution
+
     generic :: initEPC => initEPCScalar,&
                           initEPCMultiReal,&
                           initEPCMultiInt
@@ -899,12 +901,6 @@ contains
                                                                  ! have more knowledge of how can be done trivially from 1.
       !need to initialise multimap in tallyAdmin_class self % map % map
 
-
-
-
-
-
-
       call fatalError(Here, 'sorting, global, space not implemented yet')
 
     !combing, local, cell
@@ -936,10 +932,10 @@ contains
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
       p % fitness = ONE / (ONE + self % fittestFactor)
-      s = sum(self % entropy(:))
-      if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
-        p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)
-      end if
+      !s = sum(self % entropy(:))
+      !if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
+      !  p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)
+      !end if
       if (ANY(self % targetMultiInt == state % cellIdx)) &
       self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
 
@@ -987,6 +983,31 @@ contains
 
 
   end subroutine processEvolutionaryParticle
+
+
+  subroutine processGlobalEvolution(self, dungeon)
+    class(tallyAdmin),intent(inout)         :: self
+    class(particleDungeon), intent(inout)   :: dungeon
+    real(defReal)                           :: norm
+    type(particle), save                    :: p
+    integer(shortInt)                       :: n
+    !$omp threadprivate(p)
+
+    norm = sum(self % entropy(:))
+
+    !$omp parallel do schedule(dynamic)
+    fit: do n = 1, dungeon % popSize()
+      call dungeon % copy(p, n)
+      if (ANY(self % targetMultiInt == p % getCellIdx())) then
+        p % fitness = ONE / (self % entropy(p % getCellIdx()) / norm + self % fittestFactor)
+        call dungeon % replace(p,n)
+
+        !print *, state % cellIdx, p % fitness
+      end if
+    end do fit
+    !$omp end parallel do
+
+  end subroutine processGlobalEvolution
 
   subroutine initEPCScalar(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, responseVal)
     class(tallyAdmin),intent(inout) :: self

@@ -293,6 +293,7 @@ contains
     LHS % lambda                = RHS % lambda
     LHS % fate                  = RHS % fate
     LHS % fitness               = RHS % fitness  
+    LHS % coords % lvl(1) % cellIdx = RHS % cellIdx
 
   end subroutine particle_fromParticleState
 
