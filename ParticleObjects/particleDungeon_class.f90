@@ -504,7 +504,6 @@ contains
     integer(shortInt)                        :: i, j
     class(RNG), intent(inout)                :: rand
     real(defReal)                            :: u_av, w_av, nextTooth, curU
-    !real(defReal), dimension(self % pop)     :: w_array
     type(particleState), dimension(N)        :: newPrisoners
     character(100), parameter :: Here =' fitness_combing (particleDungeon_class.f90)'
 

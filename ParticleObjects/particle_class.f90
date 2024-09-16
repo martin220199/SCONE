@@ -279,20 +279,21 @@ contains
     class(particle), intent(inout)   :: LHS
     type(particleState), intent(in)  :: RHS
 
-    LHS % w                     = RHS % wgt
-    LHS % w0                    = RHS % wgt
+    LHS % w                         = RHS % wgt
+    LHS % w0                        = RHS % wgt
     call LHS % takeAboveGeom()
-    LHS % coords % lvl(1) % r   = RHS % r
-    LHS % coords % lvl(1) % dir = RHS % dir
-    LHS % E                     = RHS % E
-    LHS % G                     = RHS % G
-    LHS % isDead                = RHS % isDead
-    LHS % isMG                  = RHS % isMG
-    LHS % type                  = RHS % type
-    LHS % time                  = RHS % time
-    LHS % lambda                = RHS % lambda
-    LHS % fate                  = RHS % fate
-    LHS % fitness               = RHS % fitness
+    LHS % coords % lvl(1) % r       = RHS % r
+    LHS % coords % lvl(1) % dir     = RHS % dir
+    LHS % E                         = RHS % E
+    LHS % G                         = RHS % G
+    LHS % isDead                    = RHS % isDead
+    LHS % isMG                      = RHS % isMG
+    LHS % type                      = RHS % type
+    LHS % time                      = RHS % time
+    LHS % lambda                    = RHS % lambda
+    LHS % fate                      = RHS % fate
+    LHS % fitness                   = RHS % fitness
+    LHS % coords % lvl(1) % cellIdx = RHS % cellIdx
 
   end subroutine particle_fromParticleState
 

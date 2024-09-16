@@ -120,8 +120,6 @@ module tallyAdmin_class
     ! Score memory
     type(scoreMemory)  :: mem
 
-    integer(shortInt)                            :: nTimeBinsEPC = 0_shortInt
-    integer(shortInt)                            :: tallyContribSizeEPC = 0_shortInt
     integer(shortInt)                            :: EPCResponse, fitnessHandling
     real(defReal)                                :: fittestFactor
     integer(shortInt), dimension(:), allocatable :: entropy
@@ -167,6 +165,8 @@ module tallyAdmin_class
     procedure,private :: addToReports
 
     procedure :: processEvolutionaryParticle
+
+    procedure :: processGlobalEvolution
 
     generic :: initEPC => initEPCScalar,&
                           initEPCMultiReal,&
@@ -842,11 +842,9 @@ contains
 
   end subroutine addToReports
 
-  subroutine processEvolutionaryParticle(self, p, timeBinIdx)
+  subroutine processEvolutionaryParticle(self, p)
     class(tallyAdmin),intent(inout)                      :: self
     class(particle), intent(inout)                       :: p
-    integer(longInt), intent(in)                         :: timeBinIdx
-    real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
     integer(shortInt)                                    :: i
     real(defReal)                                        :: s
     real(defReal)                                        :: epsilon = 0.01_defReal
@@ -889,6 +887,7 @@ contains
     !sorting, global, space
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+      !TODO?
       call fatalError(Here, 'sorting, global, space not implemented yet')
 
     !combing, local, cell
@@ -918,21 +917,42 @@ contains
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
       p % fitness = ONE / (ONE + self % fittestFactor)
-      s = sum(self % entropy(:))
-      if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
-        p % fitness = ONE / (self % entropy(state % cellIdx) / s + self % fittestFactor)
-      end if
+
       if (ANY(self % targetMultiInt == state % cellIdx)) &
       self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
 
     !combing, global, space
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
          .and. (allocated(self % targetMultiReal)) .and. (.not. allocated(self % targetMultiInt))) then
+    !TODO?
     call fatalError(Here, 'combing, global, space not implemented yet')
 
     end if
 
   end subroutine processEvolutionaryParticle
+
+
+  subroutine processGlobalEvolution(self, dungeon)
+    class(tallyAdmin),intent(inout)         :: self
+    class(particleDungeon), intent(inout)   :: dungeon
+    real(defReal)                           :: norm
+    type(particle), save                    :: p
+    integer(shortInt)                       :: n
+    !$omp threadprivate(p)
+
+    norm = sum(self % entropy(:))
+
+    !$omp parallel do schedule(dynamic)
+    fit: do n = 1, dungeon % popSize()
+      call dungeon % copy(p, n)
+      if (ANY(self % targetMultiInt == p % getCellIdx())) then
+        p % fitness = ONE / (self % entropy(p % getCellIdx()) / norm + self % fittestFactor)
+        call dungeon % replace(p,n)
+      end if
+    end do fit
+    !$omp end parallel do
+
+  end subroutine processGlobalEvolution
 
   subroutine initEPCScalar(self, N_timeBins, EPCResponse, fitnessHandling, fittestFactor, responseVal)
     class(tallyAdmin),intent(inout) :: self
@@ -940,16 +960,9 @@ contains
     real(defReal), intent(in)       :: fittestFactor
     character(100),parameter :: Here = 'initEPCScalar (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
-
-    if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
-      self % entropy(:) = 0
-    end if
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
@@ -964,16 +977,9 @@ contains
     real(defReal), dimension(:), intent(in) ::  response
     character(100),parameter :: Here = 'initEPCMultiReal (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
-
-    if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
-      self % entropy(:) = 0
-    end if
 
     if (self % EPCResponse > 1_shortInt) call fatalError(Here, 'responseType must be 0 or 1')
 
@@ -989,14 +995,12 @@ contains
     integer(shortInt), dimension(:), intent(in) ::  response
     character(100),parameter :: Here = 'initEPCMultiInt (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
 
     if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(self % tallyContribSizeEPC))
+      allocate(self % entropy(maxval(response)))
       self % entropy(:) = 0
     end if
 
