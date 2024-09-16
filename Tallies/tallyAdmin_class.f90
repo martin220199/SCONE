@@ -120,8 +120,6 @@ module tallyAdmin_class
     ! Score memory
     type(scoreMemory)  :: mem
 
-    integer(shortInt)                            :: nTimeBinsEPC = 0_shortInt
-    integer(shortInt)                            :: tallyContribSizeEPC = 0_shortInt
     integer(shortInt)                            :: EPCResponse, fitnessHandling
     real(defReal)                                :: fittestFactor
     integer(shortInt), dimension(:), allocatable :: entropy
@@ -844,11 +842,9 @@ contains
 
   end subroutine addToReports
 
-  subroutine processEvolutionaryParticle(self, p, timeBinIdx)
+  subroutine processEvolutionaryParticle(self, p)
     class(tallyAdmin),intent(inout)                      :: self
     class(particle), intent(inout)                       :: p
-    integer(longInt), intent(in)                         :: timeBinIdx
-    real(defReal), dimension(self % tallyContribSizeEPC) :: tallyFootprint
     integer(shortInt)                                    :: i
     real(defReal)                                        :: s
     real(defReal)                                        :: epsilon = 0.01_defReal
@@ -952,8 +948,6 @@ contains
       if (ANY(self % targetMultiInt == p % getCellIdx())) then
         p % fitness = ONE / (self % entropy(p % getCellIdx()) / norm + self % fittestFactor)
         call dungeon % replace(p,n)
-
-        !print *, state % cellIdx, p % fitness
       end if
     end do fit
     !$omp end parallel do
@@ -966,7 +960,6 @@ contains
     real(defReal), intent(in)       :: fittestFactor
     character(100),parameter :: Here = 'initEPCScalar (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
@@ -984,8 +977,6 @@ contains
     real(defReal), dimension(:), intent(in) ::  response
     character(100),parameter :: Here = 'initEPCMultiReal (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor
@@ -1004,8 +995,6 @@ contains
     integer(shortInt), dimension(:), intent(in) ::  response
     character(100),parameter :: Here = 'initEPCMultiInt (tallyAdmin_class.f90)'
 
-    self % nTimeBinsEPC = N_timeBins
-    self % tallyContribSizeEPC = self % mem % N / self % nTimeBinsEPC
     self % EPCResponse = EPCResponse
     self % fitnessHandling = fitnessHandling
     self % fittestFactor = fittestFactor

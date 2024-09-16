@@ -589,7 +589,7 @@ contains
               call transOp % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                call tally % processEvolutionaryParticle(p, t)
+                call tally % processEvolutionaryParticle(p)
 
                 if (self % fitnessHandling == 0_shortInt) then
                   !$OMP CRITICAL
@@ -654,7 +654,7 @@ contains
                     call transOp % transport(p, tally, buffer, buffer)
                     if(p % isDead) exit historyDelayed
                     if(p % fate == AGED_FATE) then
-                      call tally % processEvolutionaryParticle(p, t)
+                      call tally % processEvolutionaryParticle(p)
 
                       if (self % fitnessHandling == 0_shortInt) then
                         !$OMP CRITICAL
@@ -736,7 +736,7 @@ contains
                   call transOp % transport(p, tally, buffer, buffer)
                   if(p % isDead) exit historyDelayedImp
                   if(p % fate == AGED_FATE) then
-                    call tally % processEvolutionaryParticle(p, t)
+                    call tally % processEvolutionaryParticle(p)
 
                     if (self % fitnessHandling == 0_shortInt) then
                       !$OMP CRITICAL
