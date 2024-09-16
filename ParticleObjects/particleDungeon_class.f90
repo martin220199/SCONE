@@ -464,7 +464,6 @@ contains
     integer(shortInt)                        :: i, j
     class(RNG), intent(inout)                :: rand
     real(defReal)                            :: w_av, nextTooth, curWeight
-    real(defReal), dimension(self % pop)     :: w_array
     type(particleState), dimension(N)        :: newPrisoners
     character(100), parameter :: Here =' combing (particleDungeon_class.f90)'
 
@@ -478,11 +477,6 @@ contains
 
     ! Get new particle weight
     w_av = self % popWeight() / N
-
-    ! Fill array with each prisoner weight (probably neater way to do this)
-    do i=1, self % pop
-      w_array(i) = self % prisoners(i) % wgt
-    end do
 
     ! Get the location of the first tooth
     nextTooth = rand % get() * w_av
@@ -524,7 +518,6 @@ contains
     integer(shortInt)                        :: i, j
     class(RNG), intent(inout)                :: rand
     real(defReal)                            :: u_av, w_av, nextTooth, curU
-    !real(defReal), dimension(self % pop)     :: w_array
     type(particleState), dimension(N)        :: newPrisoners
     character(100), parameter :: Here =' fitness_combing (particleDungeon_class.f90)'
 
