@@ -699,15 +699,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(100 * self % pop)
-      call self % nextTime(i) % init(100 * self % pop)
+      call self % currentTime(i) % init(5*self % bufferSize)
+      call self % nextTime(i) % init(5*self % bufferSize)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(50 * self % pop)
+        call self % precursorDungeons(i) % init(3*self % bufferSize)
       end do
     end if
 
@@ -960,8 +960,7 @@ contains
 
       do i = 1, N_cycles
 
-        if ((t == 1) .and. (self % useCombing)) call self % currentTime(i) % combing(self % pop, pRNG)
-
+        if ((t == 1) .and. (self % useCombing .eqv. .true.)) call self % currentTime(i) % combing(self % bufferSize, pRNG)
         nParticles = self % currentTime(i) % popSize()
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
@@ -1165,8 +1164,8 @@ contains
           if (nDelayedParticles > 0) then
 
             ! Precursor population control
-            if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, timeIncrement*t)
+            if (nDelayedParticles > self % bufferSize) then
+              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, timeIncrement*t)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -1202,17 +1201,15 @@ contains
         end if
 
         ! Update RNG
-        call self % pRNG % stride(self % pop + 1)
-
-        call tally % reportCycleEnd(self % currentTime(i))
         call self % pRNG % stride(nParticles + 1)
+        call tally % reportCycleEnd(self % currentTime(i))
         call self % currentTime(i) % cleanPop()
 
         ! Neutron population control
         if (self % useCombing) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
+          call self % nextTime(i) % combing(self % bufferSize, pRNG)
         else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
+          call self % nextTime(i) % combing(self % bufferSize, pRNG)
         end if
 
       end do

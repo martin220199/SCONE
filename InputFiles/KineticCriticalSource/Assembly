@@ -17,7 +17,7 @@ precursors 1;
 kineticGeometry{enable 1; timeSteps (8); }
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}} 
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.01;}} 
 
 transportOperatorCritical { type transportOperatorDT;
                   }

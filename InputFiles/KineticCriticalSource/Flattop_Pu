@@ -23,7 +23,7 @@ decorrelationCycles 50; //50
 kineticGeometry{enable 0; timeSteps (8); }
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0;}} 
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0; couplingRatio 1.0;}} 
 
 transportOperatorCritical { type transportOperatorDT; //currently will only support this
                   }
