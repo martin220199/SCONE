@@ -21,7 +21,6 @@ decorrelationCycles 4;
 
 EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim cells; response 23; fittestFactor 0.0000001; nReproductions 4;}
 
-
 //EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim space; response (5 -5); fittestFactor 0.01; nReproductions 4;}
 
 outputFormat asciiJSON;

@@ -136,6 +136,7 @@ module criticalKineticPhysicsPackage_class
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
     integer(shortInt)  :: fitnessHandling !0 - sorting, 1 - combing, 2 - simple
+    integer(shortInt)  :: EPCResponse
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesCurrent => null()   
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesTemp    => null()
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesNext    => null()
@@ -1626,8 +1627,7 @@ contains
 
         end if
 
-        !if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt)) &
-        if ((self % fitnessHandling == 1_shortInt)) &
+        if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt)) &
            call tally % processGlobalEvolution(self % nextTime(i))
 
         ! Update RNG
@@ -1793,6 +1793,7 @@ contains
     call dict % get(EPCResponse,'responseType')
     call dict % get(responseDim, 'responseDim')
     call dict % get(self % fitnessHandling, 'fitnessHandling')
+    call dict % get(self % EPCResponse, 'responseType')
     if (self % fitnessHandling == 0_shortInt) then
       do i = 1, self % N_cycles
         call self % fittestParticlesCurrent(i) % init(2 * self % pop)
