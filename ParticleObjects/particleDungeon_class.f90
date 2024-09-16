@@ -540,13 +540,6 @@ contains
     u_av = self % popImportance() / N
     w_av = self % popWeight() / N
 
-    !print *, u_av, self % popImportance(), N
-
-    ! Fill array with each prisoner weight (probably neater way to do this)
-    !do i=1, self % pop
-    !  w_array(i) = self % prisoners(i) % wgt
-    !end do
-
     ! Get the location of the first tooth
     nextTooth = rand % get() * u_av
 
@@ -564,7 +557,6 @@ contains
 
       ! When a particle has been found...
       newPrisoners(i) = self % prisoners(j)                ! Add to new array
-      !print *, 'w_avg, wimp', w_av, u_av / (newPrisoners(i) % wgt * newPrisoners(i) % fitness)
       newPrisoners(i) % wgt = u_av / (newPrisoners(i) % fitness)  !w_av! Update weight
       nextTooth = nextTooth + u_av                         ! Update position of tooth
     end do

@@ -136,7 +136,7 @@ module criticalKineticPhysicsPackage_class
     real(defReal)      :: fittestFactor
     integer(shortInt)  :: nReproductions
     integer(shortInt)  :: fitnessHandling !0 - sorting, 1 - combing, 2 - simple
-    integer(shortInt)  :: EPCResponse
+    integer(shortInt)  :: EPCResponse !0 - global, 1 - local
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesCurrent => null()   
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesTemp    => null()
     type(particleDungeon), pointer, dimension(:) :: fittestParticlesNext    => null()
@@ -1776,7 +1776,7 @@ contains
     class(criticalKineticPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(in)                       :: dict
     class(dictionary), pointer                          :: tempDict
-    integer(shortInt)                                   :: i, EPCResponse
+    integer(shortInt)                                   :: i
     character(5)                                        :: responseDim
     real(defReal), dimension(:), allocatable            :: responseReal
     real(defReal), dimension(1)                         :: responseRealDummy
@@ -1790,10 +1790,10 @@ contains
     allocate(self % fittestParticlesNext(self % N_cycles))
     call dict % get(self % fittestFactor, 'fittestFactor')
     call dict % get(self % nReproductions, 'nReproductions')
-    call dict % get(EPCResponse,'responseType')
+    call dict % get(self % EPCResponse,'responseType')
     call dict % get(responseDim, 'responseDim')
     call dict % get(self % fitnessHandling, 'fitnessHandling')
-    call dict % get(self % EPCResponse, 'responseType')
+
     if (self % fitnessHandling == 0_shortInt) then
       do i = 1, self % N_cycles
         call self % fittestParticlesCurrent(i) % init(2 * self % pop)
@@ -1801,23 +1801,23 @@ contains
       end do
     end if
 
-    if (responseDim == 'cells' .and. EPCResponse == 1_shortInt) then
+    if (responseDim == 'cells' .and. self % EPCResponse == 1_shortInt) then
       call dict % get(responseVal, 'response')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+      call self % tally % initEPC(self % N_timeBins, self % EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseVal)
 
-    else if (responseDim == 'cells' .and. EPCResponse == 0_shortInt) then
+    else if (responseDim == 'cells' .and. self % EPCResponse == 0_shortInt) then
       call dict % get(responseInt, 'response')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+      call self % tally % initEPC(self % N_timeBins, self % EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseInt)
 
-    else if (responseDim == 'space' .and. EPCResponse == 1_shortInt) then
+    else if (responseDim == 'space' .and. self % EPCResponse == 1_shortInt) then
       call dict % get(responseReal, 'response')
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+      call self % tally % initEPC(self % N_timeBins, self % EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseReal)
 
-    else if (responseDim == 'space' .and. EPCResponse == 0_shortInt) then
-      call self % tally % initEPC(self % N_timeBins, EPCResponse, self % fitnessHandling, &
+    else if (responseDim == 'space' .and. self % EPCResponse == 0_shortInt) then
+      call self % tally % initEPC(self % N_timeBins, self % EPCResponse, self % fitnessHandling, &
                                   self % fittestFactor, responseRealDummy)
 
       !TODO initialise multimap in tallyadmin
