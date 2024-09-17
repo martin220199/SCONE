@@ -391,7 +391,7 @@ contains
 
             ! Precursor population control
             if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, timeIncrement*t)
+              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -476,9 +476,8 @@ contains
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
-    integer(shortInt)                                 :: i, n, nParticles, nDelayedParticles, Nfittest, t2
-    integer(shortInt)                                 :: j, nPrecuCount
-    integer(longInt)                                  :: t
+    integer(shortInt)                                 :: i, n, nParticles, nDelayedParticles, Nfittest
+    integer(shortInt)                                 :: j, nPrecuCount, t
     type(particle), save                              :: p, p_d
     type(particleState), save                         :: stateTemp
     type(particleDungeon), save                       :: buffer
@@ -779,7 +778,7 @@ contains
 
             ! Precursor population control
             if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, timeIncrement*t)
+              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -855,8 +854,7 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      t2 = t
-      call printFishLineR(t2)
+      call printFishLineR(t)
       print *
       print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
