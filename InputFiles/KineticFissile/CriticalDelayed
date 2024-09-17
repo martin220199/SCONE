@@ -13,7 +13,7 @@ precursors 1;
 useForcedPrecursorDecay 1;
 branchless 1;
 outputFormat asciiJSON;
-collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 1;}}
+collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20;precursors 1;branchless 0;}}
 
 transportOperator { type transportOperatorDT;
                   }
