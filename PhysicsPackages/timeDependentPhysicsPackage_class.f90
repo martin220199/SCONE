@@ -375,7 +375,7 @@ contains
 
             ! Precursor population control
             if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, timeIncrement*t)
+              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()

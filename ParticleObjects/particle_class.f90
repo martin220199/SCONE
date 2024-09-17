@@ -151,7 +151,7 @@ module particle_class
 
     ! Inquiry about precursor parameters
     procedure               :: forcedPrecursorDecayWgt
-    procedure               :: timedWgt
+    procedure               :: getExpectedDelayedWgt
 
     ! Operations on coordinates
     procedure            :: moveGlobal
@@ -507,14 +507,18 @@ contains
   !!
   !! Errors:
   !!
-  function timedWgt(self, t) result(w_timed)
-    class(particle), intent(in) :: self
-    real(defReal), intent(in)   :: t
-    integer(shortInt)           :: i
-    real(defReal)               :: w_timed
+  function getExpectedDelayedWgt(self, t_idx, timeIncrement) result(expectedDelayedWgt)
+    class(particle), intent(in)   :: self
+    integer(shortInt), intent(in) :: t_idx
+    real(defReal), intent(in)     :: timeIncrement
+    integer(shortInt)             :: i
+    real(defReal)                 :: t1, expectedDelayedWgt
 
-    w_timed = self % w * exp(-self % lambda * (t - self % time))
-  end function timedWgt
+    t1 = t_idx * timeIncrement
+    expectedDelayedWgt = self % w * exp(self % lambda * self % time) &
+                                  * (exp(-self % lambda * t1) - exp(-self % lambda * (t1 + timeIncrement)))
+
+  end function getExpectedDelayedWgt
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
