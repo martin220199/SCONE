@@ -1185,7 +1185,7 @@ contains
 
             ! Precursor population control
             if (nDelayedParticles > self % bufferSize) then
-              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, timeIncrement*t)
+              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -1268,8 +1268,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)             :: tally
     integer(shortInt), intent(in)                       :: N_timeBins, N_cycles
     integer(shortInt)                                   :: i, n, nParticles, nDelayedParticles, Nfittest, t2
-    integer(shortInt)                                   :: j, nPrecuCount, normPop
-    integer(longInt)                                    :: t
+    integer(shortInt)                                   :: j, nPrecuCount, normPop, t
     type(particle), save                                :: p, p_d
     type(particleState), save                           :: stateTemp
     type(particleDungeon), save                         :: buffer
@@ -1591,7 +1590,7 @@ contains
 
             ! Precursor population control
             if (nDelayedParticles > self % bufferSize) then
-              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, timeIncrement*t)
+              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
             end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -1641,10 +1640,6 @@ contains
           if (self % fittestParticlesNext(i) % popSize() + self % nextTime(i) % popSize() > self % bufferSize * 2.0) then
             call self % nextTime(i) % combing(self % bufferSize, pRNG)
           end if
-        
-        !else if ((self % fitnessHandling == 0_shortInt) .and. (self % usePrecursors .eqv. .true.) &
-        !         .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-        !  call self % nextTime(i) % combing(self % bufferSize, pRNG)
         end if
 
       end do
@@ -1667,8 +1662,7 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      t2 = t
-      call printFishLineR(t2)
+      call printFishLineR(t)
       print *
       print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
