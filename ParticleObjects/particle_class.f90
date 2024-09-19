@@ -712,6 +712,7 @@ contains
     LHS % type   = RHS % type
     LHS % time   = RHS % time
     LHS % fate   = RHS % fate
+    LHS % lambda = RHS % lambda
 
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx

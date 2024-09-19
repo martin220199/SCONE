@@ -54,7 +54,7 @@ contains
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
-
+      !print *, distance
       if (p % time + distance / p % getSpeed() > p % timeMax) then
         distance = distance * (p % timeMax - p % time)/(distance / p % getSpeed())
         p % fate = AGED_FATE

@@ -89,6 +89,7 @@ module particleDungeon_class
     procedure  :: normSize
     procedure  :: combing
     procedure  :: fitness_combing
+    procedure  :: precursor_fitness_combing
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
@@ -562,6 +563,75 @@ contains
       call self % replace_particleState(newPrisoners(i), i)
     end do
   end subroutine fitness_combing
+
+
+    !!
+  !! Normalise the population using combing
+  !! Presevers total weight
+  !!
+  subroutine precursor_fitness_combing(self, N, rand, t_idx, timeIncrement)
+    class(particleDungeon), intent(inout)    :: self
+    integer(shortInt), intent(in)            :: N
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt), intent(in)            :: t_idx
+    real(defReal), intent(in)                :: timeIncrement
+    type(particle), save                     :: p
+    integer(shortInt)                        :: i, j
+    type(particleState), dimension(N)        :: newPrecursors
+    real(defReal), dimension(self % pop)     :: expectedDelayedWgts, expectedFactors
+    real(defReal)                            :: u_av, nextTooth, curExpectedDelayedWgt
+    character(100), parameter :: Here =' precursor_fitness_combing (particleDungeon_class.f90)'
+    !$omp threadprivate(p)
+
+    ! Protect against invalid N
+    if( N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greather then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Get importance weight and importance factor of each precursor
+    !$omp parallel do schedule(dynamic)
+    do i = 1, self % pop
+      call self % copy(p, i)
+      expectedDelayedWgts(i) = p % getExpectedDelayedWgt(t_idx, timeIncrement) * p % fitness
+      expectedFactors(i) = expectedDelayedWgts(i) / p % w
+    end do
+    !$omp end parallel do
+
+    ! Tooth distance
+    u_av = sum(expectedDelayedWgts) / N
+
+    ! First tooth location
+    nextTooth = rand % get() * u_av
+
+    ! Set variable to store current sum of prisoners weighted importance
+    curExpectedDelayedWgt = ZERO
+
+    j = 1
+    do i = 1, N
+      ! Iterate over current precursors
+      ! until a tooth falls within bounds of timed weight
+      do while (curExpectedDelayedWgt + expectedDelayedWgts(j) < nextTooth)
+        curExpectedDelayedWgt = curExpectedDelayedWgt + expectedDelayedWgts(j)
+        j = j + 1
+      end do
+
+      ! When a particle has been found...
+      newPrecursors(i) = self % prisoners(j)             ! Add to new array
+      newPrecursors(i) % wgt = u_av / expectedFactors(j) ! Update weight from timed weight
+      nextTooth = nextTooth + u_av                       ! Update position of tooth
+    end do
+
+    ! Re-size the dungeon to new size
+    call self % setSize(N)
+
+    ! Replace the particle at each index with the new particles
+    do i = 1, N
+      call self % replace_particleState(newPrecursors(i), i)
+    end do
+  end subroutine precursor_fitness_combing
 
   !!
   !! Normalises precusor population by importance-based combing.

@@ -1184,9 +1184,9 @@ contains
           if (nDelayedParticles > 0) then
 
             ! Precursor population control
-            if (nDelayedParticles > self % bufferSize) then
-              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
-            end if
+            !if (nDelayedParticles > self % bufferSize) then
+            call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
+            !end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
@@ -1513,6 +1513,12 @@ contains
               ! Force decay at this time interval if generated in this time interval
               call self % precursorDungeons(i) % copy(p, n)
 
+              !process ev particle, then replace in n. make sure fitness updated
+              call tally % processEvolutionaryParticle(p)
+              stateTemp = p
+              call self % precursorDungeons(i) % replace(stateTemp, n)
+
+
               decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
 
               ! Weight adjustment
@@ -1589,9 +1595,11 @@ contains
           if (nDelayedParticles > 0) then
 
             ! Precursor population control
-            if (nDelayedParticles > self % bufferSize) then
-              call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
-            end if
+            !if (nDelayedParticles > self % bufferSize) then
+            !call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
+              call self % precursorDungeons(i) % fitness_combing(self % bufferSize, pRNG)
+              !call self % precursorDungeons(i) % precursor_fitness_combing(self % bufferSize, pRNG, t, timeIncrement)
+            !end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 

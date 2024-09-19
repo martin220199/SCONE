@@ -701,6 +701,8 @@ contains
               ! Force decay at this time interval if generated in this time interval
               call self % precursorDungeons(i) % copy(p, n)
 
+              !process ev particle, then replace in n. make sure fitness updated
+
               decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
 
               ! Weight adjustment
