@@ -1,0 +1,129 @@
+type criticalKineticPhysicsPackage;
+
+pop     10000; //2000;
+timeSteps   1000; 
+XSdata   ce;
+dataType ce;
+timeIncrement 1e-5; //1e-1
+cycles 10;//100;
+buffer 1000;
+active   400;
+inactive 200;
+
+combing 1;
+precursors 1;
+useForcedPrecursorDecay 1;
+criticalWgtNorm 1;
+
+decorrelationCycles 50; //50;
+
+
+kineticGeometry{enable 0; timeSteps (1);}
+
+
+EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.0001; nReproductions 4;}
+//EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim space; response (9e9 0.0); fittestFactor 0.0000000001; nReproductions 4;}
+
+outputFormat asciiJSON;
+collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} 
+
+transportOperatorCritical { type transportOperatorDT; //currently will only support this
+                  }
+
+collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; branchless 0;}} //precursors 1;
+
+transportOperatorKinetic { type transportOperatorKineticDT; //currently will only support this
+}
+
+
+tally  {
+  //flux_time { type collisionClerk;
+  //  map { type timeMap; grid lin; min 0.0; max 1.0; N 10;}
+  //  response (flux); flux {type fluxResponse;}
+  //  }
+
+  flux_cell { type collisionClerk;
+    map { type multiMap; maps (map1 map2);
+    map1 { type cellMap; cells (1 2);}
+    map2 { type timeMap; grid lin; min 0.0; max 1000e-5; N 100;}
+    }
+    response (flux); flux {type fluxResponse;}
+  }
+
+  }
+
+inactiveTally {
+              }
+
+activeTally  {
+                display (k_eff);
+                k_eff { type keffAnalogClerk;}
+        }
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      universeBox { type box; id 1; origin (0.0 0.0 0.0); halfwidth (10.0e1 10.0e1 10.0e1); }
+
+      boronBox { type box; id 2; origin (0.0 0.0 0.0); halfwidth (0.5e1 10.0e1 10.0e1); }
+
+      hydrogenBoxOne { type box; id 3; origin (-5.25e1 0.0 0.0); halfwidth (4.75e1 10.0e1 10.0e1); }
+
+      hydrogenBoxTwo { type box; id 4; origin (5.25e1 0.0 0.0); halfwidth (4.75e1 10.0e1 10.0e1); }
+    } 
+
+    cells
+    {
+    cellHydrogenOne { id 1; type simpleCell; surfaces (-3 2); filltype mat; material m1;} 
+    cellHydrogenTwo { id 2; type simpleCell; surfaces (-4 2); filltype mat; material m1;}
+    cellBoron { id 3; type simpleCell; surfaces (-2); filltype mat; material boron;}
+    }
+
+    universes
+    {
+
+      root{id 1; type rootUniverse; border 1; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2 3);}
+
+    }
+}
+
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;}}
+  materials {
+
+    m1 {
+      temp 12345;
+      composition {
+      1001.03    2.35E-02;
+      93237.03   1.0E-3;
+      92235.03   9.50E-4; 
+      }
+      }
+
+    //m2 {
+    //  temp 12345;
+    //  composition {
+    //  1001.03    9.5E-07;
+    //  93237.03   9.0E-7;
+    //  92235.03   9.0E-7;	 
+    //  }
+    //  }
+
+    // Boron
+    boron {
+      temp 293;
+      composition {
+        5010.03 0.8022;
+        }
+    }
+
+}
+
+}
