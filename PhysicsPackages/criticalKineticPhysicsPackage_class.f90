@@ -712,15 +712,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      call self % currentTime(i) % init(50*self % bufferSize)
+      call self % nextTime(i) % init(50*self % bufferSize)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(3*self % bufferSize)
+        call self % precursorDungeons(i) % init(50*self % bufferSize)
       end do
     end if
 
@@ -1596,9 +1596,9 @@ contains
 
             ! Precursor population control
             !if (nDelayedParticles > self % bufferSize) then
-            !call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
-              call self % precursorDungeons(i) % fitness_combing(self % bufferSize, pRNG)
-              !call self % precursorDungeons(i) % precursor_fitness_combing(self % bufferSize, pRNG, t, timeIncrement)
+            call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
+            !call self % precursorDungeons(i) % fitness_combing(self % bufferSize, pRNG)
+            !call self % precursorDungeons(i) % precursor_fitness_combing(self % bufferSize, pRNG, t, timeIncrement)
             !end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
@@ -1746,6 +1746,7 @@ contains
       if (self % usePrecursors .eqv. .true.) then
         nWgt = self % currentTime(i) % popWeight()
         pWgt = self % precursorDungeons(i) % popWeight()
+        print *, '----', pWgt / nWgt, nWgt, pWgt,  self % currentTime(i) % popSize(), self % precursorDungeons(i) % popSize()
         totWgt = nWgt + pWgt
         normFactor = totWgt / (self % precursorDungeons(i) % popSize() + self % currentTime(i) % popSize())
         call self % currentTime(i) % scaleWeight(ONE / normFactor)

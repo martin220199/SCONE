@@ -10,9 +10,9 @@ buffer 10000;
 active   400;
 inactive 200;
 
-combing 0;
+combing 1;
 precursors 1;
-useForcedPrecursorDecay 1;
+useForcedPrecursorDecay 0;
 criticalWgtNorm 1;
 
 decorrelationCycles 50; //50;
@@ -21,16 +21,16 @@ decorrelationCycles 50; //50;
 kineticGeometry{enable 0; timeSteps (1);}
 
 
-EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.0001; nReproductions 4;}
+EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.0001; nReproductions 4;}
 //EPC {useEPC 0; fitnessHandling 1; responseType 1; responseDim space; response (9e9 0.0); fittestFactor 0.0000000001; nReproductions 4;}
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} 
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} 
 
 transportOperatorCritical { type transportOperatorDT; //currently will only support this
                   }
 
-collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; branchless 0;}} //precursors 1;
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; branchless 0;}} //precursors 1;
 
 transportOperatorKinetic { type transportOperatorKineticDT; //currently will only support this
 }
@@ -92,23 +92,6 @@ geometry {
     }
 }
 
-viz {
-  myVTK {
-    type vtk;
-    corner (-10.71 -10.71 -0.5);
-    width (21.42 21.42 1.0);
-    vox (700 700 1);
-  }
-  bmp {
-    type bmp;
-    output img;
-    what material;
-    centre (0.0 0.0 0.0);
-    //width (25.0 25.0);
-    axis z;
-    res (500 500);
-  }
-}
 
 nuclearData {
   handles {

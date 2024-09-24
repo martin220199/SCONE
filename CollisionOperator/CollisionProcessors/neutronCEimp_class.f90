@@ -249,6 +249,8 @@ contains
       pTemp % time = ZERO
       pTemp % fate = NO_FATE
       call nextCycle % detain(pTemp)
+
+      !print *, 'n', pTemp % wgt
     end if
 
     ! Select collision nuclide
@@ -363,6 +365,8 @@ contains
       call self % mat % getMacroXSs(macroXSs, p % E, p % pRNG)
       pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
                         (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda) 
+
+      !print *, 'p', pTemp % wgt
 
       ! Overwrite position, direction, energy and weight
       pTemp % r   = r
