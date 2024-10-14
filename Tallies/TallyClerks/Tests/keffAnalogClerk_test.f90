@@ -135,7 +135,7 @@ contains
 
     ! Initialise objects
     call pit % init(4)
-    call mem % init(2_longInt,1, batchSize = 2 )
+    call mem % init(2_longInt,1, maxFetOrder = 1, batchSize = 2 )
     call this  % clerk % setMemAddress(1_longInt)
 
     ! Start cycle 1
@@ -230,7 +230,7 @@ contains
     type(scoreMemory)                          :: mem
 
     ! Initialise objects
-    call mem % init(2_longInt,1)
+    call mem % init(2_longInt,1,1)
     call this  % clerk % setMemAddress(1_longInt)
 
     ! Test getting size

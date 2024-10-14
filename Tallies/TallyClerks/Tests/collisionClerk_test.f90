@@ -316,7 +316,7 @@ contains
     call clerk % init(clerkDict, clerkName)
 
     ! Create score memory
-    call mem % init(int(clerk % getSize(), longInt) , 1)
+    call mem % init(int(clerk % getSize(), longInt) , 1, 1, 1)
     call clerk % setMemAddress(1_longInt)
 
     ! Build nuclear data

@@ -188,7 +188,7 @@ contains
     real(defReal), parameter :: TOL = 1.0E-9
 
     ! Configure memory
-    call mem % init(1000_longInt, 1)
+    call mem % init(1000_longInt, 1, 1, 1)
     call this % clerk_test2 % setMemAddress(1_longInt)
 
     ! Configure particle dungeon

@@ -209,7 +209,7 @@ contains
     type(scoreMemory)                      :: mem
     integer(shortInt)                      :: i
 
-    call mem % init(1_longInt, 1, batchSize = 8)
+    call mem % init(1_longInt, 1, maxFetOrder = 1, batchSize = 8)
 
     ! Test getting batchSize
     @assertEqual(8, mem % getBatchSize(),'Test getBatchSize() :')
@@ -237,7 +237,7 @@ contains
     type(scoreMemory)                      :: mem
     real(defReal),parameter :: TOL = 1.0E-9
 
-    call mem % init(1_longInt, 1)
+    call mem % init(1_longInt, 1, 1)
 
     call mem % score(ONE,1_longInt)
     call mem % score(ONE,1_longInt)

@@ -72,7 +72,6 @@ module timeDependentPhysicsPackage_class
     type(tallyAdmin),pointer               :: tally   => null()
 
     ! Settings
-    integer(shortInt)  :: N_cycles
     integer(shortInt)  :: N_timeBins
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
@@ -91,11 +90,11 @@ module timeDependentPhysicsPackage_class
     real(defReal) :: avWgt = 0.5
 
     ! Calculation components
-    type(particleDungeon), pointer, dimension(:) :: currentTime       => null()
-    type(particleDungeon), pointer, dimension(:) :: nextTime          => null()
-    type(particleDungeon), pointer, dimension(:) :: tempTime          => null()
-    type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null() 
-    class(source), allocatable                   :: fixedSource
+    type(particleDungeon), pointer :: currentTime       => null()
+    type(particleDungeon), pointer :: nextTime          => null()
+    type(particleDungeon), pointer :: tempTime          => null()
+    type(particleDungeon), pointer :: precursorDungeons => null() 
+    class(source), allocatable     :: fixedSource
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -121,7 +120,7 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
-    call self % cycles(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
+    call self % cycles(self % tally, self % N_timeBins, self % timeIncrement)
     call self % collectResults()
 
     print *
@@ -132,10 +131,10 @@ contains
   !!
   !!
   !!
-  subroutine cycles(self, tally, N_cycles, N_timeBins, timeIncrement)
+  subroutine cycles(self, tally, N_timeBins, timeIncrement)
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)           :: tally
-    integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
+    integer(shortInt), intent(in)                     :: N_timeBins
     integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
     type(particle), save                              :: p, p_d
     type(particleDungeon), save                       :: buffer
@@ -169,159 +168,84 @@ contains
     call timerStart(self % timerMain)
 
     do t = 1, N_timeBins
-      do i = 1, N_cycles
 
-        if (t == 1) then 
-          call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
-        end if
+      if (t == 1) then 
+        call self % fixedSource % generate(self % currentTime, nParticles, self % pRNG)
+      end if
 
-        call tally % reportCycleStart(self % currentTime(i))
-        nParticles = self % currentTime(i) % popSize()
+      call tally % reportCycleStart(self % currentTime)
+      nParticles = self % currentTime % popSize()
 
-        if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          nPrecuCount = self % precursorDungeons(i) % popSize() + 1
-        end if
+      if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
+        nPrecuCount = self % precursorDungeons % popSize() + 1
+      end if
 
-        !$omp parallel do schedule(dynamic)
-        gen: do n = 1, nParticles
-          pRNG = self % pRNG
-          p % pRNG => pRNG
-          call p % pRNG % stride(n)
-          call self % currentTime(i) % copy(p, n)
-          p % timeMax = t * timeIncrement
+      !$omp parallel do schedule(dynamic)
+      gen: do n = 1, nParticles
+        pRNG = self % pRNG
+        p % pRNG => pRNG
+        call p % pRNG % stride(n)
+        call self % currentTime % copy(p, n)
+        p % timeMax = t * timeIncrement
 
-          bufferLoop: do
+        bufferLoop: do
 
-            if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
-              p % fate = no_FATE
-              p % isdead = .false.
-            else
-              p % isdead = .true.
-            end if
-
-            call self % geom % placeCoord(p % coords)
-            call p % savePreHistory()
-
-            ! Transport particle untill its death
-            history: do
-              if(p % isDead) exit history
-              call transOp % transport(p, tally, buffer, buffer)
-              if(p % isDead) exit history
-              if(p % fate == AGED_FATE) then
-                call self % nextTime(i) % detain(p)
-                exit history
-              endif
-              if (self % usePrecursors) then
-                call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
-              else
-                call collOp % collide(p, tally, buffer, buffer)
-              end if
-              if(p % isDead) exit history
-            end do history
-
-            ! Clear out buffer
-            if (buffer % isEmpty()) then
-              exit bufferLoop
-            else
-              call buffer % release(p)
-            end if
-
-          end do bufferLoop
-        end do gen
-        !$omp end parallel do
-
-        if (self % usePrecursors .and. (self % useForcedPrecursorDecay .eqv. .false.)) then
-
-          ! Analog delayed neutron handling
-          nDelayedParticles = self % precursorDungeons(i) % popSize()
-          nPrecuCount = 1
-          if (nDelayedParticles > 0) then
-            superGenDelayed: do
-            !$omp parallel do schedule(dynamic)
-            genDelayed: do n = nPrecuCount, nDelayedParticles
-              call self % precursorDungeons(i) % copy(p, n)
-
-              if ((p % time <= t*timeIncrement) .and. (p % time > (t-1)*timeIncrement)) then
-                p % type = P_NEUTRON
-                pRNG = self % pRNG
-                p % pRNG => pRNG
-                call p % pRNG % stride(n)
-
-                bufferLoopDelayed: do
-
-                  if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
-                    p % fate = no_FATE
-                    p % isdead = .false.
-                  else
-                    p % isdead = .true.
-                  end if
-
-                  call self % geom % placeCoord(p % coords)
-                  p % timeMax = t*timeIncrement
-                  call p % savePreHistory()
-
-                  ! Transport particle until its death
-                  historyDelayed: do
-                    if(p % isDead) exit historyDelayed
-                    call transOp % transport(p, tally, buffer, buffer)
-                    if(p % isDead) exit historyDelayed
-                    if(p % fate == AGED_FATE) then
-                      call self % nextTime(i) % detain(p)
-                      exit historyDelayed
-                    endif
-                    call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
-                    if(p % isDead) exit historyDelayed
-                  end do historyDelayed
-
-                  ! Clear out buffer
-                  if (buffer % isEmpty()) then
-                    exit bufferLoopDelayed
-                  else
-                    call buffer % release(p)
-                  end if
-
-                end do bufferLoopDelayed
-              end if
-            end do genDelayed
-            !$omp end parallel do
-            if (nDelayedParticles .eq. self % precursorDungeons(i) % popSize()) then
-               exit superGenDelayed
-            else
-              nPrecuCount = nDelayedParticles+1
-              nDelayedParticles = self % precursorDungeons(i) % popSize()
-            end if
-          end do superGenDelayed
+          if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
+            p % fate = no_FATE
+            p % isdead = .false.
+          else
+            p % isdead = .true.
           end if
 
-        else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
+          call self % geom % placeCoord(p % coords)
+          call p % savePreHistory()
 
-          ! Impliciy delayed neutron handling
-          nDelayedParticles = self % precursorDungeons(i) % popSize()
+          ! Transport particle untill its death
+          history: do
+            if(p % isDead) exit history
+            call transOp % transport(p, tally, buffer, buffer)
+            if(p % isDead) exit history
+            if(p % fate == AGED_FATE) then
+              call self % nextTime % detain(p)
+              exit history
+            endif
+            if (self % usePrecursors) then
+              call collOp % collide(p, tally, self % precursorDungeons, buffer)
+            else
+              call collOp % collide(p, tally, buffer, buffer)
+            end if
+            if(p % isDead) exit history
+          end do history
 
-          if (nDelayedParticles > nPrecuCount - 1) then
-            superGenDelayedImp: do
-            !$omp parallel do schedule(dynamic)
-            genDelayedImp: do n = nPrecuCount, nDelayedParticles
+          ! Clear out buffer
+          if (buffer % isEmpty()) then
+            exit bufferLoop
+          else
+            call buffer % release(p)
+          end if
 
-              ! Force decay at this time interval if generated in this time interval
-              call self % precursorDungeons(i) % copy(p, n)
+        end do bufferLoop
+      end do gen
+      !$omp end parallel do
 
-              decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
+      if (self % usePrecursors .and. (self % useForcedPrecursorDecay .eqv. .false.)) then
 
-              ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
+        ! Analog delayed neutron handling
+        nDelayedParticles = self % precursorDungeons % popSize()
+        nPrecuCount = 1
+        if (nDelayedParticles > 0) then
+          superGenDelayed: do
+          !$omp parallel do schedule(dynamic)
+          genDelayed: do n = nPrecuCount, nDelayedParticles
+            call self % precursorDungeons % copy(p, n)
 
+            if ((p % time <= t*timeIncrement) .and. (p % time > (t-1)*timeIncrement)) then
+              p % type = P_NEUTRON
               pRNG = self % pRNG
               p % pRNG => pRNG
               call p % pRNG % stride(n)
 
-              ! Update parameters
-              p % type = P_NEUTRON
-              p % time = decay_T
-              p % w = w_d
-              p % fate = no_FATE
-
-              bufferLoopDelayedImp: do
+              bufferLoopDelayed: do
 
                 if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
                   p % fate = no_FATE
@@ -335,97 +259,169 @@ contains
                 call p % savePreHistory()
 
                 ! Transport particle until its death
-                historyDelayedImp: do
-                  if(p % isDead) exit historyDelayedImp
+                historyDelayed: do
+                  if(p % isDead) exit historyDelayed
                   call transOp % transport(p, tally, buffer, buffer)
-                  if(p % isDead) exit historyDelayedImp
+                  if(p % isDead) exit historyDelayed
                   if(p % fate == AGED_FATE) then
-                    call self % nextTime(i) % detain(p)
-                    exit historyDelayedImp
+                    call self % nextTime % detain(p)
+                    exit historyDelayed
                   endif
-                  call collOp % collide(p, tally, self % precursorDungeons(i), buffer)
-                  if(p % isDead) exit historyDelayedImp
-                end do historyDelayedImp
+                  call collOp % collide(p, tally, self % precursorDungeons, buffer)
+                  if(p % isDead) exit historyDelayed
+                end do historyDelayed
 
                 ! Clear out buffer
                 if (buffer % isEmpty()) then
-                  exit bufferLoopDelayedImp
+                  exit bufferLoopDelayed
                 else
                   call buffer % release(p)
                 end if
 
-              end do bufferLoopDelayedImp
-
-            end do genDelayedImp
-            !$omp end parallel do
-
-            if (nDelayedParticles .eq. self % precursorDungeons(i) % popSize()) then
-              exit superGenDelayedImp
-            else
-              nPrecuCount = nDelayedParticles+1
-              nDelayedParticles = self % precursorDungeons(i) % popSize()
+              end do bufferLoopDelayed
             end if
-            end do superGenDelayedImp
-
+          end do genDelayed
+          !$omp end parallel do
+          if (nDelayedParticles .eq. self % precursorDungeons % popSize()) then
+              exit superGenDelayed
+          else
+            nPrecuCount = nDelayedParticles+1
+            nDelayedParticles = self % precursorDungeons % popSize()
           end if
+        end do superGenDelayed
+        end if
 
-          nDelayedParticles = self % precursorDungeons(i) % popSize()
+      else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
 
-          if (nDelayedParticles > 0) then
+        ! Impliciy delayed neutron handling
+        nDelayedParticles = self % precursorDungeons % popSize()
 
-            ! Precursor population control
-            if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
-            end if
+        if (nDelayedParticles > nPrecuCount - 1) then
+          superGenDelayedImp: do
+          !$omp parallel do schedule(dynamic)
+          genDelayedImp: do n = nPrecuCount, nDelayedParticles
 
-            nDelayedParticles = self % precursorDungeons(i) % popSize()
+            ! Force decay at this time interval if generated in this time interval
+            call self % precursorDungeons % copy(p, n)
 
-            !$omp parallel do schedule(dynamic)
-            genDelayedImpNext: do n = 1, nDelayedParticles
-              ! pass to next time interval for Forced Precursor Decay
+            decay_T = p % time + pRNG % get() * (t*timeIncrement - p % time)
 
-              call self % precursorDungeons(i) % copy(p, n)
+            ! Weight adjustment
+            w_d = p % forcedPrecursorDecayWgt(decay_T, t*timeIncrement - p % time)
 
-              ! Sample decay time
-              decay_T = timeIncrement * (t+pRNG % get())
+            pRNG = self % pRNG
+            p % pRNG => pRNG
+            call p % pRNG % stride(n)
 
-              ! Weight adjustment
-              w_d = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
+            ! Update parameters
+            p % type = P_NEUTRON
+            p % time = decay_T
+            p % w = w_d
+            p % fate = no_FATE
 
-              pRNG = self % pRNG
-              p % pRNG => pRNG
-              call p % pRNG % stride(n)
+            bufferLoopDelayedImp: do
 
-              ! Update parameters
-              p % type = P_NEUTRON
-              p % time = decay_T
-              p % w = w_d
-              p % fate = no_FATE
+              if ((p % fate == aged_FATE) .or. (p % fate == no_FATE)) then
+                p % fate = no_FATE
+                p % isdead = .false.
+              else
+                p % isdead = .true.
+              end if
 
-              ! Add to current dungeon
-              call self % nextTime(i) % detain(p)
+              call self % geom % placeCoord(p % coords)
+              p % timeMax = t*timeIncrement
+              call p % savePreHistory()
 
-            end do genDelayedImpNext
-            !$omp end parallel do
+              ! Transport particle until its death
+              historyDelayedImp: do
+                if(p % isDead) exit historyDelayedImp
+                call transOp % transport(p, tally, buffer, buffer)
+                if(p % isDead) exit historyDelayedImp
+                if(p % fate == AGED_FATE) then
+                  call self % nextTime % detain(p)
+                  exit historyDelayedImp
+                endif
+                call collOp % collide(p, tally, self % precursorDungeons, buffer)
+                if(p % isDead) exit historyDelayedImp
+              end do historyDelayedImp
+
+              ! Clear out buffer
+              if (buffer % isEmpty()) then
+                exit bufferLoopDelayedImp
+              else
+                call buffer % release(p)
+              end if
+
+            end do bufferLoopDelayedImp
+
+          end do genDelayedImp
+          !$omp end parallel do
+
+          if (nDelayedParticles .eq. self % precursorDungeons % popSize()) then
+            exit superGenDelayedImp
+          else
+            nPrecuCount = nDelayedParticles+1
+            nDelayedParticles = self % precursorDungeons % popSize()
           end if
+          end do superGenDelayedImp
 
         end if
 
-        ! Update RNG
-        call self % pRNG % stride(self % pop + 1)
+        nDelayedParticles = self % precursorDungeons % popSize()
 
-        call tally % reportCycleEnd(self % currentTime(i))
-        call self % pRNG % stride(nParticles + 1)
-        call self % currentTime(i) % cleanPop()
+        if (nDelayedParticles > 0) then
 
-        ! Neutron population control
-        if (self % useCombing) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
-        else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          call self % nextTime(i) % combing(self % pop, pRNG)
+          ! Precursor population control
+          if (nDelayedParticles > self % pop) then
+            call self % precursorDungeons % precursorCombing(self % pop, pRNG, t, timeIncrement)
+          end if
+
+          nDelayedParticles = self % precursorDungeons % popSize()
+
+          !$omp parallel do schedule(dynamic)
+          genDelayedImpNext: do n = 1, nDelayedParticles
+            ! pass to next time interval for Forced Precursor Decay
+
+            call self % precursorDungeons % copy(p, n)
+
+            ! Sample decay time
+            decay_T = timeIncrement * (t+pRNG % get())
+
+            ! Weight adjustment
+            w_d = p % forcedPrecursorDecayWgt(decay_T, timeIncrement)
+
+            pRNG = self % pRNG
+            p % pRNG => pRNG
+            call p % pRNG % stride(n)
+
+            ! Update parameters
+            p % type = P_NEUTRON
+            p % time = decay_T
+            p % w = w_d
+            p % fate = no_FATE
+
+            ! Add to current dungeon
+            call self % nextTime % detain(p)
+
+          end do genDelayedImpNext
+          !$omp end parallel do
         end if
 
-      end do
+      end if
+
+      ! Update RNG
+      call self % pRNG % stride(self % pop + 1)
+
+      call tally % reportCycleEnd(self % currentTime)
+      call self % pRNG % stride(nParticles + 1)
+      call self % currentTime % cleanPop()
+
+      ! Neutron population control
+      if (self % useCombing) then
+        call self % nextTime % combing(self % pop, pRNG)
+      else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
+        call self % nextTime % combing(self % pop, pRNG)
+      end if
 
       self % tempTime  => self % nextTime
       self % nextTime  => self % currentTime
@@ -448,7 +444,6 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
 
-      call tally % setNumBatchesPerTimeStep(N_cycles)
     end do
 
   end subroutine cycles
@@ -468,9 +463,6 @@ contains
 
     name = 'pop'
     call out % printValue(self % pop,name)
-
-    name = 'Source_batches'
-    call out % printValue(self % N_cycles,name)
 
     name = 'Time_increment'
     call out % printValue(self % timeIncrement,name)
@@ -499,7 +491,7 @@ contains
     class(timeDependentPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                  :: dict
     class(dictionary),pointer                         :: tempDict
-    integer(shortInt)                                 :: seed_temp, i
+    integer(shortInt)                                 :: seed_temp
     integer(longInt)                                  :: seed
     character(10)                                     :: time
     character(8)                                      :: date
@@ -512,7 +504,6 @@ contains
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
-    call dict % get( self % N_cycles,'cycles')
     call dict % get( self % N_timeBins,'timeSteps')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
@@ -604,21 +595,12 @@ contains
     call self % tally % init(tempDict)
 
     ! Size particle dungeon
-    allocate(self % currentTime(self % N_cycles))
-    allocate(self % nextTime(self % N_cycles))
-
-    do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % bufferSize)
-      call self % nextTime(i) % init(self % bufferSize)
-    end do
+    call self % currentTime % init(self % bufferSize)
+    call self % nextTime % init(self % bufferSize)
 
     ! Size precursor dungeon
-    if (self % usePrecursors) then
-      allocate(self % precursorDungeons(self % N_cycles))
-      do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(self % bufferSize)
-      end do
-    end if
+    if (self % usePrecursors) call self % precursorDungeons % init(self % bufferSize)
+
 
     call self % printSettings()
 
@@ -647,7 +629,6 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
     print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
-    print *, "Source batches:                     ", numToChar(self % N_cycles)
     print *, "Initial Population per batch:       ", numToChar(self % pop)
     print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
     print *

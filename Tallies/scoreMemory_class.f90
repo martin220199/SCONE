@@ -59,8 +59,6 @@ module scoreMemory_class
   !!
   !!     getBatchSize(): Returns number of cycles that constitute a single batch.
   !!
-  !!     setNumBatchesPerTimeStep(batchN): Sets batchN member of scoreMemory for kinetic treatment
-  !!
   !! Example use case:
   !!
   !!  do batches=1,20
@@ -81,14 +79,15 @@ module scoreMemory_class
   !!
   type, public :: scoreMemory
       !private
-      real(defReal),dimension(:,:),allocatable :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
-      real(defReal),dimension(:,:),allocatable :: parallelBins  !! Space for scoring for different threads
-      integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
-      integer(shortInt)                        :: nThreads = 0  !! Number of threads used for parallelBins
-      integer(shortInt)                        :: id            !! Id of the tally
-      integer(shortInt)                        :: batchN = 0    !! Number of Batches
-      integer(shortInt)                        :: cycles = 0    !! Cycles counter
-      integer(shortInt)                        :: batchSize = 1 !! Batch interval size (in cycles)
+      real(defReal),dimension(:,:),allocatable   :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
+      real(defReal),dimension(:,:,:),allocatable :: parallelBins  !! Space for scoring for different threads
+      integer(longInt)                           :: N = 0         !! Size of memory (number of bins)
+      integer(shortInt)                          :: nThreads = 0  !! Number of threads used for parallelBins
+      integer(shortInt)                          :: id            !! Id of the tally
+      integer(shortInt)                          :: batchN = 0    !! Number of Batches
+      integer(shortInt)                          :: cycles = 0    !! Cycles counter
+      integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
+      integer(shortInt)                          :: maxFetOrder
   contains
     ! Interface procedures
     procedure :: init
@@ -101,7 +100,7 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
-    procedure :: setNumBatchesPerTimeStep
+    procedure :: scoreFET
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -121,12 +120,14 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, batchSize )
+  subroutine init(self, N, id, maxFetOrder, batchSize)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
-    integer(shortInt),intent(in)          :: id
+    integer(shortInt),intent(in)          :: id, maxFetOrder
     integer(shortInt),optional,intent(in) :: batchSize
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
+
+    self % maxFetOrder = maxFetOrder
 
     ! Allocate space and zero all bins
     allocate( self % bins(N, DIM2))
@@ -135,7 +136,7 @@ contains
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(N + array_pad, self % nThreads))
+    allocate( self % parallelBins(N + array_pad, self % nThreads, maxFetOrder))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -359,22 +360,46 @@ contains
 
   end function getBatchSize
 
-  !!
-  !! Set number of batches used per time step in ScoreMemory
-  !!
-  !! Args:
-  !!   batchN
-  !!
-  !! Errors:
-  !!   None
-  !!
-  subroutine setNumBatchesPerTimeStep(self, batchN) 
+  subroutine scoreFET(self, score, idx, t)
     class(scoreMemory), intent(inout) :: self
-    integer(shortInt), intent(in)     :: batchN
+    real(defReal), intent(in)         :: score
+    integer(longInt), intent(in)      :: idx
+    real(defReal), intent(in)         :: t
+    integer(shortInt)                 :: k
+    character(100),parameter :: Here = 'scoreFET (scoreMemory_class.f90)'
 
-    self % batchN = batchN
+    ! Verify bounds for the index
+    if( idx < 0_longInt .or. idx > self % N) then
+      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
+                            & memory with size '//numToChar(self % N))
+    end if
 
-  end subroutine setNumBatchesPerTimeStep
+    thread_idx = ompGetThreadNum() + 1
+
+    !parallelise?
+    do k = 1, self % maxFetOrder
+    ! Add the score
+    self % parallelBins(idx, thread_idx, k) = &
+            self % parallelBins(idx, thread_idx, k) + score * self % basis(k,t)
+    end do
+
+  end subroutine scoreFET
+
+
+  function basis(self, k, t) result(phi)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal), intent(in)      :: t
+    real(defReal)                  :: phi
+
+    !time transform
+    call self % transDomain(t(intentinout))
+    !weight
+    call self % weighted(phi(intentinout))
+    !evaluate polynomial
+    call self % evaluatePolynomial(phi(intentinout),t)
+
+  end function basis
 
   !!
   !! Load mean result and Standard deviation into provided arguments

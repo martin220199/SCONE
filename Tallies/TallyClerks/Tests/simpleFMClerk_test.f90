@@ -220,7 +220,7 @@ contains
     type(scoreMemory)                        :: mem
 
     ! Create score memory
-    call mem % init(int(this % clerk % getSize(), longInt) , 1)
+    call mem % init(int(this % clerk % getSize(), longInt) , 1, 1, 1)
     call this % clerk % setMemAddress(1_longInt)
 
     ! Verify that output calls are correct

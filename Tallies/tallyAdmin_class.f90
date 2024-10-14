@@ -74,7 +74,6 @@ module tallyAdmin_class
   !!   getResult        -> Return tallyResult object from a named Clerk
   !!   display     -> Call "display" on all Clerks registered to display
   !!   isConverged -> Return .true. if all convergance targets have been reached
-  !!   setNumBatchesPerTimeStep -> sets batchN in scoreMemory
   !!   print       -> Prints results to an output file object
   !!
   !! SAMPLE DICTIOANRY INPUT:
@@ -147,9 +146,6 @@ module tallyAdmin_class
     ! Convergance check
     procedure :: isConverged
 
-    ! Number of batches per time step for kinetic
-    procedure :: setNumBatchesPerTimeStep
-
     ! File writing procedures
     procedure :: print
 
@@ -172,7 +168,7 @@ contains
     class(tallyAdmin), intent(inout)            :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
-    integer(shortInt)                           :: i, j, cyclesPerBatch
+    integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
@@ -215,10 +211,13 @@ contains
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
 
+    !Read max FET order
+    call dict % get(maxFetOrder,'maxFetOrder')
+
     ! Initialise score memory
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+    call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch)
 
     ! Assign memory locations to the clerks
     memLoc = 1
@@ -409,23 +408,6 @@ contains
     isIt = .false.
 
   end function isConverged
-
-  !!
-  !! Set number of batches used per time step in ScoreMemory
-  !!
-  !! Args:
-  !!   batchN
-  !!
-  !! Errors:
-  !!   None
-  !!
-  subroutine setNumBatchesPerTimeStep(self, batchN) 
-    class(tallyAdmin), intent(inout) :: self
-    integer(shortInt), intent(in) :: batchN
-
-    call self % mem % setNumBatchesPerTimeStep(batchN)
-
-  end subroutine setNumBatchesPerTimeStep
 
   !!
   !! Add all results to outputfile
@@ -649,7 +631,7 @@ contains
   !! Assumptions:
   !!   No particle have been transported yet in the cycle.
   !!   Report is called for the first time or after reportCycleEnd
-  !!   All normalisations and modifications have already been applied to the particleDungeoin
+  !!   All normalisations and modifications have already been applied to the particleDungeon
   !!
   !! Args:
   !!   start [in] -> Particle Dungeon at the start of a cycle (after all normalisations)

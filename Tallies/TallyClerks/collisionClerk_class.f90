@@ -224,10 +224,10 @@ contains
     adrr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
 
     ! Append all bins
-    do i=1,self % width
+    do i = 1, self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
-      call mem % score(scoreVal, adrr + i)
-
+      call mem % scoreFET(scoreVal, adrr + i, p % time)
+      !call mem % score(scoreVal, adrr + i)
     end do
 
   end subroutine reportInColl
