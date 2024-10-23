@@ -60,7 +60,7 @@ module particle_class
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
-    real(defReal)              :: fitness
+    real(defReal)              :: fitness = ONE
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -133,7 +133,7 @@ module particle_class
     type(particleState)        :: prePath
     type(particleState)        :: preCollision
 
-    real(defReal)              :: fitness
+    real(defReal)              :: fitness = ONE
 
   contains
      ! Build procedures

@@ -15,6 +15,10 @@ module tallyAdmin_class
   use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
 
+  ! Tally Maps
+  use tallyMap_inter,             only : tallyMap
+  use tallyMapFactory_func,       only : new_tallyMap
+
   ! Nuclear Data Interface
   use nuclearDataReg_mod,     only : ndReg_get => get
   use nuclearDatabase_inter,  only : nuclearDatabase
@@ -101,6 +105,8 @@ module tallyAdmin_class
     real(defReal)      :: normValue
     character(nameLen) :: normClerkName
 
+    class(tallyMap), allocatable :: map
+
     ! Clerks and clerks name map
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
     type(charMap)                                 :: clerksNameMap
@@ -123,6 +129,7 @@ module tallyAdmin_class
     integer(shortInt)                            :: EPCResponse, fitnessHandling
     real(defReal)                                :: fittestFactor
     integer(shortInt), dimension(:), allocatable :: entropy
+    integer(shortInt)                            :: entropySize
     real(defReal), dimension(:), allocatable     :: targetMultiReal
     integer(shortInt), dimension(:), allocatable :: targetMultiInt
     real(defReal)                                :: targetScalar
@@ -203,6 +210,18 @@ contains
 
     ! Obtain clerks dictionary names
     call dict % keys(names,'dict')
+
+    if( dict % isPresent('map')) then
+      ! Load map
+      call new_tallyMap(self % map, dict % getDictPtr('map'))
+      names = names(2:)
+
+      self % entropySize = 1_shortInt
+      do i = 1, self % map % dimensions()
+        self % entropySize = self % entropySize * self % map % bins(i)
+      end do
+    end if
+
 
     ! Allocate space for clerks
     allocate(self % tallyClerks(size(names)))
@@ -848,7 +867,7 @@ contains
     integer(shortInt)                                    :: i
     real(defReal)                                        :: s
     real(defReal)                                        :: epsilon = 0.01_defReal
-    integer(shortInt)                                    :: mapIdx
+    integer(shortInt)                                    :: mapIdx, binIdx
     type(particleState)                                  :: state
     character(100),parameter :: Here = 'processEvolutionaryParticle (tallyAdmin_class.f90)'
 
@@ -875,14 +894,15 @@ contains
 
     !sorting, global, cell
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
-         .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
+         .and. (.not. allocated(self % targetMultiReal))) then
       p % fitness = ZERO
+      binIdx = self % map % map(state)
       s = sum(self % entropy(:))
-      if (s > 0_shortInt .and. ANY(self % targetMultiInt == state % cellIdx)) then
-          p % fitness = p % w * (ONE / (self % entropy(state % cellIdx) / s  + epsilon))
+      if (s > 0_shortInt) then
+          p % fitness = p % w * (ONE / (self % entropy(binIdx) / s  + epsilon))
       end if
-      if (ANY(self % targetMultiInt == state % cellIdx)) &
-      self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
+      self % entropy(binIdx) = self % entropy(binIdx) + 1_shortInt
+
 
     !sorting, global, space
     else if ((self % fitnessHandling == 0_shortInt) .and. (self % EPCResponse == 0_shortInt) &
@@ -915,11 +935,12 @@ contains
 
     !combing, global, cell
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
-         .and. (.not. allocated(self % targetMultiReal)) .and. (allocated(self % targetMultiInt))) then
-      p % fitness = ONE / (ONE + self % fittestFactor)
+         .and. (.not. allocated(self % targetMultiReal))) then
+      p % fitness = ONE
 
-      if (ANY(self % targetMultiInt == state % cellIdx)) &
-      self % entropy(state % cellIdx) = self % entropy(state % cellIdx) + 1_shortInt
+      binIdx = self % map % map(state)
+
+      self % entropy(binIdx) = self % entropy(binIdx) + 1_shortInt
 
     !combing, global, space
     else if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt) &
@@ -932,25 +953,58 @@ contains
   end subroutine processEvolutionaryParticle
 
 
-  subroutine processGlobalEvolution(self, dungeon)
+  subroutine processGlobalEvolution(self, dungeon,t)
     class(tallyAdmin),intent(inout)         :: self
     class(particleDungeon), intent(inout)   :: dungeon
-    real(defReal)                           :: norm
+    integer(shortInt), intent(in)           :: t
+    real(defReal)                           :: norm, mean
     type(particle), save                    :: p
+    type(particleState), save               :: p_temp
     integer(shortInt)                       :: n
-    !$omp threadprivate(p)
+    logical(defBool)                        :: condition
+    integer(shortInt), save                 :: binIdx
+    !$omp threadprivate(p, p_temp, binIdx)
+
+
+    if ((t >= 10) .and. (t<50)) condition = .true.!((t == 2) .or. (t==5) .or. (t==7))
+    if ((t >= 60)) condition = .true.
+    !if ((t==10) .or. (t==20) .or. (t==30) .or. (t==40) .or. (t==50)) condition = .true.
 
     norm = sum(self % entropy(:))
+    mean = sum(self % entropy(:)) / size(self % entropy(:))
 
-    !$omp parallel do schedule(dynamic)
-    fit: do n = 1, dungeon % popSize()
-      call dungeon % copy(p, n)
-      if (ANY(self % targetMultiInt == p % getCellIdx())) then
-        p % fitness = ONE / (self % entropy(p % getCellIdx()) / norm + self % fittestFactor)
+    !!print *, '1', self % entropy(:)
+    !print *, 'highest fitness', (mean / self % entropy(4))**self % fittestFactor
+    !print *, 'lowest fitness', (mean / self % entropy(1))**self % fittestFactor
+    !print *, '2', (mean / maxval(self % entropy(:)))**self % fittestFactor, & 
+    !(mean / minval(self % entropy(:)))**self % fittestFactor
+    !print *, minval(self % entropy(:)), maxval(self % entropy(:)), &
+    !(mean / minval(self % entropy(:)))**self % fittestFactor, &
+    !(mean / maxval(self % entropy(:)))**self % fittestFactor
+
+
+
+    if (condition .eqv. .true.) then
+
+      !$omp parallel do schedule(dynamic)
+      fit: do n = 1, dungeon % popSize()
+        call dungeon % copy(p, n)
+        p_temp = p
+        binIdx = self % map % map(p_temp)
+
+        p % fitness = (mean / self % entropy(binIdx))**self % fittestFactor!(self % entropy(binIdx) / norm)**(self % fittestFactor)
+
+
+        !if (binIdx == 4) then
+        !p % fitness = 100
+        !else
+        !p % fitness = 0.1
+        !end if
+        
         call dungeon % replace(p,n)
-      end if
-    end do fit
-    !$omp end parallel do
+      end do fit
+      !$omp end parallel do
+    end if
 
   end subroutine processGlobalEvolution
 
@@ -1000,7 +1054,7 @@ contains
     self % fittestFactor = fittestFactor
 
     if (self % EPCResponse == 0_shortInt) then
-      allocate(self % entropy(maxval(response)))
+      allocate(self % entropy(self % entropySize))
       self % entropy(:) = 0
     end if
 

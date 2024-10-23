@@ -1,0 +1,1937 @@
+type criticalKineticPhysicsPackage;
+
+pop      10000; //10000
+timeSteps   50;
+XSdata   ce;
+dataType ce;
+timeIncrement 1.0e-5;
+cycles 10;//100;
+buffer 10000;
+active   200;
+inactive 200;
+
+combing 0; //0 if EPC, 1 otherwise
+precursors 1;
+useForcedPrecursorDecay 0;
+criticalWgtNorm 1;
+kineticGeometry{enable 1; timeSteps (10 20 40); } //(2 8 30)
+decorrelationCycles 10; //20
+//1e-7
+EPC {useEPC 1; fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3); fittestFactor 1.1; nReproductions 2;} //1.4 //1.03 // fittestFactor 1.5; nReproductions 2;}
+
+//1e-2. THIS ONE USES buffer 5000 !!!!
+//EPC {useEPC 0; fitnessHandling 1; responseType 0; responseDim cells; response (10 11 12 13 23 24 25 26 36 37 38 39 49 50 51 52 62 63 64 65 75 76 77 78 88 89 90 91 101 102 103 104 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169); fittestFactor 1e-2; nReproductions 4;}
+
+//1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169
+//10 11 12 13 23 24 25 26 36 37 38 39 49 50 51 52 62 63 64 65 75 76 77 78 88 89 90 91 101 102 103 104 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169
+
+outputFormat asciiJSON;
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} //0.1
+
+transportOperatorCritical { type transportOperatorDT;
+                  }
+
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
+
+transportOperatorKinetic { type transportOperatorKineticDT;
+}
+
+tally  {
+
+  map { type multiMap; maps (map1 map2);
+    map1 { type spaceMap;  axis y;  grid lin; min -10.71; max 10.71; N 2;} 
+    map2 { type spaceMap;  axis x;  grid lin;  min -10.71; max 10.71; N 2;}
+  }
+
+  flux_time { type collisionClerk;
+
+    map { type timeMap; grid lin; min 0.0; max 50.0e-5; N 50;}
+    response (flux); flux {type fluxResponse;}
+
+    }
+
+  flux_space { type collisionClerk; 
+    map { type multiMap; maps (map1 map2 map3);
+    map1 { type spaceMap;  axis y;  grid lin; min -10.71; max 10.71; N 50;} // map1 { type spaceMap;  axis y;  grid lin; min -13; max 13; N 50;}
+    map2 { type spaceMap;  axis x;  grid lin;  min -10.71; max 10.71; N 50;} //    map2 { type spaceMap;  axis x;  grid lin;  min -13; max 13; N 50;}
+    map3 { type timeMap; grid lin; min 0.0; max 50.0e-5; N 50;}
+    }
+    response (flux); flux {type fluxResponse;}
+    }
+
+
+  }
+
+  inactiveTally {
+
+  }
+activeTally  {
+
+    display (k_eff);
+    k_eff { type keffAnalogClerk;}
+
+    flux_time { type collisionClerk; 
+    map { type multiMap; maps (map1 map2);
+    map1 { type spaceMap;  axis y;  grid lin; min -10.71; max 10.71; N 100;} //
+    map2 { type spaceMap;  axis x;  grid lin;  min -10.71; max 10.71; N 100;} //
+    }
+    response (flux); flux {type fluxResponse;}
+    }
+}
+
+
+
+
+
+//can group together cells. Makes EPC global better.
+
+geometry {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0); //2 original
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 35; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
+
+      //columns
+      c_one   { id 1; type box; origin (-10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_three { id 3; type box; origin (-7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_four  { id 4; type box; origin (-6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_five  { id 5; type box; origin (-5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_six   { id 6; type box; origin (-3.78 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_seven { id 7; type box; origin (-2.52 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eight { id 8; type box; origin (-1.26 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_nine  { id 9; type box; origin (0.0 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_ten   { id 10; type box; origin (1.26 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eleven { id 11; type box; origin (2.52 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_twelve { id 12; type box; origin (3.78 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_thirteen { id 13; type box; origin (5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fourteen { id 14; type box; origin (6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fifteen { id 15; type box; origin (7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_sixteen { id 16; type box; origin (8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_seventeen { id 17; type box; origin (10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+
+      //rows
+      r_one   { id 18; type box; origin (0.0 10.08 0.0); halfwidth (10.71 0.63 0.0);}
+      r_two   { id 19; type box; origin (0.0 8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_three { id 20; type box; origin (0.0 7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_four  { id 21; type box; origin (0.0 6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_five  { id 22; type box; origin (0.0 5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_six   { id 23; type box; origin (0.0 3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seven { id 24; type box; origin (0.0 2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eight { id 25; type box; origin (0.0 1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_nine  { id 26; type box; origin (0.0 0.0 0.0); halfwidth (10.71 0.63 0.0);}
+      r_ten   { id 27; type box; origin (0.0 -1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eleven   { id 28; type box; origin (0.0 -2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_twelve   { id 29; type box; origin (0.0 -3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_thirteen   { id 30; type box; origin (0.0 -5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fourteen   { id 31; type box; origin (0.0 -6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fifteen   { id 32; type box; origin (0.0 -7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_sixteen   { id 33; type box; origin (0.0 -8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seventeen   { id 34; type box; origin (0.0 -10.08 0.0); halfwidth (10.71 0.63 0.0);}
+  }
+
+  cells {
+   //one  {id 1; type simpleCell; surfaces ( -35); filltype uni; universe 31;}  //universe 401;}
+   //two  {id 2; type simpleCell; surfaces ( -35); filltype uni; universe 41;}
+   //three  {id 3; type simpleCell; surfaces ( -35); filltype uni; universe 51;}
+   //four  {id 4; type simpleCell; surfaces ( -35); filltype uni; universe 21;}
+   //five  {id 5; type simpleCell; surfaces ( -35); filltype uni; universe 401;}
+   //out {id 2; type simpleCell; surfaces (1); filltype outside; }
+
+  //row 1
+  1  {id   1; type simpleCell;  surfaces (-1  -18); filltype uni; universe  401;}
+  2  {id   2; type simpleCell;  surfaces (-2  -18); filltype uni; universe  401;}
+  3  {id   3; type simpleCell;  surfaces (-3  -18); filltype uni; universe  401;}
+  4  {id   4; type simpleCell;  surfaces (-4  -18); filltype uni; universe  401;}
+  5  {id   5; type simpleCell;  surfaces (-5  -18); filltype uni; universe  401;}
+  6  {id   6; type simpleCell;  surfaces (-6  -18); filltype uni; universe  401;}
+  7  {id   7; type simpleCell;  surfaces (-7  -18); filltype uni; universe  401;}
+  8  {id   8; type simpleCell;  surfaces (-8  -18); filltype uni; universe  401;}
+  9  {id   9; type simpleCell;  surfaces (-9  -18); filltype uni; universe  401;}
+ 10  {id  10; type simpleCell;  surfaces (-10  -18); filltype uni; universe 401;}
+ 11  {id  11; type simpleCell;  surfaces (-11  -18); filltype uni; universe 401;}
+ 12  {id  12; type simpleCell;  surfaces (-12  -18); filltype uni; universe 401;}
+ 13  {id  13; type simpleCell;  surfaces (-13  -18); filltype uni; universe 401;}
+ 14  {id  14; type simpleCell;  surfaces (-14  -18); filltype uni; universe 401;}
+ 15  {id  15; type simpleCell;  surfaces (-15  -18); filltype uni; universe 401;}
+ 16  {id  16; type simpleCell;  surfaces (-16  -18); filltype uni; universe 401;}
+ 17  {id  17; type simpleCell;  surfaces (-17  -18); filltype uni; universe 401;}
+
+//row 2
+ 18  {id  18; type simpleCell;  surfaces (-1   -19); filltype uni; universe 401;}
+ 19  {id  19; type simpleCell;  surfaces (-2   -19); filltype uni; universe 401;}
+ 20  {id  20; type simpleCell;  surfaces (-3   -19); filltype uni; universe 401;}
+ 21  {id  21; type simpleCell;  surfaces (-4   -19); filltype uni; universe 401;}
+ 22 {id   22; type simpleCell;  surfaces (-5   -19); filltype uni; universe 401;}
+ 23  {id  23; type simpleCell;  surfaces (-6   -19); filltype uni; universe 401;}
+ 24  {id  24; type simpleCell;  surfaces (-7   -19); filltype uni; universe 401;}
+ 25  {id  25; type simpleCell;  surfaces (-8   -19); filltype uni; universe 401;}
+ 26  {id  26; type simpleCell;  surfaces (-9   -19); filltype uni; universe 401;}
+ 27  {id  27; type simpleCell;  surfaces (-10  -19); filltype uni; universe 401;}
+ 28  {id  28; type simpleCell;  surfaces (-11  -19); filltype uni; universe 401;}
+ 29  {id  29; type simpleCell;  surfaces (-12  -19); filltype uni; universe 401;}
+ 30  {id  30; type simpleCell;  surfaces (-13  -19); filltype uni; universe 401;}
+ 31  {id  31; type simpleCell;  surfaces (-14  -19); filltype uni; universe 401;}
+ 32  {id  32; type simpleCell;  surfaces (-15  -19); filltype uni; universe 401;}
+ 33  {id  33; type simpleCell;  surfaces (-16  -19); filltype uni; universe 401;}
+ 34  {id  34; type simpleCell;  surfaces (-17  -19); filltype uni; universe 401;}
+
+//row 3
+35  {id  35; type simpleCell;  surfaces (-1   -20); filltype uni; universe  401;}
+36  {id  36; type simpleCell;  surfaces (-2   -20); filltype uni; universe  401;}
+37  {id  37; type simpleCell;  surfaces (-3   -20); filltype uni; universe  401;}
+38  {id  38; type simpleCell;  surfaces (-4   -20); filltype uni; universe  401;}
+39 {id   39; type simpleCell;  surfaces (-5   -20); filltype uni; universe  401;}
+40  {id  40; type simpleCell;  surfaces (-6   -20); filltype uni; universe  401;}
+41  {id  41; type simpleCell;  surfaces (-7   -20); filltype uni; universe  401;}
+42  {id  42; type simpleCell;  surfaces (-8   -20); filltype uni; universe  401;}
+43  {id  43; type simpleCell;  surfaces (-9   -20); filltype uni; universe  401;}
+44  {id  44; type simpleCell;  surfaces (-10  -20); filltype uni; universe  401;}
+45  {id  45; type simpleCell;  surfaces (-11  -20); filltype uni; universe  401;}
+46  {id  46; type simpleCell;  surfaces (-12  -20); filltype uni; universe  401;}
+47  {id  47; type simpleCell;  surfaces (-13  -20); filltype uni; universe  401;}
+48  {id  48; type simpleCell;  surfaces (-14  -20); filltype uni; universe  401;}
+49  {id  49; type simpleCell;  surfaces (-15  -20); filltype uni; universe  401;}
+50  {id  50; type simpleCell;  surfaces (-16  -20); filltype uni; universe  401;}
+51  {id  51; type simpleCell;  surfaces (-17  -20); filltype uni; universe  401;}
+
+//row 4
+52  {id  52; type simpleCell;  surfaces (-1   -21); filltype uni; universe  401;}
+53  {id  53; type simpleCell;  surfaces (-2   -21); filltype uni; universe  401;}
+54  {id  54; type simpleCell;  surfaces (-3   -21); filltype uni; universe  401;}
+55  {id  55; type simpleCell;  surfaces (-4   -21); filltype uni; universe  401;}
+56  {id  56; type simpleCell;  surfaces (-5   -21); filltype uni; universe  401;}
+57  {id  57; type simpleCell;  surfaces (-6   -21); filltype uni; universe  401;}
+58  {id  58; type simpleCell;  surfaces (-7   -21); filltype uni; universe  401;}
+59  {id  59; type simpleCell;  surfaces (-8   -21); filltype uni; universe  401;}
+60  {id  60; type simpleCell;  surfaces (-9   -21); filltype uni; universe  401;}
+61  {id  61; type simpleCell;  surfaces (-10  -21); filltype uni; universe  401;}
+62  {id  62; type simpleCell;  surfaces (-11  -21); filltype uni; universe  401;}
+63  {id  63; type simpleCell;  surfaces (-12  -21); filltype uni; universe  401;}
+64  {id  64; type simpleCell;  surfaces (-13  -21); filltype uni; universe  401;}
+65  {id  65; type simpleCell;  surfaces (-14  -21); filltype uni; universe  401;}
+66  {id  66; type simpleCell;  surfaces (-15  -21); filltype uni; universe  401;}
+67  {id  67; type simpleCell;  surfaces (-16  -21); filltype uni; universe  401;}
+68  {id  68; type simpleCell;  surfaces (-17  -21); filltype uni; universe  401;}
+
+//row 5
+69  {id  69; type simpleCell;  surfaces (-1   -22); filltype uni; universe  401;}
+70  {id  70; type simpleCell;  surfaces (-2   -22); filltype uni; universe  401;}
+71  {id  71; type simpleCell;  surfaces (-3   -22); filltype uni; universe  401;}
+72  {id  72; type simpleCell;  surfaces (-4   -22); filltype uni; universe  401;}
+73  {id  73; type simpleCell;  surfaces (-5   -22); filltype uni; universe  401;}
+74  {id  74; type simpleCell;  surfaces (-6   -22); filltype uni; universe  401;}
+75  {id  75; type simpleCell;  surfaces (-7   -22); filltype uni; universe  401;}
+76  {id  76; type simpleCell;  surfaces (-8   -22); filltype uni; universe  401;}
+77  {id  77; type simpleCell;  surfaces (-9   -22); filltype uni; universe  401;}
+78  {id  78; type simpleCell;  surfaces (-10  -22); filltype uni; universe  401;}
+79  {id  79; type simpleCell;  surfaces (-11  -22); filltype uni; universe  401;}
+80  {id  80; type simpleCell;  surfaces (-12  -22); filltype uni; universe  401;}
+81  {id  81; type simpleCell;  surfaces (-13  -22); filltype uni; universe  401;}
+82  {id  82; type simpleCell;  surfaces (-14  -22); filltype uni; universe  401;}
+83  {id  83; type simpleCell;  surfaces (-15  -22); filltype uni; universe  401;}
+84  {id  84; type simpleCell;  surfaces (-16  -22); filltype uni; universe  401;}
+85  {id  85; type simpleCell;  surfaces (-17  -22); filltype uni; universe  401;}
+
+//row 6
+86  {id  86; type simpleCell;  surfaces (-1   -23); filltype uni; universe  401;}
+87  {id  87; type simpleCell;  surfaces (-2   -23); filltype uni; universe  401;}
+88  {id  88; type simpleCell;  surfaces (-3   -23); filltype uni; universe  401;}
+89  {id  89; type simpleCell;  surfaces (-4   -23); filltype uni; universe  401;}
+90  {id  90; type simpleCell;  surfaces (-5   -23); filltype uni; universe  401;}
+91  {id  91; type simpleCell;  surfaces (-6   -23); filltype uni; universe  401;}
+92  {id  92; type simpleCell;  surfaces (-7   -23); filltype uni; universe  401;}
+93  {id  93; type simpleCell;  surfaces (-8   -23); filltype uni; universe  401;}
+94  {id  94; type simpleCell;  surfaces (-9   -23); filltype uni; universe  401;}
+95  {id  95; type simpleCell;  surfaces (-10  -23); filltype uni; universe  401;}
+96  {id  96; type simpleCell;  surfaces (-11  -23); filltype uni; universe  401;}
+97  {id  97; type simpleCell;  surfaces (-12  -23); filltype uni; universe  401;}
+98  {id  98; type simpleCell;  surfaces (-13  -23); filltype uni; universe  401;}
+99  {id  99; type simpleCell;  surfaces (-14  -23); filltype uni; universe  401;}
+100  {id 100; type simpleCell;  surfaces (-15  -23); filltype uni; universe 401;}
+101  {id 101; type simpleCell;  surfaces (-16  -23); filltype uni; universe 401;}
+102  {id 102; type simpleCell;  surfaces (-17  -23); filltype uni; universe 401;}
+
+//row 7
+103  {id 103; type simpleCell;  surfaces (-1   -24); filltype uni; universe 401;}
+104  {id 104; type simpleCell;  surfaces (-2   -24); filltype uni; universe 401;}
+105  {id 105; type simpleCell;  surfaces (-3   -24); filltype uni; universe 401;}
+106  {id 106; type simpleCell;  surfaces (-4   -24); filltype uni; universe 401;}
+107  {id 107; type simpleCell;  surfaces (-5   -24); filltype uni; universe 401;}
+108  {id 108; type simpleCell;  surfaces (-6   -24); filltype uni; universe 401;}
+109  {id 109; type simpleCell;  surfaces (-7   -24); filltype uni; universe 401;}
+110  {id 110; type simpleCell;  surfaces (-8   -24); filltype uni; universe 401;}
+111  {id 111; type simpleCell;  surfaces (-9   -24); filltype uni; universe 401;}
+112  {id 112; type simpleCell;  surfaces (-10  -24); filltype uni; universe 401;}
+113  {id 113; type simpleCell;  surfaces (-11  -24); filltype uni; universe 401;}
+114  {id 114; type simpleCell;  surfaces (-12  -24); filltype uni; universe 401;}
+115  {id 115; type simpleCell;  surfaces (-13  -24); filltype uni; universe 401;}
+116  {id 116; type simpleCell;  surfaces (-14  -24); filltype uni; universe 401;}
+117  {id 117; type simpleCell;  surfaces (-15  -24); filltype uni; universe 401;}
+118  {id 118; type simpleCell;  surfaces (-16  -24); filltype uni; universe 401;}
+119  {id 119; type simpleCell;  surfaces (-17  -24); filltype uni; universe 401;}
+
+//row 8
+120  {id 120; type simpleCell;  surfaces (-1   -25); filltype uni; universe 401;}
+121  {id 121; type simpleCell;  surfaces (-2   -25); filltype uni; universe 401;}
+122  {id 122; type simpleCell;  surfaces (-3   -25); filltype uni; universe 401;}
+123  {id 123; type simpleCell;  surfaces (-4   -25); filltype uni; universe 401;}
+124  {id 124; type simpleCell;  surfaces (-5   -25); filltype uni; universe 401;}
+125  {id 125; type simpleCell;  surfaces (-6   -25); filltype uni; universe 401;}
+126  {id 126; type simpleCell;  surfaces (-7   -25); filltype uni; universe 401;}
+127  {id 127; type simpleCell;  surfaces (-8   -25); filltype uni; universe 401;}
+128  {id 128; type simpleCell;  surfaces (-9   -25); filltype uni; universe 401;}
+129  {id 129; type simpleCell;  surfaces (-10  -25); filltype uni; universe 401;}
+130  {id 130; type simpleCell;  surfaces (-11  -25); filltype uni; universe 401;}
+131  {id 131; type simpleCell;  surfaces (-12  -25); filltype uni; universe 401;}
+132  {id 132; type simpleCell;  surfaces (-13  -25); filltype uni; universe 401;}
+133  {id 133; type simpleCell;  surfaces (-14  -25); filltype uni; universe 401;}
+134  {id 134; type simpleCell;  surfaces (-15  -25); filltype uni; universe 401;}
+135  {id 135; type simpleCell;  surfaces (-16  -25); filltype uni; universe 401;}
+136  {id 136; type simpleCell;  surfaces (-17  -25); filltype uni; universe 401;}
+
+//row 9
+137  {id 137; type simpleCell;  surfaces (-1   -26); filltype uni; universe 401;}
+138  {id 138; type simpleCell;  surfaces (-2   -26); filltype uni; universe 401;}
+139  {id 139; type simpleCell;  surfaces (-3   -26); filltype uni; universe 401;}
+140  {id 140; type simpleCell;  surfaces (-4   -26); filltype uni; universe 401;}
+141  {id 141; type simpleCell;  surfaces (-5   -26); filltype uni; universe 401;}
+142  {id 142; type simpleCell;  surfaces (-6   -26); filltype uni; universe 401;}
+143  {id 143; type simpleCell;  surfaces (-7   -26); filltype uni; universe 401;}
+144  {id 144; type simpleCell;  surfaces (-8   -26); filltype uni; universe 401;}
+145  {id 145; type simpleCell;  surfaces (-9   -26); filltype uni; universe 401;}
+146  {id 146; type simpleCell;  surfaces (-10  -26); filltype uni; universe 401;}
+147  {id 147; type simpleCell;  surfaces (-11  -26); filltype uni; universe 401;}
+148  {id 148; type simpleCell;  surfaces (-12  -26); filltype uni; universe 401;}
+149  {id 149; type simpleCell;  surfaces (-13  -26); filltype uni; universe 401;}
+150  {id 150; type simpleCell;  surfaces (-14  -26); filltype uni; universe 401;}
+151  {id 151; type simpleCell;  surfaces (-15  -26); filltype uni; universe 401;}
+152  {id 152; type simpleCell;  surfaces (-16  -26); filltype uni; universe 401;}
+153  {id 153; type simpleCell;  surfaces (-17  -26); filltype uni; universe 401;}
+
+//row 10
+154  {id 154; type simpleCell;  surfaces (-1   -27); filltype uni; universe 401;}
+155  {id 155; type simpleCell;  surfaces (-2   -27); filltype uni; universe 401;}
+156  {id 156; type simpleCell;  surfaces (-3   -27); filltype uni; universe 401;}
+157  {id 157; type simpleCell;  surfaces (-4   -27); filltype uni; universe 401;}
+158  {id 158; type simpleCell;  surfaces (-5   -27); filltype uni; universe 401;}
+159  {id 159; type simpleCell;  surfaces (-6   -27); filltype uni; universe 401;}
+160  {id 160; type simpleCell;  surfaces (-7   -27); filltype uni; universe 401;}
+161  {id 161; type simpleCell;  surfaces (-8   -27); filltype uni; universe 401;}
+162  {id 162; type simpleCell;  surfaces (-9   -27); filltype uni; universe 401;}
+163  {id 163; type simpleCell;  surfaces (-10  -27); filltype uni; universe 401;}
+164  {id 164; type simpleCell;  surfaces (-11  -27); filltype uni; universe 401;}
+165  {id 165; type simpleCell;  surfaces (-12  -27); filltype uni; universe 401;}
+166  {id 166; type simpleCell;  surfaces (-13  -27); filltype uni; universe 401;}
+167  {id 167; type simpleCell;  surfaces (-14  -27); filltype uni; universe 401;}
+168  {id 168; type simpleCell;  surfaces (-15  -27); filltype uni; universe 401;}
+169  {id 169; type simpleCell;  surfaces (-16  -27); filltype uni; universe 401;}
+170  {id 170; type simpleCell;  surfaces (-17  -27); filltype uni; universe 401;}
+
+//row 11
+171  {id 171; type simpleCell;  surfaces (-1   -28); filltype uni; universe 401;}
+172  {id 172; type simpleCell;  surfaces (-2   -28); filltype uni; universe 401;}
+173  {id 173; type simpleCell;  surfaces (-3   -28); filltype uni; universe 401;}
+174  {id 174; type simpleCell;  surfaces (-4   -28); filltype uni; universe 401;}
+175  {id 175; type simpleCell;  surfaces (-5   -28); filltype uni; universe 401;}
+176  {id 176; type simpleCell;  surfaces (-6   -28); filltype uni; universe 401;}
+177  {id 177; type simpleCell;  surfaces (-7   -28); filltype uni; universe 401;}
+178  {id 178; type simpleCell;  surfaces (-8   -28); filltype uni; universe 401;}
+179  {id 179; type simpleCell;  surfaces (-9   -28); filltype uni; universe 401;}
+180  {id 180; type simpleCell;  surfaces (-10  -28); filltype uni; universe 401;}
+181  {id 181; type simpleCell;  surfaces (-11  -28); filltype uni; universe 401;}
+182  {id 182; type simpleCell;  surfaces (-12  -28); filltype uni; universe 401;}
+183  {id 183; type simpleCell;  surfaces (-13  -28); filltype uni; universe 401;}
+184  {id 184; type simpleCell;  surfaces (-14  -28); filltype uni; universe 401;}
+185  {id 185; type simpleCell;  surfaces (-15  -28); filltype uni; universe 401;}
+186  {id 186; type simpleCell;  surfaces (-16  -28); filltype uni; universe 401;}
+187  {id 187; type simpleCell;  surfaces (-17  -28); filltype uni; universe 401;}
+
+//row 12
+188  {id 188; type simpleCell;  surfaces (-1   -29); filltype uni; universe 401;}
+189  {id 189; type simpleCell;  surfaces (-2   -29); filltype uni; universe 401;}
+190  {id 190; type simpleCell;  surfaces (-3   -29); filltype uni; universe 401;}
+191  {id 191; type simpleCell;  surfaces (-4   -29); filltype uni; universe 401;}
+192  {id 192; type simpleCell;  surfaces (-5   -29); filltype uni; universe 401;}
+193  {id 193; type simpleCell;  surfaces (-6   -29); filltype uni; universe 401;}
+194  {id 194; type simpleCell;  surfaces (-7   -29); filltype uni; universe 401;}
+195  {id 195; type simpleCell;  surfaces (-8   -29); filltype uni; universe 401;}
+196  {id 196; type simpleCell;  surfaces (-9   -29); filltype uni; universe 401;}
+197  {id 197; type simpleCell;  surfaces (-10  -29); filltype uni; universe 401;}
+198  {id 198; type simpleCell;  surfaces (-11  -29); filltype uni; universe 401;}
+199  {id 199; type simpleCell;  surfaces (-12  -29); filltype uni; universe 401;}
+200  {id 200; type simpleCell;  surfaces (-13  -29); filltype uni; universe 401;}
+201  {id 201; type simpleCell;  surfaces (-14  -29); filltype uni; universe 401;}
+202  {id 202; type simpleCell;  surfaces (-15  -29); filltype uni; universe 401;}
+203  {id 203; type simpleCell;  surfaces (-16  -29); filltype uni; universe 401;}
+204  {id 204; type simpleCell;  surfaces (-17  -29); filltype uni; universe 401;}
+
+//row 13
+205  {id 205; type simpleCell;  surfaces (-1   -30); filltype uni; universe 401;}
+206  {id 206; type simpleCell;  surfaces (-2   -30); filltype uni; universe 401;}
+207  {id 207; type simpleCell;  surfaces (-3   -30); filltype uni; universe 401;}
+208  {id 208; type simpleCell;  surfaces (-4   -30); filltype uni; universe 401;}
+209  {id 209; type simpleCell;  surfaces (-5   -30); filltype uni; universe 401;}
+210  {id 210; type simpleCell;  surfaces (-6   -30); filltype uni; universe 401;}
+211  {id 211; type simpleCell;  surfaces (-7   -30); filltype uni; universe 401;}
+212  {id 212; type simpleCell;  surfaces (-8   -30); filltype uni; universe 401;}
+213  {id 213; type simpleCell;  surfaces (-9   -30); filltype uni; universe 401;}
+214  {id 214; type simpleCell;  surfaces (-10  -30); filltype uni; universe 401;}
+215  {id 215; type simpleCell;  surfaces (-11  -30); filltype uni; universe 401;}
+216  {id 216; type simpleCell;  surfaces (-12  -30); filltype uni; universe 401;}
+217  {id 217; type simpleCell;  surfaces (-13  -30); filltype uni; universe 401;}
+218  {id 218; type simpleCell;  surfaces (-14  -30); filltype uni; universe 401;}
+219  {id 219; type simpleCell;  surfaces (-15  -30); filltype uni; universe 401;}
+220  {id 220; type simpleCell;  surfaces (-16  -30); filltype uni; universe 401;}
+221  {id 221; type simpleCell;  surfaces (-17  -30); filltype uni; universe 401;}
+
+//row 14
+222  {id 222; type simpleCell;  surfaces (-1   -31); filltype uni; universe 401;}
+223  {id 223; type simpleCell;  surfaces (-2   -31); filltype uni; universe 401;}
+224  {id 224; type simpleCell;  surfaces (-3   -31); filltype uni; universe 401;}
+225  {id 225; type simpleCell;  surfaces (-4   -31); filltype uni; universe 401;}
+226  {id 226; type simpleCell;  surfaces (-5   -31); filltype uni; universe 401;}
+227  {id 227; type simpleCell;  surfaces (-6   -31); filltype uni; universe 401;}
+228  {id 228; type simpleCell;  surfaces (-7   -31); filltype uni; universe 401;}
+229  {id 229; type simpleCell;  surfaces (-8   -31); filltype uni; universe 401;}
+230  {id 230; type simpleCell;  surfaces (-9   -31); filltype uni; universe 401;}
+231  {id 231; type simpleCell;  surfaces (-10  -31); filltype uni; universe 401;}
+232  {id 232; type simpleCell;  surfaces (-11  -31); filltype uni; universe 401;}
+233  {id 233; type simpleCell;  surfaces (-12  -31); filltype uni; universe 401;}
+234  {id 234; type simpleCell;  surfaces (-13  -31); filltype uni; universe 401;}
+235  {id 235; type simpleCell;  surfaces (-14  -31); filltype uni; universe 401;}
+236  {id 236; type simpleCell;  surfaces (-15  -31); filltype uni; universe 401;}
+237  {id 237; type simpleCell;  surfaces (-16  -31); filltype uni; universe 401;}
+238  {id 238; type simpleCell;  surfaces (-17  -31); filltype uni; universe 401;}
+
+//row 15
+239  {id 239; type simpleCell;  surfaces (-1   -32); filltype uni; universe 401;}
+240  {id 240; type simpleCell;  surfaces (-2   -32); filltype uni; universe 401;}
+241  {id 241; type simpleCell;  surfaces (-3   -32); filltype uni; universe 401;}
+242  {id 242; type simpleCell;  surfaces (-4   -32); filltype uni; universe 401;}
+243  {id 243; type simpleCell;  surfaces (-5   -32); filltype uni; universe 401;}
+244  {id 244; type simpleCell;  surfaces (-6   -32); filltype uni; universe 401;}
+245  {id 245; type simpleCell;  surfaces (-7   -32); filltype uni; universe 401;}
+246  {id 246; type simpleCell;  surfaces (-8   -32); filltype uni; universe 401;}
+247  {id 247; type simpleCell;  surfaces (-9   -32); filltype uni; universe 401;}
+248  {id 248; type simpleCell;  surfaces (-10  -32); filltype uni; universe 401;}
+249  {id 249; type simpleCell;  surfaces (-11  -32); filltype uni; universe 401;}
+250  {id 250; type simpleCell;  surfaces (-12  -32); filltype uni; universe 401;}
+251  {id 251; type simpleCell;  surfaces (-13  -32); filltype uni; universe 401;}
+252  {id 252; type simpleCell;  surfaces (-14  -32); filltype uni; universe 401;}
+253  {id 253; type simpleCell;  surfaces (-15  -32); filltype uni; universe 401;}
+254  {id 254; type simpleCell;  surfaces (-16  -32); filltype uni; universe 401;}
+255  {id 255; type simpleCell;  surfaces (-17  -32); filltype uni; universe 401;}
+
+//row 16
+256  {id 256; type simpleCell;  surfaces (-1   -33); filltype uni; universe 401;}
+257  {id 257; type simpleCell;  surfaces (-2   -33); filltype uni; universe 401;}
+258  {id 258; type simpleCell;  surfaces (-3   -33); filltype uni; universe 401;}
+259  {id 259; type simpleCell;  surfaces (-4   -33); filltype uni; universe 401;}
+260  {id 260; type simpleCell;  surfaces (-5   -33); filltype uni; universe 401;}
+261  {id 261; type simpleCell;  surfaces (-6   -33); filltype uni; universe 401;}
+262  {id 262; type simpleCell;  surfaces (-7   -33); filltype uni; universe 401;}
+263  {id 263; type simpleCell;  surfaces (-8   -33); filltype uni; universe 401;}
+264  {id 264; type simpleCell;  surfaces (-9   -33); filltype uni; universe 401;}
+265  {id 265; type simpleCell;  surfaces (-10  -33); filltype uni; universe 401;}
+266  {id 266; type simpleCell;  surfaces (-11  -33); filltype uni; universe 401;}
+267  {id 267; type simpleCell;  surfaces (-12  -33); filltype uni; universe 401;}
+268  {id 268; type simpleCell;  surfaces (-13  -33); filltype uni; universe 401;}
+269  {id 269; type simpleCell;  surfaces (-14  -33); filltype uni; universe 401;}
+270  {id 270; type simpleCell;  surfaces (-15  -33); filltype uni; universe 401;}
+271  {id 271; type simpleCell;  surfaces (-16  -33); filltype uni; universe 401;}
+272  {id 272; type simpleCell;  surfaces (-17  -33); filltype uni; universe 401;}
+
+//row 16
+273  {id 273; type simpleCell;  surfaces (-1   -34); filltype uni; universe 401;}
+274  {id 274; type simpleCell;  surfaces (-2   -34); filltype uni; universe 401;}
+275  {id 275; type simpleCell;  surfaces (-3   -34); filltype uni; universe 401;}
+276  {id 276; type simpleCell;  surfaces (-4   -34); filltype uni; universe 401;}
+277  {id 277; type simpleCell;  surfaces (-5   -34); filltype uni; universe 401;}
+278  {id 278; type simpleCell;  surfaces (-6   -34); filltype uni; universe 401;}
+279  {id 279; type simpleCell;  surfaces (-7   -34); filltype uni; universe 401;}
+280  {id 280; type simpleCell;  surfaces (-8   -34); filltype uni; universe 401;}
+281  {id 281; type simpleCell;  surfaces (-9   -34); filltype uni; universe 401;}
+282  {id 282; type simpleCell;  surfaces (-10  -34); filltype uni; universe 401;}
+283  {id 283; type simpleCell;  surfaces (-11  -34); filltype uni; universe 401;}
+284  {id 284; type simpleCell;  surfaces (-12  -34); filltype uni; universe 401;}
+285  {id 285; type simpleCell;  surfaces (-13  -34); filltype uni; universe 401;}
+286  {id 286; type simpleCell;  surfaces (-14  -34); filltype uni; universe 401;}
+287  {id 287; type simpleCell;  surfaces (-15  -34); filltype uni; universe 401;}
+288  {id 288; type simpleCell;  surfaces (-16  -34); filltype uni; universe 401;}
+289  {id 289; type simpleCell;  surfaces (-17  -34); filltype uni; universe 401;}
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 35; fill u<401>; }
+
+    //root{id 1; type rootUniverse; border 35; fill u<2>;}
+    //geom { id 2; type cellUniverse; cells (1);} //1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 );}
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
+    //pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
+    pin21 {id 21; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+      fills (mox89  void   clad   void   alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+  }
+
+}
+
+
+
+kineticGeom1 {
+  type geometryStd;
+  boundary ( 2 2 2 2 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 35; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
+
+      //columns
+      c_one   { id 1; type box; origin (-10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_three { id 3; type box; origin (-7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_four  { id 4; type box; origin (-6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_five  { id 5; type box; origin (-5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_six   { id 6; type box; origin (-3.78 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_seven { id 7; type box; origin (-2.52 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eight { id 8; type box; origin (-1.26 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_nine  { id 9; type box; origin (0.0 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_ten   { id 10; type box; origin (1.26 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eleven { id 11; type box; origin (2.52 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_twelve { id 12; type box; origin (3.78 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_thirteen { id 13; type box; origin (5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fourteen { id 14; type box; origin (6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fifteen { id 15; type box; origin (7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_sixteen { id 16; type box; origin (8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_seventeen { id 17; type box; origin (10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+
+      //rows
+      r_one   { id 18; type box; origin (0.0 10.08 0.0); halfwidth (10.71 0.63 0.0);}
+      r_two   { id 19; type box; origin (0.0 8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_three { id 20; type box; origin (0.0 7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_four  { id 21; type box; origin (0.0 6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_five  { id 22; type box; origin (0.0 5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_six   { id 23; type box; origin (0.0 3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seven { id 24; type box; origin (0.0 2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eight { id 25; type box; origin (0.0 1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_nine  { id 26; type box; origin (0.0 0.0 0.0); halfwidth (10.71 0.63 0.0);}
+      r_ten   { id 27; type box; origin (0.0 -1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eleven   { id 28; type box; origin (0.0 -2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_twelve   { id 29; type box; origin (0.0 -3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_thirteen   { id 30; type box; origin (0.0 -5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fourteen   { id 31; type box; origin (0.0 -6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fifteen   { id 32; type box; origin (0.0 -7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_sixteen   { id 33; type box; origin (0.0 -8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seventeen   { id 34; type box; origin (0.0 -10.08 0.0); halfwidth (10.71 0.63 0.0);}
+  }
+
+  cells {
+   //one  {id 1; type simpleCell; surfaces ( -35); filltype uni; universe 31;}  //universe 401;}
+   //two  {id 2; type simpleCell; surfaces ( -35); filltype uni; universe 41;}
+   //three  {id 3; type simpleCell; surfaces ( -35); filltype uni; universe 51;}
+   //four  {id 4; type simpleCell; surfaces ( -35); filltype uni; universe 21;}
+   //five  {id 5; type simpleCell; surfaces ( -35); filltype uni; universe 401;}
+   //out {id 2; type simpleCell; surfaces (1); filltype outside; }
+
+  //row 1
+  1  {id   1; type simpleCell;  surfaces (-1  -18); filltype uni; universe  401;}
+  2  {id   2; type simpleCell;  surfaces (-2  -18); filltype uni; universe  401;}
+  3  {id   3; type simpleCell;  surfaces (-3  -18); filltype uni; universe  401;}
+  4  {id   4; type simpleCell;  surfaces (-4  -18); filltype uni; universe  401;}
+  5  {id   5; type simpleCell;  surfaces (-5  -18); filltype uni; universe  401;}
+  6  {id   6; type simpleCell;  surfaces (-6  -18); filltype uni; universe  401;}
+  7  {id   7; type simpleCell;  surfaces (-7  -18); filltype uni; universe  401;}
+  8  {id   8; type simpleCell;  surfaces (-8  -18); filltype uni; universe  401;}
+  9  {id   9; type simpleCell;  surfaces (-9  -18); filltype uni; universe  401;}
+ 10  {id  10; type simpleCell;  surfaces (-10  -18); filltype uni; universe 401;}
+ 11  {id  11; type simpleCell;  surfaces (-11  -18); filltype uni; universe 401;}
+ 12  {id  12; type simpleCell;  surfaces (-12  -18); filltype uni; universe 401;}
+ 13  {id  13; type simpleCell;  surfaces (-13  -18); filltype uni; universe 401;}
+ 14  {id  14; type simpleCell;  surfaces (-14  -18); filltype uni; universe 401;}
+ 15  {id  15; type simpleCell;  surfaces (-15  -18); filltype uni; universe 401;}
+ 16  {id  16; type simpleCell;  surfaces (-16  -18); filltype uni; universe 401;}
+ 17  {id  17; type simpleCell;  surfaces (-17  -18); filltype uni; universe 401;}
+
+//row 2
+ 18  {id  18; type simpleCell;  surfaces (-1   -19); filltype uni; universe 401;}
+ 19  {id  19; type simpleCell;  surfaces (-2   -19); filltype uni; universe 401;}
+ 20  {id  20; type simpleCell;  surfaces (-3   -19); filltype uni; universe 401;}
+ 21  {id  21; type simpleCell;  surfaces (-4   -19); filltype uni; universe 401;}
+ 22 {id   22; type simpleCell;  surfaces (-5   -19); filltype uni; universe 401;}
+ 23  {id  23; type simpleCell;  surfaces (-6   -19); filltype uni; universe 401;}
+ 24  {id  24; type simpleCell;  surfaces (-7   -19); filltype uni; universe 401;}
+ 25  {id  25; type simpleCell;  surfaces (-8   -19); filltype uni; universe 401;}
+ 26  {id  26; type simpleCell;  surfaces (-9   -19); filltype uni; universe 401;}
+ 27  {id  27; type simpleCell;  surfaces (-10  -19); filltype uni; universe 401;}
+ 28  {id  28; type simpleCell;  surfaces (-11  -19); filltype uni; universe 401;}
+ 29  {id  29; type simpleCell;  surfaces (-12  -19); filltype uni; universe 401;}
+ 30  {id  30; type simpleCell;  surfaces (-13  -19); filltype uni; universe 401;}
+ 31  {id  31; type simpleCell;  surfaces (-14  -19); filltype uni; universe 401;}
+ 32  {id  32; type simpleCell;  surfaces (-15  -19); filltype uni; universe 401;}
+ 33  {id  33; type simpleCell;  surfaces (-16  -19); filltype uni; universe 401;}
+ 34  {id  34; type simpleCell;  surfaces (-17  -19); filltype uni; universe 401;}
+
+//row 3
+35  {id  35; type simpleCell;  surfaces (-1   -20); filltype uni; universe  401;}
+36  {id  36; type simpleCell;  surfaces (-2   -20); filltype uni; universe  401;}
+37  {id  37; type simpleCell;  surfaces (-3   -20); filltype uni; universe  401;}
+38  {id  38; type simpleCell;  surfaces (-4   -20); filltype uni; universe  401;}
+39 {id   39; type simpleCell;  surfaces (-5   -20); filltype uni; universe  401;}
+40  {id  40; type simpleCell;  surfaces (-6   -20); filltype uni; universe  401;}
+41  {id  41; type simpleCell;  surfaces (-7   -20); filltype uni; universe  401;}
+42  {id  42; type simpleCell;  surfaces (-8   -20); filltype uni; universe  401;}
+43  {id  43; type simpleCell;  surfaces (-9   -20); filltype uni; universe  401;}
+44  {id  44; type simpleCell;  surfaces (-10  -20); filltype uni; universe  401;}
+45  {id  45; type simpleCell;  surfaces (-11  -20); filltype uni; universe  401;}
+46  {id  46; type simpleCell;  surfaces (-12  -20); filltype uni; universe  401;}
+47  {id  47; type simpleCell;  surfaces (-13  -20); filltype uni; universe  401;}
+48  {id  48; type simpleCell;  surfaces (-14  -20); filltype uni; universe  401;}
+49  {id  49; type simpleCell;  surfaces (-15  -20); filltype uni; universe  401;}
+50  {id  50; type simpleCell;  surfaces (-16  -20); filltype uni; universe  401;}
+51  {id  51; type simpleCell;  surfaces (-17  -20); filltype uni; universe  401;}
+
+//row 4
+52  {id  52; type simpleCell;  surfaces (-1   -21); filltype uni; universe  401;}
+53  {id  53; type simpleCell;  surfaces (-2   -21); filltype uni; universe  401;}
+54  {id  54; type simpleCell;  surfaces (-3   -21); filltype uni; universe  401;}
+55  {id  55; type simpleCell;  surfaces (-4   -21); filltype uni; universe  401;}
+56  {id  56; type simpleCell;  surfaces (-5   -21); filltype uni; universe  401;}
+57  {id  57; type simpleCell;  surfaces (-6   -21); filltype uni; universe  401;}
+58  {id  58; type simpleCell;  surfaces (-7   -21); filltype uni; universe  401;}
+59  {id  59; type simpleCell;  surfaces (-8   -21); filltype uni; universe  401;}
+60  {id  60; type simpleCell;  surfaces (-9   -21); filltype uni; universe  401;}
+61  {id  61; type simpleCell;  surfaces (-10  -21); filltype uni; universe  401;}
+62  {id  62; type simpleCell;  surfaces (-11  -21); filltype uni; universe  401;}
+63  {id  63; type simpleCell;  surfaces (-12  -21); filltype uni; universe  401;}
+64  {id  64; type simpleCell;  surfaces (-13  -21); filltype uni; universe  401;}
+65  {id  65; type simpleCell;  surfaces (-14  -21); filltype uni; universe  401;}
+66  {id  66; type simpleCell;  surfaces (-15  -21); filltype uni; universe  401;}
+67  {id  67; type simpleCell;  surfaces (-16  -21); filltype uni; universe  401;}
+68  {id  68; type simpleCell;  surfaces (-17  -21); filltype uni; universe  401;}
+
+//row 5
+69  {id  69; type simpleCell;  surfaces (-1   -22); filltype uni; universe  401;}
+70  {id  70; type simpleCell;  surfaces (-2   -22); filltype uni; universe  401;}
+71  {id  71; type simpleCell;  surfaces (-3   -22); filltype uni; universe  401;}
+72  {id  72; type simpleCell;  surfaces (-4   -22); filltype uni; universe  401;}
+73  {id  73; type simpleCell;  surfaces (-5   -22); filltype uni; universe  401;}
+74  {id  74; type simpleCell;  surfaces (-6   -22); filltype uni; universe  401;}
+75  {id  75; type simpleCell;  surfaces (-7   -22); filltype uni; universe  401;}
+76  {id  76; type simpleCell;  surfaces (-8   -22); filltype uni; universe  401;}
+77  {id  77; type simpleCell;  surfaces (-9   -22); filltype uni; universe  401;}
+78  {id  78; type simpleCell;  surfaces (-10  -22); filltype uni; universe  401;}
+79  {id  79; type simpleCell;  surfaces (-11  -22); filltype uni; universe  401;}
+80  {id  80; type simpleCell;  surfaces (-12  -22); filltype uni; universe  401;}
+81  {id  81; type simpleCell;  surfaces (-13  -22); filltype uni; universe  401;}
+82  {id  82; type simpleCell;  surfaces (-14  -22); filltype uni; universe  401;}
+83  {id  83; type simpleCell;  surfaces (-15  -22); filltype uni; universe  401;}
+84  {id  84; type simpleCell;  surfaces (-16  -22); filltype uni; universe  401;}
+85  {id  85; type simpleCell;  surfaces (-17  -22); filltype uni; universe  401;}
+
+//row 6
+86  {id  86; type simpleCell;  surfaces (-1   -23); filltype uni; universe  401;}
+87  {id  87; type simpleCell;  surfaces (-2   -23); filltype uni; universe  401;}
+88  {id  88; type simpleCell;  surfaces (-3   -23); filltype uni; universe  401;}
+89  {id  89; type simpleCell;  surfaces (-4   -23); filltype uni; universe  401;}
+90  {id  90; type simpleCell;  surfaces (-5   -23); filltype uni; universe  401;}
+91  {id  91; type simpleCell;  surfaces (-6   -23); filltype uni; universe  401;}
+92  {id  92; type simpleCell;  surfaces (-7   -23); filltype uni; universe  401;}
+93  {id  93; type simpleCell;  surfaces (-8   -23); filltype uni; universe  401;}
+94  {id  94; type simpleCell;  surfaces (-9   -23); filltype uni; universe  401;}
+95  {id  95; type simpleCell;  surfaces (-10  -23); filltype uni; universe  401;}
+96  {id  96; type simpleCell;  surfaces (-11  -23); filltype uni; universe  401;}
+97  {id  97; type simpleCell;  surfaces (-12  -23); filltype uni; universe  401;}
+98  {id  98; type simpleCell;  surfaces (-13  -23); filltype uni; universe  401;}
+99  {id  99; type simpleCell;  surfaces (-14  -23); filltype uni; universe  401;}
+100  {id 100; type simpleCell;  surfaces (-15  -23); filltype uni; universe 401;}
+101  {id 101; type simpleCell;  surfaces (-16  -23); filltype uni; universe 401;}
+102  {id 102; type simpleCell;  surfaces (-17  -23); filltype uni; universe 401;}
+
+//row 7
+103  {id 103; type simpleCell;  surfaces (-1   -24); filltype uni; universe 401;}
+104  {id 104; type simpleCell;  surfaces (-2   -24); filltype uni; universe 401;}
+105  {id 105; type simpleCell;  surfaces (-3   -24); filltype uni; universe 401;}
+106  {id 106; type simpleCell;  surfaces (-4   -24); filltype uni; universe 401;}
+107  {id 107; type simpleCell;  surfaces (-5   -24); filltype uni; universe 401;}
+108  {id 108; type simpleCell;  surfaces (-6   -24); filltype uni; universe 401;}
+109  {id 109; type simpleCell;  surfaces (-7   -24); filltype uni; universe 401;}
+110  {id 110; type simpleCell;  surfaces (-8   -24); filltype uni; universe 401;}
+111  {id 111; type simpleCell;  surfaces (-9   -24); filltype uni; universe 401;}
+112  {id 112; type simpleCell;  surfaces (-10  -24); filltype uni; universe 401;}
+113  {id 113; type simpleCell;  surfaces (-11  -24); filltype uni; universe 401;}
+114  {id 114; type simpleCell;  surfaces (-12  -24); filltype uni; universe 401;}
+115  {id 115; type simpleCell;  surfaces (-13  -24); filltype uni; universe 401;}
+116  {id 116; type simpleCell;  surfaces (-14  -24); filltype uni; universe 401;}
+117  {id 117; type simpleCell;  surfaces (-15  -24); filltype uni; universe 401;}
+118  {id 118; type simpleCell;  surfaces (-16  -24); filltype uni; universe 401;}
+119  {id 119; type simpleCell;  surfaces (-17  -24); filltype uni; universe 401;}
+
+//row 8
+120  {id 120; type simpleCell;  surfaces (-1   -25); filltype uni; universe 401;}
+121  {id 121; type simpleCell;  surfaces (-2   -25); filltype uni; universe 401;}
+122  {id 122; type simpleCell;  surfaces (-3   -25); filltype uni; universe 401;}
+123  {id 123; type simpleCell;  surfaces (-4   -25); filltype uni; universe 401;}
+124  {id 124; type simpleCell;  surfaces (-5   -25); filltype uni; universe 401;}
+125  {id 125; type simpleCell;  surfaces (-6   -25); filltype uni; universe 401;}
+126  {id 126; type simpleCell;  surfaces (-7   -25); filltype uni; universe 401;}
+127  {id 127; type simpleCell;  surfaces (-8   -25); filltype uni; universe 401;}
+128  {id 128; type simpleCell;  surfaces (-9   -25); filltype uni; universe 401;}
+129  {id 129; type simpleCell;  surfaces (-10  -25); filltype uni; universe 401;}
+130  {id 130; type simpleCell;  surfaces (-11  -25); filltype uni; universe 401;}
+131  {id 131; type simpleCell;  surfaces (-12  -25); filltype uni; universe 401;}
+132  {id 132; type simpleCell;  surfaces (-13  -25); filltype uni; universe 401;}
+133  {id 133; type simpleCell;  surfaces (-14  -25); filltype uni; universe 401;}
+134  {id 134; type simpleCell;  surfaces (-15  -25); filltype uni; universe 401;}
+135  {id 135; type simpleCell;  surfaces (-16  -25); filltype uni; universe 401;}
+136  {id 136; type simpleCell;  surfaces (-17  -25); filltype uni; universe 401;}
+
+//row 9
+137  {id 137; type simpleCell;  surfaces (-1   -26); filltype uni; universe 401;}
+138  {id 138; type simpleCell;  surfaces (-2   -26); filltype uni; universe 401;}
+139  {id 139; type simpleCell;  surfaces (-3   -26); filltype uni; universe 401;}
+140  {id 140; type simpleCell;  surfaces (-4   -26); filltype uni; universe 401;}
+141  {id 141; type simpleCell;  surfaces (-5   -26); filltype uni; universe 401;}
+142  {id 142; type simpleCell;  surfaces (-6   -26); filltype uni; universe 401;}
+143  {id 143; type simpleCell;  surfaces (-7   -26); filltype uni; universe 401;}
+144  {id 144; type simpleCell;  surfaces (-8   -26); filltype uni; universe 401;}
+145  {id 145; type simpleCell;  surfaces (-9   -26); filltype uni; universe 401;}
+146  {id 146; type simpleCell;  surfaces (-10  -26); filltype uni; universe 401;}
+147  {id 147; type simpleCell;  surfaces (-11  -26); filltype uni; universe 401;}
+148  {id 148; type simpleCell;  surfaces (-12  -26); filltype uni; universe 401;}
+149  {id 149; type simpleCell;  surfaces (-13  -26); filltype uni; universe 401;}
+150  {id 150; type simpleCell;  surfaces (-14  -26); filltype uni; universe 401;}
+151  {id 151; type simpleCell;  surfaces (-15  -26); filltype uni; universe 401;}
+152  {id 152; type simpleCell;  surfaces (-16  -26); filltype uni; universe 401;}
+153  {id 153; type simpleCell;  surfaces (-17  -26); filltype uni; universe 401;}
+
+//row 10
+154  {id 154; type simpleCell;  surfaces (-1   -27); filltype uni; universe 401;}
+155  {id 155; type simpleCell;  surfaces (-2   -27); filltype uni; universe 401;}
+156  {id 156; type simpleCell;  surfaces (-3   -27); filltype uni; universe 401;}
+157  {id 157; type simpleCell;  surfaces (-4   -27); filltype uni; universe 401;}
+158  {id 158; type simpleCell;  surfaces (-5   -27); filltype uni; universe 401;}
+159  {id 159; type simpleCell;  surfaces (-6   -27); filltype uni; universe 401;}
+160  {id 160; type simpleCell;  surfaces (-7   -27); filltype uni; universe 401;}
+161  {id 161; type simpleCell;  surfaces (-8   -27); filltype uni; universe 401;}
+162  {id 162; type simpleCell;  surfaces (-9   -27); filltype uni; universe 401;}
+163  {id 163; type simpleCell;  surfaces (-10  -27); filltype uni; universe 401;}
+164  {id 164; type simpleCell;  surfaces (-11  -27); filltype uni; universe 401;}
+165  {id 165; type simpleCell;  surfaces (-12  -27); filltype uni; universe 401;}
+166  {id 166; type simpleCell;  surfaces (-13  -27); filltype uni; universe 401;}
+167  {id 167; type simpleCell;  surfaces (-14  -27); filltype uni; universe 401;}
+168  {id 168; type simpleCell;  surfaces (-15  -27); filltype uni; universe 401;}
+169  {id 169; type simpleCell;  surfaces (-16  -27); filltype uni; universe 401;}
+170  {id 170; type simpleCell;  surfaces (-17  -27); filltype uni; universe 401;}
+
+//row 11
+171  {id 171; type simpleCell;  surfaces (-1   -28); filltype uni; universe 401;}
+172  {id 172; type simpleCell;  surfaces (-2   -28); filltype uni; universe 401;}
+173  {id 173; type simpleCell;  surfaces (-3   -28); filltype uni; universe 401;}
+174  {id 174; type simpleCell;  surfaces (-4   -28); filltype uni; universe 401;}
+175  {id 175; type simpleCell;  surfaces (-5   -28); filltype uni; universe 401;}
+176  {id 176; type simpleCell;  surfaces (-6   -28); filltype uni; universe 401;}
+177  {id 177; type simpleCell;  surfaces (-7   -28); filltype uni; universe 401;}
+178  {id 178; type simpleCell;  surfaces (-8   -28); filltype uni; universe 401;}
+179  {id 179; type simpleCell;  surfaces (-9   -28); filltype uni; universe 401;}
+180  {id 180; type simpleCell;  surfaces (-10  -28); filltype uni; universe 401;}
+181  {id 181; type simpleCell;  surfaces (-11  -28); filltype uni; universe 401;}
+182  {id 182; type simpleCell;  surfaces (-12  -28); filltype uni; universe 401;}
+183  {id 183; type simpleCell;  surfaces (-13  -28); filltype uni; universe 401;}
+184  {id 184; type simpleCell;  surfaces (-14  -28); filltype uni; universe 401;}
+185  {id 185; type simpleCell;  surfaces (-15  -28); filltype uni; universe 401;}
+186  {id 186; type simpleCell;  surfaces (-16  -28); filltype uni; universe 401;}
+187  {id 187; type simpleCell;  surfaces (-17  -28); filltype uni; universe 401;}
+
+//row 12
+188  {id 188; type simpleCell;  surfaces (-1   -29); filltype uni; universe 401;}
+189  {id 189; type simpleCell;  surfaces (-2   -29); filltype uni; universe 401;}
+190  {id 190; type simpleCell;  surfaces (-3   -29); filltype uni; universe 401;}
+191  {id 191; type simpleCell;  surfaces (-4   -29); filltype uni; universe 401;}
+192  {id 192; type simpleCell;  surfaces (-5   -29); filltype uni; universe 401;}
+193  {id 193; type simpleCell;  surfaces (-6   -29); filltype uni; universe 401;}
+194  {id 194; type simpleCell;  surfaces (-7   -29); filltype uni; universe 401;}
+195  {id 195; type simpleCell;  surfaces (-8   -29); filltype uni; universe 401;}
+196  {id 196; type simpleCell;  surfaces (-9   -29); filltype uni; universe 401;}
+197  {id 197; type simpleCell;  surfaces (-10  -29); filltype uni; universe 401;}
+198  {id 198; type simpleCell;  surfaces (-11  -29); filltype uni; universe 401;}
+199  {id 199; type simpleCell;  surfaces (-12  -29); filltype uni; universe 401;}
+200  {id 200; type simpleCell;  surfaces (-13  -29); filltype uni; universe 401;}
+201  {id 201; type simpleCell;  surfaces (-14  -29); filltype uni; universe 401;}
+202  {id 202; type simpleCell;  surfaces (-15  -29); filltype uni; universe 401;}
+203  {id 203; type simpleCell;  surfaces (-16  -29); filltype uni; universe 401;}
+204  {id 204; type simpleCell;  surfaces (-17  -29); filltype uni; universe 401;}
+
+//row 13
+205  {id 205; type simpleCell;  surfaces (-1   -30); filltype uni; universe 401;}
+206  {id 206; type simpleCell;  surfaces (-2   -30); filltype uni; universe 401;}
+207  {id 207; type simpleCell;  surfaces (-3   -30); filltype uni; universe 401;}
+208  {id 208; type simpleCell;  surfaces (-4   -30); filltype uni; universe 401;}
+209  {id 209; type simpleCell;  surfaces (-5   -30); filltype uni; universe 401;}
+210  {id 210; type simpleCell;  surfaces (-6   -30); filltype uni; universe 401;}
+211  {id 211; type simpleCell;  surfaces (-7   -30); filltype uni; universe 401;}
+212  {id 212; type simpleCell;  surfaces (-8   -30); filltype uni; universe 401;}
+213  {id 213; type simpleCell;  surfaces (-9   -30); filltype uni; universe 401;}
+214  {id 214; type simpleCell;  surfaces (-10  -30); filltype uni; universe 401;}
+215  {id 215; type simpleCell;  surfaces (-11  -30); filltype uni; universe 401;}
+216  {id 216; type simpleCell;  surfaces (-12  -30); filltype uni; universe 401;}
+217  {id 217; type simpleCell;  surfaces (-13  -30); filltype uni; universe 401;}
+218  {id 218; type simpleCell;  surfaces (-14  -30); filltype uni; universe 401;}
+219  {id 219; type simpleCell;  surfaces (-15  -30); filltype uni; universe 401;}
+220  {id 220; type simpleCell;  surfaces (-16  -30); filltype uni; universe 401;}
+221  {id 221; type simpleCell;  surfaces (-17  -30); filltype uni; universe 401;}
+
+//row 14
+222  {id 222; type simpleCell;  surfaces (-1   -31); filltype uni; universe 401;}
+223  {id 223; type simpleCell;  surfaces (-2   -31); filltype uni; universe 401;}
+224  {id 224; type simpleCell;  surfaces (-3   -31); filltype uni; universe 401;}
+225  {id 225; type simpleCell;  surfaces (-4   -31); filltype uni; universe 401;}
+226  {id 226; type simpleCell;  surfaces (-5   -31); filltype uni; universe 401;}
+227  {id 227; type simpleCell;  surfaces (-6   -31); filltype uni; universe 401;}
+228  {id 228; type simpleCell;  surfaces (-7   -31); filltype uni; universe 401;}
+229  {id 229; type simpleCell;  surfaces (-8   -31); filltype uni; universe 401;}
+230  {id 230; type simpleCell;  surfaces (-9   -31); filltype uni; universe 401;}
+231  {id 231; type simpleCell;  surfaces (-10  -31); filltype uni; universe 401;}
+232  {id 232; type simpleCell;  surfaces (-11  -31); filltype uni; universe 401;}
+233  {id 233; type simpleCell;  surfaces (-12  -31); filltype uni; universe 401;}
+234  {id 234; type simpleCell;  surfaces (-13  -31); filltype uni; universe 401;}
+235  {id 235; type simpleCell;  surfaces (-14  -31); filltype uni; universe 401;}
+236  {id 236; type simpleCell;  surfaces (-15  -31); filltype uni; universe 401;}
+237  {id 237; type simpleCell;  surfaces (-16  -31); filltype uni; universe 401;}
+238  {id 238; type simpleCell;  surfaces (-17  -31); filltype uni; universe 401;}
+
+//row 15
+239  {id 239; type simpleCell;  surfaces (-1   -32); filltype uni; universe 401;}
+240  {id 240; type simpleCell;  surfaces (-2   -32); filltype uni; universe 401;}
+241  {id 241; type simpleCell;  surfaces (-3   -32); filltype uni; universe 401;}
+242  {id 242; type simpleCell;  surfaces (-4   -32); filltype uni; universe 401;}
+243  {id 243; type simpleCell;  surfaces (-5   -32); filltype uni; universe 401;}
+244  {id 244; type simpleCell;  surfaces (-6   -32); filltype uni; universe 401;}
+245  {id 245; type simpleCell;  surfaces (-7   -32); filltype uni; universe 401;}
+246  {id 246; type simpleCell;  surfaces (-8   -32); filltype uni; universe 401;}
+247  {id 247; type simpleCell;  surfaces (-9   -32); filltype uni; universe 401;}
+248  {id 248; type simpleCell;  surfaces (-10  -32); filltype uni; universe 401;}
+249  {id 249; type simpleCell;  surfaces (-11  -32); filltype uni; universe 401;}
+250  {id 250; type simpleCell;  surfaces (-12  -32); filltype uni; universe 401;}
+251  {id 251; type simpleCell;  surfaces (-13  -32); filltype uni; universe 401;}
+252  {id 252; type simpleCell;  surfaces (-14  -32); filltype uni; universe 401;}
+253  {id 253; type simpleCell;  surfaces (-15  -32); filltype uni; universe 401;}
+254  {id 254; type simpleCell;  surfaces (-16  -32); filltype uni; universe 401;}
+255  {id 255; type simpleCell;  surfaces (-17  -32); filltype uni; universe 401;}
+
+//row 16
+256  {id 256; type simpleCell;  surfaces (-1   -33); filltype uni; universe 401;}
+257  {id 257; type simpleCell;  surfaces (-2   -33); filltype uni; universe 401;}
+258  {id 258; type simpleCell;  surfaces (-3   -33); filltype uni; universe 401;}
+259  {id 259; type simpleCell;  surfaces (-4   -33); filltype uni; universe 401;}
+260  {id 260; type simpleCell;  surfaces (-5   -33); filltype uni; universe 401;}
+261  {id 261; type simpleCell;  surfaces (-6   -33); filltype uni; universe 401;}
+262  {id 262; type simpleCell;  surfaces (-7   -33); filltype uni; universe 401;}
+263  {id 263; type simpleCell;  surfaces (-8   -33); filltype uni; universe 401;}
+264  {id 264; type simpleCell;  surfaces (-9   -33); filltype uni; universe 401;}
+265  {id 265; type simpleCell;  surfaces (-10  -33); filltype uni; universe 401;}
+266  {id 266; type simpleCell;  surfaces (-11  -33); filltype uni; universe 401;}
+267  {id 267; type simpleCell;  surfaces (-12  -33); filltype uni; universe 401;}
+268  {id 268; type simpleCell;  surfaces (-13  -33); filltype uni; universe 401;}
+269  {id 269; type simpleCell;  surfaces (-14  -33); filltype uni; universe 401;}
+270  {id 270; type simpleCell;  surfaces (-15  -33); filltype uni; universe 401;}
+271  {id 271; type simpleCell;  surfaces (-16  -33); filltype uni; universe 401;}
+272  {id 272; type simpleCell;  surfaces (-17  -33); filltype uni; universe 401;}
+
+//row 16
+273  {id 273; type simpleCell;  surfaces (-1   -34); filltype uni; universe 401;}
+274  {id 274; type simpleCell;  surfaces (-2   -34); filltype uni; universe 401;}
+275  {id 275; type simpleCell;  surfaces (-3   -34); filltype uni; universe 401;}
+276  {id 276; type simpleCell;  surfaces (-4   -34); filltype uni; universe 401;}
+277  {id 277; type simpleCell;  surfaces (-5   -34); filltype uni; universe 401;}
+278  {id 278; type simpleCell;  surfaces (-6   -34); filltype uni; universe 401;}
+279  {id 279; type simpleCell;  surfaces (-7   -34); filltype uni; universe 401;}
+280  {id 280; type simpleCell;  surfaces (-8   -34); filltype uni; universe 401;}
+281  {id 281; type simpleCell;  surfaces (-9   -34); filltype uni; universe 401;}
+282  {id 282; type simpleCell;  surfaces (-10  -34); filltype uni; universe 401;}
+283  {id 283; type simpleCell;  surfaces (-11  -34); filltype uni; universe 401;}
+284  {id 284; type simpleCell;  surfaces (-12  -34); filltype uni; universe 401;}
+285  {id 285; type simpleCell;  surfaces (-13  -34); filltype uni; universe 401;}
+286  {id 286; type simpleCell;  surfaces (-14  -34); filltype uni; universe 401;}
+287  {id 287; type simpleCell;  surfaces (-15  -34); filltype uni; universe 401;}
+288  {id 288; type simpleCell;  surfaces (-16  -34); filltype uni; universe 401;}
+289  {id 289; type simpleCell;  surfaces (-17  -34); filltype uni; universe 401;}
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 35; fill u<401>; }
+
+    //root{id 1; type rootUniverse; border 35; fill u<2>;}
+    //geom { id 2; type cellUniverse; cells (1);} //1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 );}
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
+
+    pin22 {id 22; type pinUniverse;  radii (0.4095 0.4750 0.0); fills (water clad water);}
+
+    pin23 {id 23; type pinUniverse;  radii (0.5800 0.600 0.0); fills (boron clad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat water;
+      map (
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 23 23 23 23 23 23 23 23
+        22 22 22 22 22 22 22 22 22 23 51 51 51 51 41 41 31
+        22 22 22 22 22 22 22 22 22 23 51 21 51 51 21 41 31
+        22 22 22 22 22 22 22 22 22 23 51 51 51 41 41 41 31
+        22 22 22 22 22 22 22 22 22 23 51 51 41 21 41 41 31
+        22 22 22 22 22 22 22 22 22 23 41 21 41 41 41 41 31
+        22 22 22 22 22 22 22 22 22 23 41 41 41 41 41 41 31
+        22 22 22 22 22 22 22 22 22 23 31 31 31 31 31 31 31 ); }
+  }
+
+}
+
+
+
+kineticGeom2 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0); //2 original
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 35; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
+
+      //columns
+      c_one   { id 1; type box; origin (-10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_three { id 3; type box; origin (-7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_four  { id 4; type box; origin (-6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_five  { id 5; type box; origin (-5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_six   { id 6; type box; origin (-3.78 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_seven { id 7; type box; origin (-2.52 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eight { id 8; type box; origin (-1.26 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_nine  { id 9; type box; origin (0.0 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_ten   { id 10; type box; origin (1.26 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eleven { id 11; type box; origin (2.52 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_twelve { id 12; type box; origin (3.78 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_thirteen { id 13; type box; origin (5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fourteen { id 14; type box; origin (6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fifteen { id 15; type box; origin (7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_sixteen { id 16; type box; origin (8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_seventeen { id 17; type box; origin (10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+
+      //rows
+      r_one   { id 18; type box; origin (0.0 10.08 0.0); halfwidth (10.71 0.63 0.0);}
+      r_two   { id 19; type box; origin (0.0 8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_three { id 20; type box; origin (0.0 7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_four  { id 21; type box; origin (0.0 6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_five  { id 22; type box; origin (0.0 5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_six   { id 23; type box; origin (0.0 3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seven { id 24; type box; origin (0.0 2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eight { id 25; type box; origin (0.0 1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_nine  { id 26; type box; origin (0.0 0.0 0.0); halfwidth (10.71 0.63 0.0);}
+      r_ten   { id 27; type box; origin (0.0 -1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eleven   { id 28; type box; origin (0.0 -2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_twelve   { id 29; type box; origin (0.0 -3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_thirteen   { id 30; type box; origin (0.0 -5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fourteen   { id 31; type box; origin (0.0 -6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fifteen   { id 32; type box; origin (0.0 -7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_sixteen   { id 33; type box; origin (0.0 -8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seventeen   { id 34; type box; origin (0.0 -10.08 0.0); halfwidth (10.71 0.63 0.0);}
+  }
+
+  cells {
+   //one  {id 1; type simpleCell; surfaces ( -35); filltype uni; universe 31;}  //universe 401;}
+   //two  {id 2; type simpleCell; surfaces ( -35); filltype uni; universe 41;}
+   //three  {id 3; type simpleCell; surfaces ( -35); filltype uni; universe 51;}
+   //four  {id 4; type simpleCell; surfaces ( -35); filltype uni; universe 21;}
+   //five  {id 5; type simpleCell; surfaces ( -35); filltype uni; universe 401;}
+   //out {id 2; type simpleCell; surfaces (1); filltype outside; }
+
+  //row 1
+  1  {id   1; type simpleCell;  surfaces (-1  -18); filltype uni; universe  401;}
+  2  {id   2; type simpleCell;  surfaces (-2  -18); filltype uni; universe  401;}
+  3  {id   3; type simpleCell;  surfaces (-3  -18); filltype uni; universe  401;}
+  4  {id   4; type simpleCell;  surfaces (-4  -18); filltype uni; universe  401;}
+  5  {id   5; type simpleCell;  surfaces (-5  -18); filltype uni; universe  401;}
+  6  {id   6; type simpleCell;  surfaces (-6  -18); filltype uni; universe  401;}
+  7  {id   7; type simpleCell;  surfaces (-7  -18); filltype uni; universe  401;}
+  8  {id   8; type simpleCell;  surfaces (-8  -18); filltype uni; universe  401;}
+  9  {id   9; type simpleCell;  surfaces (-9  -18); filltype uni; universe  401;}
+ 10  {id  10; type simpleCell;  surfaces (-10  -18); filltype uni; universe 401;}
+ 11  {id  11; type simpleCell;  surfaces (-11  -18); filltype uni; universe 401;}
+ 12  {id  12; type simpleCell;  surfaces (-12  -18); filltype uni; universe 401;}
+ 13  {id  13; type simpleCell;  surfaces (-13  -18); filltype uni; universe 401;}
+ 14  {id  14; type simpleCell;  surfaces (-14  -18); filltype uni; universe 401;}
+ 15  {id  15; type simpleCell;  surfaces (-15  -18); filltype uni; universe 401;}
+ 16  {id  16; type simpleCell;  surfaces (-16  -18); filltype uni; universe 401;}
+ 17  {id  17; type simpleCell;  surfaces (-17  -18); filltype uni; universe 401;}
+
+//row 2
+ 18  {id  18; type simpleCell;  surfaces (-1   -19); filltype uni; universe 401;}
+ 19  {id  19; type simpleCell;  surfaces (-2   -19); filltype uni; universe 401;}
+ 20  {id  20; type simpleCell;  surfaces (-3   -19); filltype uni; universe 401;}
+ 21  {id  21; type simpleCell;  surfaces (-4   -19); filltype uni; universe 401;}
+ 22 {id   22; type simpleCell;  surfaces (-5   -19); filltype uni; universe 401;}
+ 23  {id  23; type simpleCell;  surfaces (-6   -19); filltype uni; universe 401;}
+ 24  {id  24; type simpleCell;  surfaces (-7   -19); filltype uni; universe 401;}
+ 25  {id  25; type simpleCell;  surfaces (-8   -19); filltype uni; universe 401;}
+ 26  {id  26; type simpleCell;  surfaces (-9   -19); filltype uni; universe 401;}
+ 27  {id  27; type simpleCell;  surfaces (-10  -19); filltype uni; universe 401;}
+ 28  {id  28; type simpleCell;  surfaces (-11  -19); filltype uni; universe 401;}
+ 29  {id  29; type simpleCell;  surfaces (-12  -19); filltype uni; universe 401;}
+ 30  {id  30; type simpleCell;  surfaces (-13  -19); filltype uni; universe 401;}
+ 31  {id  31; type simpleCell;  surfaces (-14  -19); filltype uni; universe 401;}
+ 32  {id  32; type simpleCell;  surfaces (-15  -19); filltype uni; universe 401;}
+ 33  {id  33; type simpleCell;  surfaces (-16  -19); filltype uni; universe 401;}
+ 34  {id  34; type simpleCell;  surfaces (-17  -19); filltype uni; universe 401;}
+
+//row 3
+35  {id  35; type simpleCell;  surfaces (-1   -20); filltype uni; universe  401;}
+36  {id  36; type simpleCell;  surfaces (-2   -20); filltype uni; universe  401;}
+37  {id  37; type simpleCell;  surfaces (-3   -20); filltype uni; universe  401;}
+38  {id  38; type simpleCell;  surfaces (-4   -20); filltype uni; universe  401;}
+39 {id   39; type simpleCell;  surfaces (-5   -20); filltype uni; universe  401;}
+40  {id  40; type simpleCell;  surfaces (-6   -20); filltype uni; universe  401;}
+41  {id  41; type simpleCell;  surfaces (-7   -20); filltype uni; universe  401;}
+42  {id  42; type simpleCell;  surfaces (-8   -20); filltype uni; universe  401;}
+43  {id  43; type simpleCell;  surfaces (-9   -20); filltype uni; universe  401;}
+44  {id  44; type simpleCell;  surfaces (-10  -20); filltype uni; universe  401;}
+45  {id  45; type simpleCell;  surfaces (-11  -20); filltype uni; universe  401;}
+46  {id  46; type simpleCell;  surfaces (-12  -20); filltype uni; universe  401;}
+47  {id  47; type simpleCell;  surfaces (-13  -20); filltype uni; universe  401;}
+48  {id  48; type simpleCell;  surfaces (-14  -20); filltype uni; universe  401;}
+49  {id  49; type simpleCell;  surfaces (-15  -20); filltype uni; universe  401;}
+50  {id  50; type simpleCell;  surfaces (-16  -20); filltype uni; universe  401;}
+51  {id  51; type simpleCell;  surfaces (-17  -20); filltype uni; universe  401;}
+
+//row 4
+52  {id  52; type simpleCell;  surfaces (-1   -21); filltype uni; universe  401;}
+53  {id  53; type simpleCell;  surfaces (-2   -21); filltype uni; universe  401;}
+54  {id  54; type simpleCell;  surfaces (-3   -21); filltype uni; universe  401;}
+55  {id  55; type simpleCell;  surfaces (-4   -21); filltype uni; universe  401;}
+56  {id  56; type simpleCell;  surfaces (-5   -21); filltype uni; universe  401;}
+57  {id  57; type simpleCell;  surfaces (-6   -21); filltype uni; universe  401;}
+58  {id  58; type simpleCell;  surfaces (-7   -21); filltype uni; universe  401;}
+59  {id  59; type simpleCell;  surfaces (-8   -21); filltype uni; universe  401;}
+60  {id  60; type simpleCell;  surfaces (-9   -21); filltype uni; universe  401;}
+61  {id  61; type simpleCell;  surfaces (-10  -21); filltype uni; universe  401;}
+62  {id  62; type simpleCell;  surfaces (-11  -21); filltype uni; universe  401;}
+63  {id  63; type simpleCell;  surfaces (-12  -21); filltype uni; universe  401;}
+64  {id  64; type simpleCell;  surfaces (-13  -21); filltype uni; universe  401;}
+65  {id  65; type simpleCell;  surfaces (-14  -21); filltype uni; universe  401;}
+66  {id  66; type simpleCell;  surfaces (-15  -21); filltype uni; universe  401;}
+67  {id  67; type simpleCell;  surfaces (-16  -21); filltype uni; universe  401;}
+68  {id  68; type simpleCell;  surfaces (-17  -21); filltype uni; universe  401;}
+
+//row 5
+69  {id  69; type simpleCell;  surfaces (-1   -22); filltype uni; universe  401;}
+70  {id  70; type simpleCell;  surfaces (-2   -22); filltype uni; universe  401;}
+71  {id  71; type simpleCell;  surfaces (-3   -22); filltype uni; universe  401;}
+72  {id  72; type simpleCell;  surfaces (-4   -22); filltype uni; universe  401;}
+73  {id  73; type simpleCell;  surfaces (-5   -22); filltype uni; universe  401;}
+74  {id  74; type simpleCell;  surfaces (-6   -22); filltype uni; universe  401;}
+75  {id  75; type simpleCell;  surfaces (-7   -22); filltype uni; universe  401;}
+76  {id  76; type simpleCell;  surfaces (-8   -22); filltype uni; universe  401;}
+77  {id  77; type simpleCell;  surfaces (-9   -22); filltype uni; universe  401;}
+78  {id  78; type simpleCell;  surfaces (-10  -22); filltype uni; universe  401;}
+79  {id  79; type simpleCell;  surfaces (-11  -22); filltype uni; universe  401;}
+80  {id  80; type simpleCell;  surfaces (-12  -22); filltype uni; universe  401;}
+81  {id  81; type simpleCell;  surfaces (-13  -22); filltype uni; universe  401;}
+82  {id  82; type simpleCell;  surfaces (-14  -22); filltype uni; universe  401;}
+83  {id  83; type simpleCell;  surfaces (-15  -22); filltype uni; universe  401;}
+84  {id  84; type simpleCell;  surfaces (-16  -22); filltype uni; universe  401;}
+85  {id  85; type simpleCell;  surfaces (-17  -22); filltype uni; universe  401;}
+
+//row 6
+86  {id  86; type simpleCell;  surfaces (-1   -23); filltype uni; universe  401;}
+87  {id  87; type simpleCell;  surfaces (-2   -23); filltype uni; universe  401;}
+88  {id  88; type simpleCell;  surfaces (-3   -23); filltype uni; universe  401;}
+89  {id  89; type simpleCell;  surfaces (-4   -23); filltype uni; universe  401;}
+90  {id  90; type simpleCell;  surfaces (-5   -23); filltype uni; universe  401;}
+91  {id  91; type simpleCell;  surfaces (-6   -23); filltype uni; universe  401;}
+92  {id  92; type simpleCell;  surfaces (-7   -23); filltype uni; universe  401;}
+93  {id  93; type simpleCell;  surfaces (-8   -23); filltype uni; universe  401;}
+94  {id  94; type simpleCell;  surfaces (-9   -23); filltype uni; universe  401;}
+95  {id  95; type simpleCell;  surfaces (-10  -23); filltype uni; universe  401;}
+96  {id  96; type simpleCell;  surfaces (-11  -23); filltype uni; universe  401;}
+97  {id  97; type simpleCell;  surfaces (-12  -23); filltype uni; universe  401;}
+98  {id  98; type simpleCell;  surfaces (-13  -23); filltype uni; universe  401;}
+99  {id  99; type simpleCell;  surfaces (-14  -23); filltype uni; universe  401;}
+100  {id 100; type simpleCell;  surfaces (-15  -23); filltype uni; universe 401;}
+101  {id 101; type simpleCell;  surfaces (-16  -23); filltype uni; universe 401;}
+102  {id 102; type simpleCell;  surfaces (-17  -23); filltype uni; universe 401;}
+
+//row 7
+103  {id 103; type simpleCell;  surfaces (-1   -24); filltype uni; universe 401;}
+104  {id 104; type simpleCell;  surfaces (-2   -24); filltype uni; universe 401;}
+105  {id 105; type simpleCell;  surfaces (-3   -24); filltype uni; universe 401;}
+106  {id 106; type simpleCell;  surfaces (-4   -24); filltype uni; universe 401;}
+107  {id 107; type simpleCell;  surfaces (-5   -24); filltype uni; universe 401;}
+108  {id 108; type simpleCell;  surfaces (-6   -24); filltype uni; universe 401;}
+109  {id 109; type simpleCell;  surfaces (-7   -24); filltype uni; universe 401;}
+110  {id 110; type simpleCell;  surfaces (-8   -24); filltype uni; universe 401;}
+111  {id 111; type simpleCell;  surfaces (-9   -24); filltype uni; universe 401;}
+112  {id 112; type simpleCell;  surfaces (-10  -24); filltype uni; universe 401;}
+113  {id 113; type simpleCell;  surfaces (-11  -24); filltype uni; universe 401;}
+114  {id 114; type simpleCell;  surfaces (-12  -24); filltype uni; universe 401;}
+115  {id 115; type simpleCell;  surfaces (-13  -24); filltype uni; universe 401;}
+116  {id 116; type simpleCell;  surfaces (-14  -24); filltype uni; universe 401;}
+117  {id 117; type simpleCell;  surfaces (-15  -24); filltype uni; universe 401;}
+118  {id 118; type simpleCell;  surfaces (-16  -24); filltype uni; universe 401;}
+119  {id 119; type simpleCell;  surfaces (-17  -24); filltype uni; universe 401;}
+
+//row 8
+120  {id 120; type simpleCell;  surfaces (-1   -25); filltype uni; universe 401;}
+121  {id 121; type simpleCell;  surfaces (-2   -25); filltype uni; universe 401;}
+122  {id 122; type simpleCell;  surfaces (-3   -25); filltype uni; universe 401;}
+123  {id 123; type simpleCell;  surfaces (-4   -25); filltype uni; universe 401;}
+124  {id 124; type simpleCell;  surfaces (-5   -25); filltype uni; universe 401;}
+125  {id 125; type simpleCell;  surfaces (-6   -25); filltype uni; universe 401;}
+126  {id 126; type simpleCell;  surfaces (-7   -25); filltype uni; universe 401;}
+127  {id 127; type simpleCell;  surfaces (-8   -25); filltype uni; universe 401;}
+128  {id 128; type simpleCell;  surfaces (-9   -25); filltype uni; universe 401;}
+129  {id 129; type simpleCell;  surfaces (-10  -25); filltype uni; universe 401;}
+130  {id 130; type simpleCell;  surfaces (-11  -25); filltype uni; universe 401;}
+131  {id 131; type simpleCell;  surfaces (-12  -25); filltype uni; universe 401;}
+132  {id 132; type simpleCell;  surfaces (-13  -25); filltype uni; universe 401;}
+133  {id 133; type simpleCell;  surfaces (-14  -25); filltype uni; universe 401;}
+134  {id 134; type simpleCell;  surfaces (-15  -25); filltype uni; universe 401;}
+135  {id 135; type simpleCell;  surfaces (-16  -25); filltype uni; universe 401;}
+136  {id 136; type simpleCell;  surfaces (-17  -25); filltype uni; universe 401;}
+
+//row 9
+137  {id 137; type simpleCell;  surfaces (-1   -26); filltype uni; universe 401;}
+138  {id 138; type simpleCell;  surfaces (-2   -26); filltype uni; universe 401;}
+139  {id 139; type simpleCell;  surfaces (-3   -26); filltype uni; universe 401;}
+140  {id 140; type simpleCell;  surfaces (-4   -26); filltype uni; universe 401;}
+141  {id 141; type simpleCell;  surfaces (-5   -26); filltype uni; universe 401;}
+142  {id 142; type simpleCell;  surfaces (-6   -26); filltype uni; universe 401;}
+143  {id 143; type simpleCell;  surfaces (-7   -26); filltype uni; universe 401;}
+144  {id 144; type simpleCell;  surfaces (-8   -26); filltype uni; universe 401;}
+145  {id 145; type simpleCell;  surfaces (-9   -26); filltype uni; universe 401;}
+146  {id 146; type simpleCell;  surfaces (-10  -26); filltype uni; universe 401;}
+147  {id 147; type simpleCell;  surfaces (-11  -26); filltype uni; universe 401;}
+148  {id 148; type simpleCell;  surfaces (-12  -26); filltype uni; universe 401;}
+149  {id 149; type simpleCell;  surfaces (-13  -26); filltype uni; universe 401;}
+150  {id 150; type simpleCell;  surfaces (-14  -26); filltype uni; universe 401;}
+151  {id 151; type simpleCell;  surfaces (-15  -26); filltype uni; universe 401;}
+152  {id 152; type simpleCell;  surfaces (-16  -26); filltype uni; universe 401;}
+153  {id 153; type simpleCell;  surfaces (-17  -26); filltype uni; universe 401;}
+
+//row 10
+154  {id 154; type simpleCell;  surfaces (-1   -27); filltype uni; universe 401;}
+155  {id 155; type simpleCell;  surfaces (-2   -27); filltype uni; universe 401;}
+156  {id 156; type simpleCell;  surfaces (-3   -27); filltype uni; universe 401;}
+157  {id 157; type simpleCell;  surfaces (-4   -27); filltype uni; universe 401;}
+158  {id 158; type simpleCell;  surfaces (-5   -27); filltype uni; universe 401;}
+159  {id 159; type simpleCell;  surfaces (-6   -27); filltype uni; universe 401;}
+160  {id 160; type simpleCell;  surfaces (-7   -27); filltype uni; universe 401;}
+161  {id 161; type simpleCell;  surfaces (-8   -27); filltype uni; universe 401;}
+162  {id 162; type simpleCell;  surfaces (-9   -27); filltype uni; universe 401;}
+163  {id 163; type simpleCell;  surfaces (-10  -27); filltype uni; universe 401;}
+164  {id 164; type simpleCell;  surfaces (-11  -27); filltype uni; universe 401;}
+165  {id 165; type simpleCell;  surfaces (-12  -27); filltype uni; universe 401;}
+166  {id 166; type simpleCell;  surfaces (-13  -27); filltype uni; universe 401;}
+167  {id 167; type simpleCell;  surfaces (-14  -27); filltype uni; universe 401;}
+168  {id 168; type simpleCell;  surfaces (-15  -27); filltype uni; universe 401;}
+169  {id 169; type simpleCell;  surfaces (-16  -27); filltype uni; universe 401;}
+170  {id 170; type simpleCell;  surfaces (-17  -27); filltype uni; universe 401;}
+
+//row 11
+171  {id 171; type simpleCell;  surfaces (-1   -28); filltype uni; universe 401;}
+172  {id 172; type simpleCell;  surfaces (-2   -28); filltype uni; universe 401;}
+173  {id 173; type simpleCell;  surfaces (-3   -28); filltype uni; universe 401;}
+174  {id 174; type simpleCell;  surfaces (-4   -28); filltype uni; universe 401;}
+175  {id 175; type simpleCell;  surfaces (-5   -28); filltype uni; universe 401;}
+176  {id 176; type simpleCell;  surfaces (-6   -28); filltype uni; universe 401;}
+177  {id 177; type simpleCell;  surfaces (-7   -28); filltype uni; universe 401;}
+178  {id 178; type simpleCell;  surfaces (-8   -28); filltype uni; universe 401;}
+179  {id 179; type simpleCell;  surfaces (-9   -28); filltype uni; universe 401;}
+180  {id 180; type simpleCell;  surfaces (-10  -28); filltype uni; universe 401;}
+181  {id 181; type simpleCell;  surfaces (-11  -28); filltype uni; universe 401;}
+182  {id 182; type simpleCell;  surfaces (-12  -28); filltype uni; universe 401;}
+183  {id 183; type simpleCell;  surfaces (-13  -28); filltype uni; universe 401;}
+184  {id 184; type simpleCell;  surfaces (-14  -28); filltype uni; universe 401;}
+185  {id 185; type simpleCell;  surfaces (-15  -28); filltype uni; universe 401;}
+186  {id 186; type simpleCell;  surfaces (-16  -28); filltype uni; universe 401;}
+187  {id 187; type simpleCell;  surfaces (-17  -28); filltype uni; universe 401;}
+
+//row 12
+188  {id 188; type simpleCell;  surfaces (-1   -29); filltype uni; universe 401;}
+189  {id 189; type simpleCell;  surfaces (-2   -29); filltype uni; universe 401;}
+190  {id 190; type simpleCell;  surfaces (-3   -29); filltype uni; universe 401;}
+191  {id 191; type simpleCell;  surfaces (-4   -29); filltype uni; universe 401;}
+192  {id 192; type simpleCell;  surfaces (-5   -29); filltype uni; universe 401;}
+193  {id 193; type simpleCell;  surfaces (-6   -29); filltype uni; universe 401;}
+194  {id 194; type simpleCell;  surfaces (-7   -29); filltype uni; universe 401;}
+195  {id 195; type simpleCell;  surfaces (-8   -29); filltype uni; universe 401;}
+196  {id 196; type simpleCell;  surfaces (-9   -29); filltype uni; universe 401;}
+197  {id 197; type simpleCell;  surfaces (-10  -29); filltype uni; universe 401;}
+198  {id 198; type simpleCell;  surfaces (-11  -29); filltype uni; universe 401;}
+199  {id 199; type simpleCell;  surfaces (-12  -29); filltype uni; universe 401;}
+200  {id 200; type simpleCell;  surfaces (-13  -29); filltype uni; universe 401;}
+201  {id 201; type simpleCell;  surfaces (-14  -29); filltype uni; universe 401;}
+202  {id 202; type simpleCell;  surfaces (-15  -29); filltype uni; universe 401;}
+203  {id 203; type simpleCell;  surfaces (-16  -29); filltype uni; universe 401;}
+204  {id 204; type simpleCell;  surfaces (-17  -29); filltype uni; universe 401;}
+
+//row 13
+205  {id 205; type simpleCell;  surfaces (-1   -30); filltype uni; universe 401;}
+206  {id 206; type simpleCell;  surfaces (-2   -30); filltype uni; universe 401;}
+207  {id 207; type simpleCell;  surfaces (-3   -30); filltype uni; universe 401;}
+208  {id 208; type simpleCell;  surfaces (-4   -30); filltype uni; universe 401;}
+209  {id 209; type simpleCell;  surfaces (-5   -30); filltype uni; universe 401;}
+210  {id 210; type simpleCell;  surfaces (-6   -30); filltype uni; universe 401;}
+211  {id 211; type simpleCell;  surfaces (-7   -30); filltype uni; universe 401;}
+212  {id 212; type simpleCell;  surfaces (-8   -30); filltype uni; universe 401;}
+213  {id 213; type simpleCell;  surfaces (-9   -30); filltype uni; universe 401;}
+214  {id 214; type simpleCell;  surfaces (-10  -30); filltype uni; universe 401;}
+215  {id 215; type simpleCell;  surfaces (-11  -30); filltype uni; universe 401;}
+216  {id 216; type simpleCell;  surfaces (-12  -30); filltype uni; universe 401;}
+217  {id 217; type simpleCell;  surfaces (-13  -30); filltype uni; universe 401;}
+218  {id 218; type simpleCell;  surfaces (-14  -30); filltype uni; universe 401;}
+219  {id 219; type simpleCell;  surfaces (-15  -30); filltype uni; universe 401;}
+220  {id 220; type simpleCell;  surfaces (-16  -30); filltype uni; universe 401;}
+221  {id 221; type simpleCell;  surfaces (-17  -30); filltype uni; universe 401;}
+
+//row 14
+222  {id 222; type simpleCell;  surfaces (-1   -31); filltype uni; universe 401;}
+223  {id 223; type simpleCell;  surfaces (-2   -31); filltype uni; universe 401;}
+224  {id 224; type simpleCell;  surfaces (-3   -31); filltype uni; universe 401;}
+225  {id 225; type simpleCell;  surfaces (-4   -31); filltype uni; universe 401;}
+226  {id 226; type simpleCell;  surfaces (-5   -31); filltype uni; universe 401;}
+227  {id 227; type simpleCell;  surfaces (-6   -31); filltype uni; universe 401;}
+228  {id 228; type simpleCell;  surfaces (-7   -31); filltype uni; universe 401;}
+229  {id 229; type simpleCell;  surfaces (-8   -31); filltype uni; universe 401;}
+230  {id 230; type simpleCell;  surfaces (-9   -31); filltype uni; universe 401;}
+231  {id 231; type simpleCell;  surfaces (-10  -31); filltype uni; universe 401;}
+232  {id 232; type simpleCell;  surfaces (-11  -31); filltype uni; universe 401;}
+233  {id 233; type simpleCell;  surfaces (-12  -31); filltype uni; universe 401;}
+234  {id 234; type simpleCell;  surfaces (-13  -31); filltype uni; universe 401;}
+235  {id 235; type simpleCell;  surfaces (-14  -31); filltype uni; universe 401;}
+236  {id 236; type simpleCell;  surfaces (-15  -31); filltype uni; universe 401;}
+237  {id 237; type simpleCell;  surfaces (-16  -31); filltype uni; universe 401;}
+238  {id 238; type simpleCell;  surfaces (-17  -31); filltype uni; universe 401;}
+
+//row 15
+239  {id 239; type simpleCell;  surfaces (-1   -32); filltype uni; universe 401;}
+240  {id 240; type simpleCell;  surfaces (-2   -32); filltype uni; universe 401;}
+241  {id 241; type simpleCell;  surfaces (-3   -32); filltype uni; universe 401;}
+242  {id 242; type simpleCell;  surfaces (-4   -32); filltype uni; universe 401;}
+243  {id 243; type simpleCell;  surfaces (-5   -32); filltype uni; universe 401;}
+244  {id 244; type simpleCell;  surfaces (-6   -32); filltype uni; universe 401;}
+245  {id 245; type simpleCell;  surfaces (-7   -32); filltype uni; universe 401;}
+246  {id 246; type simpleCell;  surfaces (-8   -32); filltype uni; universe 401;}
+247  {id 247; type simpleCell;  surfaces (-9   -32); filltype uni; universe 401;}
+248  {id 248; type simpleCell;  surfaces (-10  -32); filltype uni; universe 401;}
+249  {id 249; type simpleCell;  surfaces (-11  -32); filltype uni; universe 401;}
+250  {id 250; type simpleCell;  surfaces (-12  -32); filltype uni; universe 401;}
+251  {id 251; type simpleCell;  surfaces (-13  -32); filltype uni; universe 401;}
+252  {id 252; type simpleCell;  surfaces (-14  -32); filltype uni; universe 401;}
+253  {id 253; type simpleCell;  surfaces (-15  -32); filltype uni; universe 401;}
+254  {id 254; type simpleCell;  surfaces (-16  -32); filltype uni; universe 401;}
+255  {id 255; type simpleCell;  surfaces (-17  -32); filltype uni; universe 401;}
+
+//row 16
+256  {id 256; type simpleCell;  surfaces (-1   -33); filltype uni; universe 401;}
+257  {id 257; type simpleCell;  surfaces (-2   -33); filltype uni; universe 401;}
+258  {id 258; type simpleCell;  surfaces (-3   -33); filltype uni; universe 401;}
+259  {id 259; type simpleCell;  surfaces (-4   -33); filltype uni; universe 401;}
+260  {id 260; type simpleCell;  surfaces (-5   -33); filltype uni; universe 401;}
+261  {id 261; type simpleCell;  surfaces (-6   -33); filltype uni; universe 401;}
+262  {id 262; type simpleCell;  surfaces (-7   -33); filltype uni; universe 401;}
+263  {id 263; type simpleCell;  surfaces (-8   -33); filltype uni; universe 401;}
+264  {id 264; type simpleCell;  surfaces (-9   -33); filltype uni; universe 401;}
+265  {id 265; type simpleCell;  surfaces (-10  -33); filltype uni; universe 401;}
+266  {id 266; type simpleCell;  surfaces (-11  -33); filltype uni; universe 401;}
+267  {id 267; type simpleCell;  surfaces (-12  -33); filltype uni; universe 401;}
+268  {id 268; type simpleCell;  surfaces (-13  -33); filltype uni; universe 401;}
+269  {id 269; type simpleCell;  surfaces (-14  -33); filltype uni; universe 401;}
+270  {id 270; type simpleCell;  surfaces (-15  -33); filltype uni; universe 401;}
+271  {id 271; type simpleCell;  surfaces (-16  -33); filltype uni; universe 401;}
+272  {id 272; type simpleCell;  surfaces (-17  -33); filltype uni; universe 401;}
+
+//row 16
+273  {id 273; type simpleCell;  surfaces (-1   -34); filltype uni; universe 401;}
+274  {id 274; type simpleCell;  surfaces (-2   -34); filltype uni; universe 401;}
+275  {id 275; type simpleCell;  surfaces (-3   -34); filltype uni; universe 401;}
+276  {id 276; type simpleCell;  surfaces (-4   -34); filltype uni; universe 401;}
+277  {id 277; type simpleCell;  surfaces (-5   -34); filltype uni; universe 401;}
+278  {id 278; type simpleCell;  surfaces (-6   -34); filltype uni; universe 401;}
+279  {id 279; type simpleCell;  surfaces (-7   -34); filltype uni; universe 401;}
+280  {id 280; type simpleCell;  surfaces (-8   -34); filltype uni; universe 401;}
+281  {id 281; type simpleCell;  surfaces (-9   -34); filltype uni; universe 401;}
+282  {id 282; type simpleCell;  surfaces (-10  -34); filltype uni; universe 401;}
+283  {id 283; type simpleCell;  surfaces (-11  -34); filltype uni; universe 401;}
+284  {id 284; type simpleCell;  surfaces (-12  -34); filltype uni; universe 401;}
+285  {id 285; type simpleCell;  surfaces (-13  -34); filltype uni; universe 401;}
+286  {id 286; type simpleCell;  surfaces (-14  -34); filltype uni; universe 401;}
+287  {id 287; type simpleCell;  surfaces (-15  -34); filltype uni; universe 401;}
+288  {id 288; type simpleCell;  surfaces (-16  -34); filltype uni; universe 401;}
+289  {id 289; type simpleCell;  surfaces (-17  -34); filltype uni; universe 401;}
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 35; fill u<401>; }
+
+    //root{id 1; type rootUniverse; border 35; fill u<2>;}
+    //geom { id 2; type cellUniverse; cells (1);} //1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 );}
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
+    //pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
+    pin21 {id 21; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+      fills (mox89  void   clad   void   alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+  }
+
+}
+
+
+kineticGeom3 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0); //2 original
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 35; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
+
+      //columns
+      c_one   { id 1; type box; origin (-10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_two   { id 2; type box; origin (-8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_three { id 3; type box; origin (-7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_four  { id 4; type box; origin (-6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_five  { id 5; type box; origin (-5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_six   { id 6; type box; origin (-3.78 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_seven { id 7; type box; origin (-2.52 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eight { id 8; type box; origin (-1.26 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_nine  { id 9; type box; origin (0.0 0.0 0.0); halfwidth   (0.63 10.71 0.0);}
+      c_ten   { id 10; type box; origin (1.26 0.0 0.0); halfwidth  (0.63 10.71 0.0);}
+      c_eleven { id 11; type box; origin (2.52 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_twelve { id 12; type box; origin (3.78 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_thirteen { id 13; type box; origin (5.04 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fourteen { id 14; type box; origin (6.30 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_fifteen { id 15; type box; origin (7.56 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_sixteen { id 16; type box; origin (8.82 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+      c_seventeen { id 17; type box; origin (10.08 0.0 0.0); halfwidth (0.63 10.71 0.0);}
+
+      //rows
+      r_one   { id 18; type box; origin (0.0 10.08 0.0); halfwidth (10.71 0.63 0.0);}
+      r_two   { id 19; type box; origin (0.0 8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_three { id 20; type box; origin (0.0 7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_four  { id 21; type box; origin (0.0 6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_five  { id 22; type box; origin (0.0 5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_six   { id 23; type box; origin (0.0 3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seven { id 24; type box; origin (0.0 2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eight { id 25; type box; origin (0.0 1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_nine  { id 26; type box; origin (0.0 0.0 0.0); halfwidth (10.71 0.63 0.0);}
+      r_ten   { id 27; type box; origin (0.0 -1.26 0.0); halfwidth (10.71 0.63 0.0);}
+      r_eleven   { id 28; type box; origin (0.0 -2.52 0.0); halfwidth (10.71 0.63 0.0);}
+      r_twelve   { id 29; type box; origin (0.0 -3.78 0.0); halfwidth (10.71 0.63 0.0);}
+      r_thirteen   { id 30; type box; origin (0.0 -5.04 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fourteen   { id 31; type box; origin (0.0 -6.30 0.0); halfwidth (10.71 0.63 0.0);}
+      r_fifteen   { id 32; type box; origin (0.0 -7.56 0.0); halfwidth (10.71 0.63 0.0);}
+      r_sixteen   { id 33; type box; origin (0.0 -8.82 0.0); halfwidth (10.71 0.63 0.0);}
+      r_seventeen   { id 34; type box; origin (0.0 -10.08 0.0); halfwidth (10.71 0.63 0.0);}
+  }
+
+  cells {
+   //one  {id 1; type simpleCell; surfaces ( -35); filltype uni; universe 31;}  //universe 401;}
+   //two  {id 2; type simpleCell; surfaces ( -35); filltype uni; universe 41;}
+   //three  {id 3; type simpleCell; surfaces ( -35); filltype uni; universe 51;}
+   //four  {id 4; type simpleCell; surfaces ( -35); filltype uni; universe 21;}
+   //five  {id 5; type simpleCell; surfaces ( -35); filltype uni; universe 401;}
+   //out {id 2; type simpleCell; surfaces (1); filltype outside; }
+
+  //row 1
+  1  {id   1; type simpleCell;  surfaces (-1  -18); filltype uni; universe  401;}
+  2  {id   2; type simpleCell;  surfaces (-2  -18); filltype uni; universe  401;}
+  3  {id   3; type simpleCell;  surfaces (-3  -18); filltype uni; universe  401;}
+  4  {id   4; type simpleCell;  surfaces (-4  -18); filltype uni; universe  401;}
+  5  {id   5; type simpleCell;  surfaces (-5  -18); filltype uni; universe  401;}
+  6  {id   6; type simpleCell;  surfaces (-6  -18); filltype uni; universe  401;}
+  7  {id   7; type simpleCell;  surfaces (-7  -18); filltype uni; universe  401;}
+  8  {id   8; type simpleCell;  surfaces (-8  -18); filltype uni; universe  401;}
+  9  {id   9; type simpleCell;  surfaces (-9  -18); filltype uni; universe  401;}
+ 10  {id  10; type simpleCell;  surfaces (-10  -18); filltype uni; universe 401;}
+ 11  {id  11; type simpleCell;  surfaces (-11  -18); filltype uni; universe 401;}
+ 12  {id  12; type simpleCell;  surfaces (-12  -18); filltype uni; universe 401;}
+ 13  {id  13; type simpleCell;  surfaces (-13  -18); filltype uni; universe 401;}
+ 14  {id  14; type simpleCell;  surfaces (-14  -18); filltype uni; universe 401;}
+ 15  {id  15; type simpleCell;  surfaces (-15  -18); filltype uni; universe 401;}
+ 16  {id  16; type simpleCell;  surfaces (-16  -18); filltype uni; universe 401;}
+ 17  {id  17; type simpleCell;  surfaces (-17  -18); filltype uni; universe 401;}
+
+//row 2
+ 18  {id  18; type simpleCell;  surfaces (-1   -19); filltype uni; universe 401;}
+ 19  {id  19; type simpleCell;  surfaces (-2   -19); filltype uni; universe 401;}
+ 20  {id  20; type simpleCell;  surfaces (-3   -19); filltype uni; universe 401;}
+ 21  {id  21; type simpleCell;  surfaces (-4   -19); filltype uni; universe 401;}
+ 22 {id   22; type simpleCell;  surfaces (-5   -19); filltype uni; universe 401;}
+ 23  {id  23; type simpleCell;  surfaces (-6   -19); filltype uni; universe 401;}
+ 24  {id  24; type simpleCell;  surfaces (-7   -19); filltype uni; universe 401;}
+ 25  {id  25; type simpleCell;  surfaces (-8   -19); filltype uni; universe 401;}
+ 26  {id  26; type simpleCell;  surfaces (-9   -19); filltype uni; universe 401;}
+ 27  {id  27; type simpleCell;  surfaces (-10  -19); filltype uni; universe 401;}
+ 28  {id  28; type simpleCell;  surfaces (-11  -19); filltype uni; universe 401;}
+ 29  {id  29; type simpleCell;  surfaces (-12  -19); filltype uni; universe 401;}
+ 30  {id  30; type simpleCell;  surfaces (-13  -19); filltype uni; universe 401;}
+ 31  {id  31; type simpleCell;  surfaces (-14  -19); filltype uni; universe 401;}
+ 32  {id  32; type simpleCell;  surfaces (-15  -19); filltype uni; universe 401;}
+ 33  {id  33; type simpleCell;  surfaces (-16  -19); filltype uni; universe 401;}
+ 34  {id  34; type simpleCell;  surfaces (-17  -19); filltype uni; universe 401;}
+
+//row 3
+35  {id  35; type simpleCell;  surfaces (-1   -20); filltype uni; universe  401;}
+36  {id  36; type simpleCell;  surfaces (-2   -20); filltype uni; universe  401;}
+37  {id  37; type simpleCell;  surfaces (-3   -20); filltype uni; universe  401;}
+38  {id  38; type simpleCell;  surfaces (-4   -20); filltype uni; universe  401;}
+39 {id   39; type simpleCell;  surfaces (-5   -20); filltype uni; universe  401;}
+40  {id  40; type simpleCell;  surfaces (-6   -20); filltype uni; universe  401;}
+41  {id  41; type simpleCell;  surfaces (-7   -20); filltype uni; universe  401;}
+42  {id  42; type simpleCell;  surfaces (-8   -20); filltype uni; universe  401;}
+43  {id  43; type simpleCell;  surfaces (-9   -20); filltype uni; universe  401;}
+44  {id  44; type simpleCell;  surfaces (-10  -20); filltype uni; universe  401;}
+45  {id  45; type simpleCell;  surfaces (-11  -20); filltype uni; universe  401;}
+46  {id  46; type simpleCell;  surfaces (-12  -20); filltype uni; universe  401;}
+47  {id  47; type simpleCell;  surfaces (-13  -20); filltype uni; universe  401;}
+48  {id  48; type simpleCell;  surfaces (-14  -20); filltype uni; universe  401;}
+49  {id  49; type simpleCell;  surfaces (-15  -20); filltype uni; universe  401;}
+50  {id  50; type simpleCell;  surfaces (-16  -20); filltype uni; universe  401;}
+51  {id  51; type simpleCell;  surfaces (-17  -20); filltype uni; universe  401;}
+
+//row 4
+52  {id  52; type simpleCell;  surfaces (-1   -21); filltype uni; universe  401;}
+53  {id  53; type simpleCell;  surfaces (-2   -21); filltype uni; universe  401;}
+54  {id  54; type simpleCell;  surfaces (-3   -21); filltype uni; universe  401;}
+55  {id  55; type simpleCell;  surfaces (-4   -21); filltype uni; universe  401;}
+56  {id  56; type simpleCell;  surfaces (-5   -21); filltype uni; universe  401;}
+57  {id  57; type simpleCell;  surfaces (-6   -21); filltype uni; universe  401;}
+58  {id  58; type simpleCell;  surfaces (-7   -21); filltype uni; universe  401;}
+59  {id  59; type simpleCell;  surfaces (-8   -21); filltype uni; universe  401;}
+60  {id  60; type simpleCell;  surfaces (-9   -21); filltype uni; universe  401;}
+61  {id  61; type simpleCell;  surfaces (-10  -21); filltype uni; universe  401;}
+62  {id  62; type simpleCell;  surfaces (-11  -21); filltype uni; universe  401;}
+63  {id  63; type simpleCell;  surfaces (-12  -21); filltype uni; universe  401;}
+64  {id  64; type simpleCell;  surfaces (-13  -21); filltype uni; universe  401;}
+65  {id  65; type simpleCell;  surfaces (-14  -21); filltype uni; universe  401;}
+66  {id  66; type simpleCell;  surfaces (-15  -21); filltype uni; universe  401;}
+67  {id  67; type simpleCell;  surfaces (-16  -21); filltype uni; universe  401;}
+68  {id  68; type simpleCell;  surfaces (-17  -21); filltype uni; universe  401;}
+
+//row 5
+69  {id  69; type simpleCell;  surfaces (-1   -22); filltype uni; universe  401;}
+70  {id  70; type simpleCell;  surfaces (-2   -22); filltype uni; universe  401;}
+71  {id  71; type simpleCell;  surfaces (-3   -22); filltype uni; universe  401;}
+72  {id  72; type simpleCell;  surfaces (-4   -22); filltype uni; universe  401;}
+73  {id  73; type simpleCell;  surfaces (-5   -22); filltype uni; universe  401;}
+74  {id  74; type simpleCell;  surfaces (-6   -22); filltype uni; universe  401;}
+75  {id  75; type simpleCell;  surfaces (-7   -22); filltype uni; universe  401;}
+76  {id  76; type simpleCell;  surfaces (-8   -22); filltype uni; universe  401;}
+77  {id  77; type simpleCell;  surfaces (-9   -22); filltype uni; universe  401;}
+78  {id  78; type simpleCell;  surfaces (-10  -22); filltype uni; universe  401;}
+79  {id  79; type simpleCell;  surfaces (-11  -22); filltype uni; universe  401;}
+80  {id  80; type simpleCell;  surfaces (-12  -22); filltype uni; universe  401;}
+81  {id  81; type simpleCell;  surfaces (-13  -22); filltype uni; universe  401;}
+82  {id  82; type simpleCell;  surfaces (-14  -22); filltype uni; universe  401;}
+83  {id  83; type simpleCell;  surfaces (-15  -22); filltype uni; universe  401;}
+84  {id  84; type simpleCell;  surfaces (-16  -22); filltype uni; universe  401;}
+85  {id  85; type simpleCell;  surfaces (-17  -22); filltype uni; universe  401;}
+
+//row 6
+86  {id  86; type simpleCell;  surfaces (-1   -23); filltype uni; universe  401;}
+87  {id  87; type simpleCell;  surfaces (-2   -23); filltype uni; universe  401;}
+88  {id  88; type simpleCell;  surfaces (-3   -23); filltype uni; universe  401;}
+89  {id  89; type simpleCell;  surfaces (-4   -23); filltype uni; universe  401;}
+90  {id  90; type simpleCell;  surfaces (-5   -23); filltype uni; universe  401;}
+91  {id  91; type simpleCell;  surfaces (-6   -23); filltype uni; universe  401;}
+92  {id  92; type simpleCell;  surfaces (-7   -23); filltype uni; universe  401;}
+93  {id  93; type simpleCell;  surfaces (-8   -23); filltype uni; universe  401;}
+94  {id  94; type simpleCell;  surfaces (-9   -23); filltype uni; universe  401;}
+95  {id  95; type simpleCell;  surfaces (-10  -23); filltype uni; universe  401;}
+96  {id  96; type simpleCell;  surfaces (-11  -23); filltype uni; universe  401;}
+97  {id  97; type simpleCell;  surfaces (-12  -23); filltype uni; universe  401;}
+98  {id  98; type simpleCell;  surfaces (-13  -23); filltype uni; universe  401;}
+99  {id  99; type simpleCell;  surfaces (-14  -23); filltype uni; universe  401;}
+100  {id 100; type simpleCell;  surfaces (-15  -23); filltype uni; universe 401;}
+101  {id 101; type simpleCell;  surfaces (-16  -23); filltype uni; universe 401;}
+102  {id 102; type simpleCell;  surfaces (-17  -23); filltype uni; universe 401;}
+
+//row 7
+103  {id 103; type simpleCell;  surfaces (-1   -24); filltype uni; universe 401;}
+104  {id 104; type simpleCell;  surfaces (-2   -24); filltype uni; universe 401;}
+105  {id 105; type simpleCell;  surfaces (-3   -24); filltype uni; universe 401;}
+106  {id 106; type simpleCell;  surfaces (-4   -24); filltype uni; universe 401;}
+107  {id 107; type simpleCell;  surfaces (-5   -24); filltype uni; universe 401;}
+108  {id 108; type simpleCell;  surfaces (-6   -24); filltype uni; universe 401;}
+109  {id 109; type simpleCell;  surfaces (-7   -24); filltype uni; universe 401;}
+110  {id 110; type simpleCell;  surfaces (-8   -24); filltype uni; universe 401;}
+111  {id 111; type simpleCell;  surfaces (-9   -24); filltype uni; universe 401;}
+112  {id 112; type simpleCell;  surfaces (-10  -24); filltype uni; universe 401;}
+113  {id 113; type simpleCell;  surfaces (-11  -24); filltype uni; universe 401;}
+114  {id 114; type simpleCell;  surfaces (-12  -24); filltype uni; universe 401;}
+115  {id 115; type simpleCell;  surfaces (-13  -24); filltype uni; universe 401;}
+116  {id 116; type simpleCell;  surfaces (-14  -24); filltype uni; universe 401;}
+117  {id 117; type simpleCell;  surfaces (-15  -24); filltype uni; universe 401;}
+118  {id 118; type simpleCell;  surfaces (-16  -24); filltype uni; universe 401;}
+119  {id 119; type simpleCell;  surfaces (-17  -24); filltype uni; universe 401;}
+
+//row 8
+120  {id 120; type simpleCell;  surfaces (-1   -25); filltype uni; universe 401;}
+121  {id 121; type simpleCell;  surfaces (-2   -25); filltype uni; universe 401;}
+122  {id 122; type simpleCell;  surfaces (-3   -25); filltype uni; universe 401;}
+123  {id 123; type simpleCell;  surfaces (-4   -25); filltype uni; universe 401;}
+124  {id 124; type simpleCell;  surfaces (-5   -25); filltype uni; universe 401;}
+125  {id 125; type simpleCell;  surfaces (-6   -25); filltype uni; universe 401;}
+126  {id 126; type simpleCell;  surfaces (-7   -25); filltype uni; universe 401;}
+127  {id 127; type simpleCell;  surfaces (-8   -25); filltype uni; universe 401;}
+128  {id 128; type simpleCell;  surfaces (-9   -25); filltype uni; universe 401;}
+129  {id 129; type simpleCell;  surfaces (-10  -25); filltype uni; universe 401;}
+130  {id 130; type simpleCell;  surfaces (-11  -25); filltype uni; universe 401;}
+131  {id 131; type simpleCell;  surfaces (-12  -25); filltype uni; universe 401;}
+132  {id 132; type simpleCell;  surfaces (-13  -25); filltype uni; universe 401;}
+133  {id 133; type simpleCell;  surfaces (-14  -25); filltype uni; universe 401;}
+134  {id 134; type simpleCell;  surfaces (-15  -25); filltype uni; universe 401;}
+135  {id 135; type simpleCell;  surfaces (-16  -25); filltype uni; universe 401;}
+136  {id 136; type simpleCell;  surfaces (-17  -25); filltype uni; universe 401;}
+
+//row 9
+137  {id 137; type simpleCell;  surfaces (-1   -26); filltype uni; universe 401;}
+138  {id 138; type simpleCell;  surfaces (-2   -26); filltype uni; universe 401;}
+139  {id 139; type simpleCell;  surfaces (-3   -26); filltype uni; universe 401;}
+140  {id 140; type simpleCell;  surfaces (-4   -26); filltype uni; universe 401;}
+141  {id 141; type simpleCell;  surfaces (-5   -26); filltype uni; universe 401;}
+142  {id 142; type simpleCell;  surfaces (-6   -26); filltype uni; universe 401;}
+143  {id 143; type simpleCell;  surfaces (-7   -26); filltype uni; universe 401;}
+144  {id 144; type simpleCell;  surfaces (-8   -26); filltype uni; universe 401;}
+145  {id 145; type simpleCell;  surfaces (-9   -26); filltype uni; universe 401;}
+146  {id 146; type simpleCell;  surfaces (-10  -26); filltype uni; universe 401;}
+147  {id 147; type simpleCell;  surfaces (-11  -26); filltype uni; universe 401;}
+148  {id 148; type simpleCell;  surfaces (-12  -26); filltype uni; universe 401;}
+149  {id 149; type simpleCell;  surfaces (-13  -26); filltype uni; universe 401;}
+150  {id 150; type simpleCell;  surfaces (-14  -26); filltype uni; universe 401;}
+151  {id 151; type simpleCell;  surfaces (-15  -26); filltype uni; universe 401;}
+152  {id 152; type simpleCell;  surfaces (-16  -26); filltype uni; universe 401;}
+153  {id 153; type simpleCell;  surfaces (-17  -26); filltype uni; universe 401;}
+
+//row 10
+154  {id 154; type simpleCell;  surfaces (-1   -27); filltype uni; universe 401;}
+155  {id 155; type simpleCell;  surfaces (-2   -27); filltype uni; universe 401;}
+156  {id 156; type simpleCell;  surfaces (-3   -27); filltype uni; universe 401;}
+157  {id 157; type simpleCell;  surfaces (-4   -27); filltype uni; universe 401;}
+158  {id 158; type simpleCell;  surfaces (-5   -27); filltype uni; universe 401;}
+159  {id 159; type simpleCell;  surfaces (-6   -27); filltype uni; universe 401;}
+160  {id 160; type simpleCell;  surfaces (-7   -27); filltype uni; universe 401;}
+161  {id 161; type simpleCell;  surfaces (-8   -27); filltype uni; universe 401;}
+162  {id 162; type simpleCell;  surfaces (-9   -27); filltype uni; universe 401;}
+163  {id 163; type simpleCell;  surfaces (-10  -27); filltype uni; universe 401;}
+164  {id 164; type simpleCell;  surfaces (-11  -27); filltype uni; universe 401;}
+165  {id 165; type simpleCell;  surfaces (-12  -27); filltype uni; universe 401;}
+166  {id 166; type simpleCell;  surfaces (-13  -27); filltype uni; universe 401;}
+167  {id 167; type simpleCell;  surfaces (-14  -27); filltype uni; universe 401;}
+168  {id 168; type simpleCell;  surfaces (-15  -27); filltype uni; universe 401;}
+169  {id 169; type simpleCell;  surfaces (-16  -27); filltype uni; universe 401;}
+170  {id 170; type simpleCell;  surfaces (-17  -27); filltype uni; universe 401;}
+
+//row 11
+171  {id 171; type simpleCell;  surfaces (-1   -28); filltype uni; universe 401;}
+172  {id 172; type simpleCell;  surfaces (-2   -28); filltype uni; universe 401;}
+173  {id 173; type simpleCell;  surfaces (-3   -28); filltype uni; universe 401;}
+174  {id 174; type simpleCell;  surfaces (-4   -28); filltype uni; universe 401;}
+175  {id 175; type simpleCell;  surfaces (-5   -28); filltype uni; universe 401;}
+176  {id 176; type simpleCell;  surfaces (-6   -28); filltype uni; universe 401;}
+177  {id 177; type simpleCell;  surfaces (-7   -28); filltype uni; universe 401;}
+178  {id 178; type simpleCell;  surfaces (-8   -28); filltype uni; universe 401;}
+179  {id 179; type simpleCell;  surfaces (-9   -28); filltype uni; universe 401;}
+180  {id 180; type simpleCell;  surfaces (-10  -28); filltype uni; universe 401;}
+181  {id 181; type simpleCell;  surfaces (-11  -28); filltype uni; universe 401;}
+182  {id 182; type simpleCell;  surfaces (-12  -28); filltype uni; universe 401;}
+183  {id 183; type simpleCell;  surfaces (-13  -28); filltype uni; universe 401;}
+184  {id 184; type simpleCell;  surfaces (-14  -28); filltype uni; universe 401;}
+185  {id 185; type simpleCell;  surfaces (-15  -28); filltype uni; universe 401;}
+186  {id 186; type simpleCell;  surfaces (-16  -28); filltype uni; universe 401;}
+187  {id 187; type simpleCell;  surfaces (-17  -28); filltype uni; universe 401;}
+
+//row 12
+188  {id 188; type simpleCell;  surfaces (-1   -29); filltype uni; universe 401;}
+189  {id 189; type simpleCell;  surfaces (-2   -29); filltype uni; universe 401;}
+190  {id 190; type simpleCell;  surfaces (-3   -29); filltype uni; universe 401;}
+191  {id 191; type simpleCell;  surfaces (-4   -29); filltype uni; universe 401;}
+192  {id 192; type simpleCell;  surfaces (-5   -29); filltype uni; universe 401;}
+193  {id 193; type simpleCell;  surfaces (-6   -29); filltype uni; universe 401;}
+194  {id 194; type simpleCell;  surfaces (-7   -29); filltype uni; universe 401;}
+195  {id 195; type simpleCell;  surfaces (-8   -29); filltype uni; universe 401;}
+196  {id 196; type simpleCell;  surfaces (-9   -29); filltype uni; universe 401;}
+197  {id 197; type simpleCell;  surfaces (-10  -29); filltype uni; universe 401;}
+198  {id 198; type simpleCell;  surfaces (-11  -29); filltype uni; universe 401;}
+199  {id 199; type simpleCell;  surfaces (-12  -29); filltype uni; universe 401;}
+200  {id 200; type simpleCell;  surfaces (-13  -29); filltype uni; universe 401;}
+201  {id 201; type simpleCell;  surfaces (-14  -29); filltype uni; universe 401;}
+202  {id 202; type simpleCell;  surfaces (-15  -29); filltype uni; universe 401;}
+203  {id 203; type simpleCell;  surfaces (-16  -29); filltype uni; universe 401;}
+204  {id 204; type simpleCell;  surfaces (-17  -29); filltype uni; universe 401;}
+
+//row 13
+205  {id 205; type simpleCell;  surfaces (-1   -30); filltype uni; universe 401;}
+206  {id 206; type simpleCell;  surfaces (-2   -30); filltype uni; universe 401;}
+207  {id 207; type simpleCell;  surfaces (-3   -30); filltype uni; universe 401;}
+208  {id 208; type simpleCell;  surfaces (-4   -30); filltype uni; universe 401;}
+209  {id 209; type simpleCell;  surfaces (-5   -30); filltype uni; universe 401;}
+210  {id 210; type simpleCell;  surfaces (-6   -30); filltype uni; universe 401;}
+211  {id 211; type simpleCell;  surfaces (-7   -30); filltype uni; universe 401;}
+212  {id 212; type simpleCell;  surfaces (-8   -30); filltype uni; universe 401;}
+213  {id 213; type simpleCell;  surfaces (-9   -30); filltype uni; universe 401;}
+214  {id 214; type simpleCell;  surfaces (-10  -30); filltype uni; universe 401;}
+215  {id 215; type simpleCell;  surfaces (-11  -30); filltype uni; universe 401;}
+216  {id 216; type simpleCell;  surfaces (-12  -30); filltype uni; universe 401;}
+217  {id 217; type simpleCell;  surfaces (-13  -30); filltype uni; universe 401;}
+218  {id 218; type simpleCell;  surfaces (-14  -30); filltype uni; universe 401;}
+219  {id 219; type simpleCell;  surfaces (-15  -30); filltype uni; universe 401;}
+220  {id 220; type simpleCell;  surfaces (-16  -30); filltype uni; universe 401;}
+221  {id 221; type simpleCell;  surfaces (-17  -30); filltype uni; universe 401;}
+
+//row 14
+222  {id 222; type simpleCell;  surfaces (-1   -31); filltype uni; universe 401;}
+223  {id 223; type simpleCell;  surfaces (-2   -31); filltype uni; universe 401;}
+224  {id 224; type simpleCell;  surfaces (-3   -31); filltype uni; universe 401;}
+225  {id 225; type simpleCell;  surfaces (-4   -31); filltype uni; universe 401;}
+226  {id 226; type simpleCell;  surfaces (-5   -31); filltype uni; universe 401;}
+227  {id 227; type simpleCell;  surfaces (-6   -31); filltype uni; universe 401;}
+228  {id 228; type simpleCell;  surfaces (-7   -31); filltype uni; universe 401;}
+229  {id 229; type simpleCell;  surfaces (-8   -31); filltype uni; universe 401;}
+230  {id 230; type simpleCell;  surfaces (-9   -31); filltype uni; universe 401;}
+231  {id 231; type simpleCell;  surfaces (-10  -31); filltype uni; universe 401;}
+232  {id 232; type simpleCell;  surfaces (-11  -31); filltype uni; universe 401;}
+233  {id 233; type simpleCell;  surfaces (-12  -31); filltype uni; universe 401;}
+234  {id 234; type simpleCell;  surfaces (-13  -31); filltype uni; universe 401;}
+235  {id 235; type simpleCell;  surfaces (-14  -31); filltype uni; universe 401;}
+236  {id 236; type simpleCell;  surfaces (-15  -31); filltype uni; universe 401;}
+237  {id 237; type simpleCell;  surfaces (-16  -31); filltype uni; universe 401;}
+238  {id 238; type simpleCell;  surfaces (-17  -31); filltype uni; universe 401;}
+
+//row 15
+239  {id 239; type simpleCell;  surfaces (-1   -32); filltype uni; universe 401;}
+240  {id 240; type simpleCell;  surfaces (-2   -32); filltype uni; universe 401;}
+241  {id 241; type simpleCell;  surfaces (-3   -32); filltype uni; universe 401;}
+242  {id 242; type simpleCell;  surfaces (-4   -32); filltype uni; universe 401;}
+243  {id 243; type simpleCell;  surfaces (-5   -32); filltype uni; universe 401;}
+244  {id 244; type simpleCell;  surfaces (-6   -32); filltype uni; universe 401;}
+245  {id 245; type simpleCell;  surfaces (-7   -32); filltype uni; universe 401;}
+246  {id 246; type simpleCell;  surfaces (-8   -32); filltype uni; universe 401;}
+247  {id 247; type simpleCell;  surfaces (-9   -32); filltype uni; universe 401;}
+248  {id 248; type simpleCell;  surfaces (-10  -32); filltype uni; universe 401;}
+249  {id 249; type simpleCell;  surfaces (-11  -32); filltype uni; universe 401;}
+250  {id 250; type simpleCell;  surfaces (-12  -32); filltype uni; universe 401;}
+251  {id 251; type simpleCell;  surfaces (-13  -32); filltype uni; universe 401;}
+252  {id 252; type simpleCell;  surfaces (-14  -32); filltype uni; universe 401;}
+253  {id 253; type simpleCell;  surfaces (-15  -32); filltype uni; universe 401;}
+254  {id 254; type simpleCell;  surfaces (-16  -32); filltype uni; universe 401;}
+255  {id 255; type simpleCell;  surfaces (-17  -32); filltype uni; universe 401;}
+
+//row 16
+256  {id 256; type simpleCell;  surfaces (-1   -33); filltype uni; universe 401;}
+257  {id 257; type simpleCell;  surfaces (-2   -33); filltype uni; universe 401;}
+258  {id 258; type simpleCell;  surfaces (-3   -33); filltype uni; universe 401;}
+259  {id 259; type simpleCell;  surfaces (-4   -33); filltype uni; universe 401;}
+260  {id 260; type simpleCell;  surfaces (-5   -33); filltype uni; universe 401;}
+261  {id 261; type simpleCell;  surfaces (-6   -33); filltype uni; universe 401;}
+262  {id 262; type simpleCell;  surfaces (-7   -33); filltype uni; universe 401;}
+263  {id 263; type simpleCell;  surfaces (-8   -33); filltype uni; universe 401;}
+264  {id 264; type simpleCell;  surfaces (-9   -33); filltype uni; universe 401;}
+265  {id 265; type simpleCell;  surfaces (-10  -33); filltype uni; universe 401;}
+266  {id 266; type simpleCell;  surfaces (-11  -33); filltype uni; universe 401;}
+267  {id 267; type simpleCell;  surfaces (-12  -33); filltype uni; universe 401;}
+268  {id 268; type simpleCell;  surfaces (-13  -33); filltype uni; universe 401;}
+269  {id 269; type simpleCell;  surfaces (-14  -33); filltype uni; universe 401;}
+270  {id 270; type simpleCell;  surfaces (-15  -33); filltype uni; universe 401;}
+271  {id 271; type simpleCell;  surfaces (-16  -33); filltype uni; universe 401;}
+272  {id 272; type simpleCell;  surfaces (-17  -33); filltype uni; universe 401;}
+
+//row 16
+273  {id 273; type simpleCell;  surfaces (-1   -34); filltype uni; universe 401;}
+274  {id 274; type simpleCell;  surfaces (-2   -34); filltype uni; universe 401;}
+275  {id 275; type simpleCell;  surfaces (-3   -34); filltype uni; universe 401;}
+276  {id 276; type simpleCell;  surfaces (-4   -34); filltype uni; universe 401;}
+277  {id 277; type simpleCell;  surfaces (-5   -34); filltype uni; universe 401;}
+278  {id 278; type simpleCell;  surfaces (-6   -34); filltype uni; universe 401;}
+279  {id 279; type simpleCell;  surfaces (-7   -34); filltype uni; universe 401;}
+280  {id 280; type simpleCell;  surfaces (-8   -34); filltype uni; universe 401;}
+281  {id 281; type simpleCell;  surfaces (-9   -34); filltype uni; universe 401;}
+282  {id 282; type simpleCell;  surfaces (-10  -34); filltype uni; universe 401;}
+283  {id 283; type simpleCell;  surfaces (-11  -34); filltype uni; universe 401;}
+284  {id 284; type simpleCell;  surfaces (-12  -34); filltype uni; universe 401;}
+285  {id 285; type simpleCell;  surfaces (-13  -34); filltype uni; universe 401;}
+286  {id 286; type simpleCell;  surfaces (-14  -34); filltype uni; universe 401;}
+287  {id 287; type simpleCell;  surfaces (-15  -34); filltype uni; universe 401;}
+288  {id 288; type simpleCell;  surfaces (-16  -34); filltype uni; universe 401;}
+289  {id 289; type simpleCell;  surfaces (-17  -34); filltype uni; universe 401;}
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 35; fill u<401>; }
+
+    //root{id 1; type rootUniverse; border 35; fill u<2>;}
+    //geom { id 2; type cellUniverse; cells (1);} //1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 );}
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
+
+    pin22 {id 22; type pinUniverse;  radii (0.4095 0.4750 0.0); fills (water clad water);}
+
+    pin23 {id 23; type pinUniverse;  radii (0.5800 0.600 0.0); fills (boron clad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 23 22 22 22 22 22 22 22 22 22
+        31 41 41 41 41 41 41 23 22 22 22 22 22 22 22 22 22
+        31 41 41 41 41 21 41 23 22 22 22 22 22 22 22 22 22
+        31 41 41 21 41 51 51 23 22 22 22 22 22 22 22 22 22
+        31 41 41 41 51 51 51 23 22 22 22 22 22 22 22 22 22
+        31 41 21 51 51 21 51 23 22 22 22 22 22 22 22 22 22
+        31 41 41 51 51 51 51 23 22 22 22 22 22 22 22 22 22
+        23 23 23 23 23 23 23 23 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22
+        22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 ); }
+  }
+
+}
+
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-150 -150 -150);
+    width (300 300 300);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+
+
+      boron {
+        temp 8765;
+        composition {
+           5010.03    6.1E-003;   //5010.03    6.1E-001
+           5011.03    2.224E-002;   //5011.03    2.224E-002
+          //6012.03    0.00008;
+       }
+       }
+
+
+       water_2 {
+        temp 75675;
+        //moder { 1001.03 h-h2o.42; }
+        composition {
+          1001.03    6.700E-002;
+          8016.03    3.350E-002;
+          //5010.03    6.1E-002;
+          //5011.03    2.224E-002; 
+      
+      }
+        }
+  
+
+
+        //////////////////////////////////
+
+
+        water {
+          temp 75675;
+          //moder { 1001.03 h-h2o.42; }
+          composition {
+          1001.03    6.700E-002;
+          8016.03    3.350E-002;
+          5010.03    6.1E-005;
+          5011.03    2.224E-004; }
+          }
+    
+         clad {
+           temp 12345;
+           composition {
+           40090.03  2.21235E-002;
+           40091.03  4.82460E-003;
+           40092.03  7.37450E-003;
+           40094.03  7.47340E-003;
+           40096.03  1.20400E-003;}
+           }
+         alClad {
+           temp 9876;
+          composition {
+          13027.03  6.00E-2;}
+          }
+    
+        mox43 {
+          temp 87476;
+           composition {
+          92235.03  5.00E-005;
+          92238.03  2.21E-002;
+          94238.03  1.50E-005;
+          94239.03  5.80E-004;
+          94240.03  2.40E-004;
+          94241.03  9.80E-005;
+          94242.03  5.40E-005;
+          95241.03  1.30E-005;
+           8016.03  4.63E-002; 
+          }
+          }
+         mox70 {
+           temp 6786;
+           composition {
+           92235.03  5.00E-005;
+           92238.03  2.21E-002;
+           94238.03  2.40E-005;
+           94239.03  9.30E-004;
+           94240.03  3.90E-004;
+           94241.03  1.52E-004;
+           94242.03  8.40E-005;
+           95241.03  2.00E-005;
+            8016.03  4.63E-002;}
+           }
+         mox87 {
+           temp 8765;
+           composition {
+           92235.03  5.00E-005;
+           92238.03  2.21E-002;
+           94238.03  3.00E-005;
+           94239.03  1.16E-003;
+           94240.03  4.90E-004;
+           94241.03  1.90E-004;
+           94242.03  1.05E-004;
+           95241.03  2.50E-005;
+            8016.03  4.63E-002;}
+           }
+
+           mox89 {
+            temp 8765;
+            composition {
+           92235.03  2.00E-003;
+           92238.03  2.21E-002;
+           94238.03  3.00E-005;
+           94239.03  1.16E-003;
+           94240.03  4.90E-004;
+           94241.03  1.90E-004;
+           94242.03  1.05E-004;
+           95241.03  2.50E-005;
+            8016.03  4.63E-002;}
+            }
+    
+    }
+
+}
+

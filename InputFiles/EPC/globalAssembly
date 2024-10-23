@@ -173,10 +173,6 @@ geometry {
       38 {id 38; type simpleCell;  surfaces   (-12 -16); filltype mat; material water;}
       39 {id 39; type simpleCell;  surfaces   (-13 -16); filltype mat; material water;}
 
-
-
-
-
       //row4
       40  {id 40; type simpleCell;   surfaces (-1  -17); filltype mat; material water;}
       41  {id 41; type simpleCell;   surfaces (-2  -17); filltype mat; material water;}

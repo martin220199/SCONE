@@ -1627,7 +1627,7 @@ contains
         end if
 
         if ((self % fitnessHandling == 1_shortInt) .and. (self % EPCResponse == 0_shortInt)) &
-           call tally % processGlobalEvolution(self % nextTime(i))
+           call tally % processGlobalEvolution(self % nextTime(i),t)
 
         ! Update RNG
         call self % pRNG % stride(nParticles + 1)
