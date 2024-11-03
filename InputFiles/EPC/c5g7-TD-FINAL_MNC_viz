@@ -1,11 +1,11 @@
 type criticalKineticPhysicsPackage;
 
 pop      10000; //10000
-timeSteps   100;
+timeSteps   50;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.0e-5;
-cycles 30;//50;
+cycles 30;//30;
 buffer 10000;
 active   200;
 inactive 200;
@@ -14,10 +14,10 @@ combing 0; //0 if EPC, 1 otherwise
 precursors 1;
 useForcedPrecursorDecay 0;
 criticalWgtNorm 1;
-kineticGeometry{enable 1; timeSteps (10 50 60); } //(40 80)
-decorrelationCycles 10; //20
+kineticGeometry{enable 1; timeSteps (5 30 35); } // 15 18); }
+decorrelationCycles 50; //20
 //1e-7
-EPC {useEPC 1; fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3); fittestFactor 1.2; nReproductions 2;} //1.2 //1.3 //1.0; nReproductions 2;}
+EPC {useEPC 1; fitnessHandling 1; responseType 0; responseDim cells; response (1 2 3); fittestFactor 1.1; nReproductions 2;} //1.0
 
 //1e-2. THIS ONE USES buffer 5000 !!!!
 //EPC {useEPC 0; fitnessHandling 1; responseType 0; responseDim cells; response (10 11 12 13 23 24 25 26 36 37 38 39 49 50 51 52 62 63 64 65 75 76 77 78 88 89 90 91 101 102 103 104 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169); fittestFactor 1e-2; nReproductions 4;}
@@ -45,7 +45,7 @@ tally  {
 
   flux_time { type collisionClerk;
 
-    map { type timeMap; grid lin; min 0.0; max 100.0e-5; N 100;}
+    map { type timeMap; grid lin; min 0.0; max 50.0e-5; N 50;}
     response (flux); flux {type fluxResponse;}
 
     }
@@ -54,7 +54,7 @@ tally  {
     map { type multiMap; maps (map1 map2 map3);
     map1 { type spaceMap;  axis y;  grid lin; min -21.42; max 21.42; N 34;} // map1 { type spaceMap;  axis y;  grid lin; min -13; max 13; N 50;}
     map2 { type spaceMap;  axis x;  grid lin;  min -21.42; max 21.42; N 34;} //    map2 { type spaceMap;  axis x;  grid lin;  min -13; max 13; N 50;}
-    map3 { type timeMap; grid lin; min 0.0; max 100.0e-5; N 100;}
+    map3 { type timeMap; grid lin; min 0.0; max 50.0e-5; N 50;}
     }
     response (flux); flux {type fluxResponse;}
     }
@@ -84,7 +84,8 @@ activeTally  {
 //can group together cells. Makes EPC global better.
 
 geometry {
-  type geometryStd;
+
+ type geometryStd;
   boundary ( 1 1 1 1 0 0); //2 original
   graph {type shrunk;}
 
@@ -108,8 +109,8 @@ geometry {
                                      fills (mox70  void   clad   void   alClad water);}
     pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox87  void   clad   void   alClad water);}
-    pin21 {id 21; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (water clad water);} //Water, clad, water
-    pin22 {id 22; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (boron clad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.5600 0.600 0.0); fills (water clad water);} //Water, clad, water
+    pin22 {id 22; type pinUniverse;  radii (0.5600 0.600 0.0); fills (boron clad water);}
 
     // Lattices
     latMox1 {
@@ -159,6 +160,7 @@ geometry {
  
   }
 
+
 }
 
 
@@ -187,8 +189,8 @@ kineticGeom1 {
                                      fills (mox70  void   clad   void   alClad water);}
     pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox87  void   clad   void   alClad water);}
-    pin21 {id 21; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (water clad water);} //Water, clad, water
-    pin22 {id 22; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (boron clad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.5600 0.600 0.0); fills (water clad water);} //Water, clad, water
+    pin22 {id 22; type pinUniverse;  radii (0.5600 0.600 0.0); fills (boron clad water);}
 
     // Lattices
     latMox1 {
@@ -270,8 +272,8 @@ kineticGeom2 {
                                      fills (mox70  void   clad   void   alClad water);}
     pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox87  void   clad   void   alClad water);}
-    pin21 {id 21; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (water clad water);} //Water, clad, water
-    pin22 {id 22; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (boron clad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.5600 0.600 0.0); fills (water clad water);} //Water, clad, water
+    pin22 {id 22; type pinUniverse;  radii (0.5600 0.600 0.0); fills (boron clad water);}
 
 
     // Lattices
@@ -351,8 +353,8 @@ kineticGeom3 {
                                      fills (mox70  void   clad   void   alClad water);}
     pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox87  void   clad   void   alClad water);}
-    pin21 {id 21; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (water clad water);} //Water, clad, water
-    pin22 {id 22; type pinUniverse;  radii (0.5400 0.5600 0.0); fills (boron clad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.5600 0.600 0.0); fills (water clad water);} //Water, clad, water
+    pin22 {id 22; type pinUniverse;  radii (0.5600 0.600 0.0); fills (boron clad water);}
 
     // Lattices
     latMox1 {
@@ -432,7 +434,7 @@ nuclearData {
         temp 8765;
         composition {
            5010.03    9.0E-002;
-           5011.03    4.324E-001; 
+           5011.03    2.25E-002; //2.25e-2
        }
        }
 
@@ -441,6 +443,7 @@ nuclearData {
       //moder { 1001.03 hh2o.00; }
       composition {
       1001.03    6.6856E-002;
+      08016.03   3.3428E-002; //O
       }
       }
 

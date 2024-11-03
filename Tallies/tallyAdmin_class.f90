@@ -966,9 +966,11 @@ contains
     !$omp threadprivate(p, p_temp, binIdx)
 
 
-    if ((t >= 10) .and. (t<50)) condition = .true.!((t == 2) .or. (t==5) .or. (t==7))
-    if ((t >= 60)) condition = .true.
-    !if ((t==10) .or. (t==20) .or. (t==30) .or. (t==40) .or. (t==50)) condition = .true.
+    !if ((t >= 10) .and. (t<50)) condition = .true.
+    !if ((t >= 60)) condition = .true.
+
+    if ((t >= 5) .and. (t<30)) condition = .true.
+    if ((t >= 35)) condition = .true.
 
     norm = sum(self % entropy(:))
     mean = sum(self % entropy(:)) / size(self % entropy(:))
