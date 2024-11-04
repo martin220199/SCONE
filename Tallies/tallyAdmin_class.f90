@@ -171,7 +171,7 @@ contains
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
     integer(shortInt)                           :: i, j, cyclesPerBatch
-    integer(shortInt)                           :: timeSteps, CyclesPerTime, nBootstraps
+    integer(shortInt)                           :: cycles, nBootstraps
     logical(defBool)                            :: useBootstrap, useMean, useVarianceBiased, useVarianceUnbiased
     integer(longInt)                            :: memSize, memLoc
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
@@ -213,7 +213,7 @@ contains
     end if
 
     ! Read batching size
-    !call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+    call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
 
     ! Initialise score memory
     ! Calculate required size.
@@ -221,8 +221,6 @@ contains
 
     ! NB TODO
     call dict % getOrDefault(useBootstrap,'useBootstrap', .false.)
-    call dict % get(timeSteps,'timeSteps')
-    call dict % get(CyclesPerTime, 'cycles')
 
     if (useBootstrap .eqv. .true.) then
 
@@ -234,14 +232,14 @@ contains
 
       !transfer to memory
       if (useMean .eqv. .true.) then
-        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
-        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 1)
+        call dict % get(cycles, 'cycles')
+        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 1)
       else if (useVarianceUnbiased .eqv. .true.) then
-        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
-        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 2)
+        call dict % get(cycles, 'cycles')
+        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 2)
       else if (useVarianceBiased .eqv. .true.) then
-        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
-        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 3)
+        call dict % get(cycles, 'cycles')
+        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 3)
       else
         call fatalError(Here, 'need bootstrap version')
       end if
@@ -249,9 +247,8 @@ contains
       !-> perform bootstrap after each time interval so dont need to store
       ! that much. Based on initialised vals, i.e., bootstrap mean, biasedvar,
       !unbiased var etc.
-    
     else
-      call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, timeSteps = timeSteps, CyclesPerTime = CyclesPerTime)
+      call self % mem % init(memSize, 1)
     end if
 
     ! Assign memory locations to the clerks
@@ -835,12 +832,11 @@ contains
 
   end subroutine addToReports
 
-subroutine reportTimeEnd(self, t, rand)
+subroutine reportTimeEnd(self, rand)
   class(tallyAdmin),intent(inout) :: self
-  integer(longInt), intent(in)    :: t
   class(RNG), intent(inout)       :: rand
 
-  call self % mem % reportTimeEnd(t, rand)
+  call self % mem % reportTimeEnd(rand)
 
 end subroutine reportTimeEnd
 

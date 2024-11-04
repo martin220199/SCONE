@@ -269,7 +269,7 @@ contains
     !time bootstrapping
     call timerStop(self % timerMain)
     time1 = TimerTime(self % timerMain)
-    call tally % reportTimeEnd(1_longInt, pRNG)
+    call tally % reportTimeEnd(pRNG)
     call timerStop(self % timerMain)
     time2 = TimerTime(self % timerMain)
     self % bootstrapTime = self % bootstrapTime + time2 - time1
@@ -353,7 +353,7 @@ contains
       !time bootstrapping
       call timerStop(self % timerMain)
       time1 = TimerTime(self % timerMain)
-      call tally % reportTimeEnd(t, pRNG)
+      call tally % reportTimeEnd(pRNG)
       call timerStop(self % timerMain)
       time2 = TimerTime(self % timerMain)
       !print *, 'deltaT', time2-time1

@@ -89,20 +89,11 @@ module scoreMemory_class
       integer(shortInt)                            :: cycles = 0        !! Cycles counter
       integer(shortInt)                            :: batchSize = 1     !! Batch interval size (in cycles)
 
-      !real(defReal), dimension(:,:), allocatable   :: bootstrapBins
-      !real(defReal), dimension(:), allocatable     :: plugInMean
-      !real(defReal), dimension(:), allocatable     :: plugInVar
       integer(shortInt)                            :: nBootstraps
       real(defReal), dimension(:,:), allocatable   :: plugInSamples
 
-      !real(defReal), dimension(:,:), allocatable   :: plugInSamples, plugInSamplesMean, plugInSamplesVar
-      !real(defReal), dimension(:), allocatable     :: bootstrapAccumulator, unbiasedMeans, unbiasedVars
-      !real(defReal), dimension(:), allocatable     ::  biasedMeans, biasedVars, normBias
-      !integer(shortInt), dimension(:), allocatable :: scoreBinTracker
-      integer(shortInt)                            :: nTimeBins, cyclesPerTime
       integer(shortInt)                            :: Ntallies
       integer(shortInt)                            :: bootstrapV = 0
-      integer(longInt)                             :: timeN
 
       real(defReal), dimension(:), allocatable   :: bootstrapMean, bootstrapVar
 
@@ -141,11 +132,11 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, batchSize, timeSteps, CyclesPerTime, nBootstraps, bootstrapV)
+  subroutine init(self, N, id, batchSize, cycles, nBootstraps, bootstrapV)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
     integer(shortInt),intent(in)          :: id
-    integer(shortInt),optional,intent(in) :: batchSize, timeSteps, CyclesPerTime, nBootstraps, bootstrapV
+    integer(shortInt),optional,intent(in) :: batchSize, cycles, nBootstraps, bootstrapV
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % nThreads = ompGetMaxThreads()
@@ -161,38 +152,32 @@ contains
     self % id = id
 
     ! Set batchN, cycles and batchSize to default values
-    self % batchN    = 1
-    self % cycles    = 0
+    self % batchN    = 0
     self % batchSize = 1
+    self % cycles = 0
 
-    if(present(batchSize)) then
-      if(batchSize > 0) then
-        self % batchSize = batchSize
-      else
-        call fatalError(Here,'Batch Size of: '// numToChar(batchSize) //' is invalid')
-      end if
-    end if
-
-    self % nTimeBins = timeSteps
-    self % Ntallies = N / self % nTimeBins
-    self % TimeN = 1_longInt
-    self % CyclesPerTime = CyclesPerTime
-
+    self % Ntallies = N
 
     !TODO: not include for bootstrap
     ! Allocate space and zero all bins
     allocate(self % bins(N, DIM2))
     self % bins = ZERO
 
+
+    if (present(cycles)) self % cycles = cycles  
+
     if (present(bootstrapV)) then !bootstrap score
+      print *, 'TRUE', bootstrapV
       self % bootstrapV = bootstrapV
       self % nBootstraps = nBootstraps
-    
-      allocate(self % plugInSamples(self % Ntallies, CyclesPerTime))
+
+      allocate(self % plugInSamples(self % Ntallies, self % cycles))
       self % plugInSamples = ZERO
 
       allocate(self % bootstrapMean(self % N))
       allocate(self % bootstrapVar(self % N))
+    else
+      print *, 'FALSE'
     end if
 
   end subroutine init
@@ -280,6 +265,11 @@ contains
     self % bins(idx, CSUM)  = self % bins(idx, CSUM)  + score
     self % bins(idx, CSUM2) = self % bins(idx, CSUM2) + score * score
 
+    if (self % bootstrapV > 0) then
+      print *, 'plugin- add-in!!', self % bootstrapV, idx + 1, self % batchN, score
+      self % plugInSamples(idx + 1, self % batchN) = score
+    end if
+
   end subroutine accumulate_defReal
 
   !!
@@ -320,33 +310,31 @@ contains
     !$omp threadprivate(res)
 
     ! Increment Cycle Counter
-    self % cycles = self % cycles + 1
+    !self % cycles = self % cycles + 1
 
-    loc = (self % timeN - 1_longInt) * self % Ntallies
-    !$omp parallel do
-    do i = 1, self % Ntallies
+    if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
+      
+      !$omp parallel do
+      do i = 1, self % N
+        
+        ! Normalise scores
+        self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
+        res = sum(self % parallelBins(i,:))
+        
+        ! Zero all score bins
+        self % parallelBins(i,:) = ZERO
+       
+        ! Increment cumulative sums 
+        self % bins(i,CSUM)  = self % bins(i,CSUM) + res
+        self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
 
-      ! Normalise scores
-      self % parallelBins(loc + i,:) = self % parallelBins(loc + i,:) * normFactor
-      res = sum(self % parallelBins(loc + i,:))
+      end do
+      !$omp end parallel do
 
-      ! Zero all score bins
-      self % parallelBins(loc + i,:) = ZERO
+      ! Increment batch counter
+      self % batchN = self % batchN + 1
 
-      !TODO: not include for bootstrap
-      ! Increment cumulative sums
-      self % bins(loc + i,CSUM)  = self % bins(loc + i,CSUM) + res
-      self % bins(loc + i,CSUM2) = self % bins(loc + i,CSUM2) + res * res
-
-      if (self % bootstrapV > 0) then
-        self % plugInSamples(i, self % batchN) = res
-      end if
-    end do
-    !$omp end parallel do
-
-    ! Increment batch counter
-    self % batchN = self % batchN + 1
-    !self % batchSize = self % batchSize + 1
+    end if
 
 
   end subroutine closeCycle
@@ -409,12 +397,15 @@ contains
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
-  elemental subroutine getResult_withSTD(self, mean, STD, idx, samples)
+  elemental subroutine getResult_withSTD(self, mean, STD, idx, samples, NUMBER1, NUMBER2,NUMBER3)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
     integer(longInt), intent(in)           :: idx
     integer(shortInt), intent(in),optional :: samples
+    integer(shortInt), intent(inout), optional :: NUMBER1,NUMBER3
+    real(defReal), intent(inout), optional :: NUMBER2
+
     integer(shortInt)                      :: N, i
     real(defReal)                          :: inv_N, inv_Nm1
 
@@ -431,6 +422,10 @@ contains
     else
       N = self % batchN
     end if
+
+    if (present(NUMBER1)) NUMBER1 = N
+    if (present(NUMBER2)) NUMBER2 = self % bins(idx, CSUM)
+    if (present(NUMBER3)) NUMBER3 = self % bootstrapV
 
     ! Calculate mean
     mean = (self % bins(idx, CSUM) / N)
@@ -493,9 +488,8 @@ contains
 
   end function getScore
 
-  subroutine reportTimeEnd(self, t, rand)
+  subroutine reportTimeEnd(self, rand)
     class(scoreMemory), intent(inout) :: self
-    integer(longInt), intent(in)      :: t
     class(RNG), intent(inout)         :: rand
 
     !perform bootstrapping based on version.
@@ -511,9 +505,6 @@ contains
       call self % bootstrapV3(rand)
       self % plugInSamples = ZERO
     end if
-
-    self % batchN = 1
-    self % timeN = self % timeN + 1_longInt
   end subroutine reportTimeEnd
 
 
@@ -522,7 +513,6 @@ contains
     class(scoreMemory), intent(inout)        :: self
     class(RNG), intent(inout)                :: rand
     integer(shortInt)                        :: i, N, j, r, B
-    integer(longInt)                         :: loc
     real(defReal)                            :: inv_Bm1
     real(defReal), save                      :: res, plugInMean
     integer(shortInt), save                  :: idx
@@ -530,7 +520,7 @@ contains
     real(defReal), dimension(:), allocatable, save :: bootstrapMean, bootstrapVar
     real(defReal), save                      :: mean, var
 
-    N = self % cyclesPerTime
+    N = self % cycles
     B = self % nBootstraps
 
     if (B /= 1) then
@@ -545,12 +535,15 @@ contains
     bootstrapMean = ZERO
     bootstrapVar = ZERO
 
-    loc = (self % timeN - 1_longInt) * self % Ntallies
+    print*, 'post analysis bootstrapping'
 
     !$omp parallel do private(mean, var, bootstrapAccumulator, plugInMean, bootstrapMean, bootstrapVar)
     do i = 1, self % Ntallies
 
       plugInMean = sum(self % plugInSamples(i,:)) / N
+
+      print *, 'pluginMean', plugInMean
+
       bootstrapMean(i) = plugInMean
       bootstrapVar(i) = plugInMean * plugInMean
 
@@ -582,8 +575,8 @@ contains
       mean = bootstrapMean(i) / self % nBootstraps
       var = bootstrapVar(i) * inv_Bm1 - mean * mean * inv_Bm1 * B
 
-      self % bootstrapMean(loc + i) = mean
-      self % bootstrapVar(loc + i) = var
+      self % bootstrapMean(i) = mean
+      self % bootstrapVar(i) = var
 
     end do
     !$omp end parallel do
@@ -599,7 +592,6 @@ contains
     class(scoreMemory), intent(inout)        :: self
     class(RNG), intent(inout)                :: rand
     integer(shortInt)                        :: i, N, j, r, B
-    integer(longInt)                         :: loc
     real(defReal)                            :: inv_Bm1, inv_N, inv_Nm1
     real(defReal), save                      :: res, res_sq, pluginVar
     integer(shortInt), save                  :: idx
@@ -607,7 +599,7 @@ contains
     real(defReal), dimension(:), allocatable, save :: bootstrapMean
     real(defReal), save                      :: mean, mean_biasAdj
 
-    N = self % cyclesPerTime
+    N = self % cycles
     B = self % nBootstraps
 
     if (B /= 1) then
@@ -629,13 +621,11 @@ contains
     bootstrapAccumulator_sq = ZERO
     bootstrapMean = ZERO
 
-    loc = (self % timeN - 1_longInt) * self % Ntallies
-
     !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies
 
-      plugInVar = self % bins(loc + i, CSUM2) * inv_N * inv_Nm1 &
-      - (self % bins(loc + i, CSUM) / N) * (self % bins(loc + i, CSUM) / N) * inv_Nm1
+      plugInVar = self % bins(i, CSUM2) * inv_N * inv_Nm1 &
+      - (self % bins(i, CSUM) / N) * (self % bins(i, CSUM) / N) * inv_Nm1
 
       bootstrapMean(i) = plugInVar
 
@@ -672,8 +662,8 @@ contains
       mean = bootstrapMean(i) / self % nBootstraps
       mean_biasAdj = TWO * plugInVar - mean
 
-      self % bootstrapMean(loc + i) = mean        !biased
-      self % bootstrapVar(loc + i) = mean_biasAdj !unbiased
+      self % bootstrapMean(i) = mean        !biased
+      self % bootstrapVar(i) = mean_biasAdj !unbiased
 
     end do
     !$omp end parallel do
@@ -686,7 +676,6 @@ contains
     class(scoreMemory), intent(inout)        :: self
     class(RNG), intent(inout)                :: rand
     integer(shortInt)                        :: i, N, j, r, B
-    integer(longInt)                         :: loc
     real(defReal)                            :: inv_Bm1, inv_N
     real(defReal), save                      :: res, res_sq, plugInVar
     integer(shortInt), save                  :: idx
@@ -694,7 +683,7 @@ contains
     real(defReal), dimension(:), allocatable, save :: bootstrapMean
     real(defReal), save                      :: mean, mean_biasAdj
 
-    N = self % cyclesPerTime
+    N = self % cycles
     B = self % nBootstraps
 
     if (B /= 1) then
@@ -710,13 +699,11 @@ contains
     bootstrapAccumulator_sq = ZERO
     bootstrapMean = ZERO
 
-    loc = (self % timeN - 1_longInt) * self % Ntallies
-
     !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies
 
-      plugInVar = self % bins(loc + i, CSUM2) * inv_N * inv_N &
-      - (self % bins(loc + i, CSUM) / N) * (self % bins(loc + i, CSUM) / N) * inv_N
+      plugInVar = self % bins(i, CSUM2) * inv_N * inv_N &
+      - (self % bins(i, CSUM) / N) * (self % bins(i, CSUM) / N) * inv_N
 
       bootstrapMean(i) = plugInVar
 
@@ -753,8 +740,8 @@ contains
       mean = bootstrapMean(i) / self % nBootstraps
       mean_biasAdj = TWO * plugInVar - mean
 
-      self % bootstrapMean(loc + i) = mean        !biased
-      self % bootstrapVar(loc + i) = mean_biasAdj !unbiased
+      self % bootstrapMean(i) = mean        !biased
+      self % bootstrapVar(i) = mean_biasAdj !unbiased
 
     end do
     !$omp end parallel do

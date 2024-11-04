@@ -106,6 +106,7 @@ module eigenPhysicsPackage_class
     real (defReal)    :: time_transport = 0.0
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
+    real (defReal)    :: bootstrapTime = ZERO
 
   contains
     procedure :: init
@@ -152,6 +153,7 @@ contains
     type(RNG), target, save                   :: pRNG
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
+    real(defReal)                             :: time1, time2
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
@@ -289,6 +291,14 @@ contains
       call tally % display()
     end do
 
+    !time bootstrapping
+    call timerStop(self % timerMain)
+    time1 = TimerTime(self % timerMain)
+    call tally % reportTimeEnd(pRNG)
+    call timerStop(self % timerMain)
+    time2 = TimerTime(self % timerMain)
+    self % bootstrapTime = self % bootstrapTime + time2 - time1
+
     ! Load elapsed time
     self % time_transport = self % time_transport + elapsed_T
 
@@ -341,8 +351,11 @@ contains
     name = 'Total_CPU_Time'
     call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
 
-    name = 'Total_Transport_Time'
-    call out % printValue(self % time_transport,name)
+    name = 'Transport_time'
+    call out % printValue(timerTime(self % timerMain) - self % bootstrapTime,name)
+
+    name = 'Transport_time_bootstrap'
+    call out % printValue(timerTime(self % timerMain),name)
 
     ! Print Inactive tally
     name = 'inactive'

@@ -7,11 +7,12 @@
 
 type eigenPhysicsPackage;
 
-pop      200000;
-active 100;
-inactive 200;
+pop      20000;
+active 200;
+inactive 400;
 XSdata   ceData;
 dataType ce;
+//seed 1565260310;
 
 collisionOperator { neutronCE {type neutronCEstd;}
                   }
@@ -23,15 +24,27 @@ inactiveTally {
               }
 
 activeTally  {
+
+  useBootstrap 1;
+  cycles 200;
+
+  nBootstraps 1000;
+
+  useMean 1;
+
+  // useMean
+  //useVarianceUnbiased
+  //useVarianceBiased
+
                 display (keff);
-                norm fiss;
-                normVal 100.0;
+                //norm fiss;
+                //normVal 100.0;
                 keff { type keffAnalogClerk;}
-                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk;
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
-                       response (flux); flux {type fluxResponse;}
-                      }
+                //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                //flux { type collisionClerk;
+                //       map { type energyMap; grid log; min 0.001; max 20; N 300;}
+                //       response (flux); flux {type fluxResponse;}
+                //      }
         }
 
 geometry {
@@ -58,6 +71,25 @@ geometry {
       uni  { id 2; type cellUniverse; cells ( 3  4); }
     }
 }
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-10.71 -10.71 -0.5);
+    width (21.42 21.42 1.0);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    //width (25.0 25.0);
+    axis z;
+    res (500 500);
+  }
+}
+
 
 nuclearData {
 

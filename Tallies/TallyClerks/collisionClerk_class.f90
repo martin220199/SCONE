@@ -284,7 +284,7 @@ contains
     !if (mem % bootstrapV == 0) then 
     ! Print results to the file
     do i=1,product(resArrayShape)
-      call mem % getResult(val, std, self % getMemAddress() - 1 + i, mem % CyclesPerTime)
+      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
       call outFile % addResult(val, std)
     end do
     call outFile % endArray()
