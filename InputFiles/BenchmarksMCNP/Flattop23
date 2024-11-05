@@ -8,8 +8,8 @@
 type eigenPhysicsPackage;
 
 pop      20000;
-active 200;
-inactive 400;
+active 2; //200
+inactive 100; //400
 XSdata   ceData;
 dataType ce;
 //seed 1565260310;
@@ -26,7 +26,7 @@ inactiveTally {
 activeTally  {
 
   useBootstrap 1;
-  cycles 200;
+  cycles 2;
 
   nBootstraps 1000;
 
@@ -34,7 +34,7 @@ activeTally  {
 
   // useMean
   //useVarianceUnbiased
-  //useVarianceBiased
+  //useVarianceBiased 1;
 
                 display (keff);
                 //norm fiss;

@@ -23,7 +23,9 @@ module eigenPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
-                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
+                                             gr_kill => kill
+
   use geometryFactory_func,           only : new_geometry
 
   ! Fields
@@ -123,18 +125,14 @@ contains
 
   subroutine run(self)
     class(eigenPhysicsPackage), intent(inout) :: self
-
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION /\/\"
+    !print *, repeat("<>",50)
+    !print *, "/\/\ EIGENVALUE CALCULATION /\/\"
 
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
     call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
-    print *
   end subroutine
 
   !!
@@ -281,14 +279,14 @@ contains
 
 
       ! Display progress
-      call printFishLineR(i)
-      print *
-      print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      !call printFishLineR(i)
+      !print *
+      !print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
+      !print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
+      !print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+      !print *, 'End time:     ', trim(secToChar(end_T))
+      !print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      !call tally % display()
     end do
 
     !time bootstrapping
@@ -319,9 +317,9 @@ contains
     call self % nextCycle % init(3 * self % pop)
 
     ! Generate initial surce
-    print *, "GENERATING INITIAL FISSION SOURCE"
+    !print *, "GENERATING INITIAL FISSION SOURCE"
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
-    print *, "DONE!"
+    !print *, "DONE!"
 
   end subroutine generateInitialState
 
@@ -353,9 +351,11 @@ contains
 
     name = 'Transport_time'
     call out % printValue(timerTime(self % timerMain) - self % bootstrapTime,name)
+    write(14, '(F24.16, ",")') timerTime(self % timerMain) - self % bootstrapTime
 
     name = 'Transport_time_bootstrap'
     call out % printValue(timerTime(self % timerMain),name)
+    write(13, '(F24.16, ",")') timerTime(self % timerMain)
 
     ! Print Inactive tally
     name = 'inactive'
@@ -469,10 +469,10 @@ contains
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+      !print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      !print *, "Constructing visualisation"
       call viz % makeViz()
       call viz % kill()
     endif
@@ -571,7 +571,8 @@ contains
   subroutine kill(self)
     class(eigenPhysicsPackage), intent(inout) :: self
 
-    ! TODO: This subroutine
+    call ndreg_kill()
+    call gr_kill()
 
   end subroutine kill
 
@@ -581,14 +582,14 @@ contains
   subroutine printSettings(self)
     class(eigenPhysicsPackage), intent(in) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
-    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
-    print *, "Active Cycles:      ", numToChar(self % N_active)
-    print *, "Neutron Population: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    !print *, repeat("<>",50)
+    !print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
+    !print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
+    !print *, "Active Cycles:      ", numToChar(self % N_active)
+    !print *, "Neutron Population: ", numToChar(self % pop)
+    !print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
+    !print *
+    !print *, repeat("<>",50)
   end subroutine printSettings
 
 end module eigenPhysicsPackage_class

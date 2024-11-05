@@ -194,35 +194,36 @@ contains
     class(keffAnalogClerk), intent(in) :: self
     class(outputFile), intent(inout)   :: outFile
     type(scoreMemory), intent(in)      :: mem
-    real(defReal)                      :: k, val, STD, NUMBER2
-    integer(shortInt)                  :: NUMBER1,NUMBER3
+    real(defReal)                      :: k, val, STD
     character(nameLen)                 :: name
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress(), NUMBER1 = NUMBER1, NUMBER2 = NUMBER2, NUMBER3=NUMBER3)
-    print *, 'MEM address for kanalog', self % getMemAddress()
+    call mem % getResult(k, STD, self % getMemAddress())
+    !print *, STD, ','
+    write(12, '(F24.16, ",")') STD
 
     ! Print to output file
     call outFile % startBlock(self % getName() )
     name = 'k_analog'
     call outFile % printResult(k, STD, name)
 
-    print *, 'KANALOG N, score', NUMBER1, NUMBER2, NUMBER3
-
     if (mem % bootstrapV == 1) then
       name ='BootstrapRes'
       val = mem % bootstrapMean(1)
       std = SQRT(mem % bootstrapVar(1))
       call outFile % printResult(val, std, name)
+      write(11, '(F24.16, ",")') std
+      write(15, '(F24.16, ",")') val
+      !print *, std
 
-!    else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
-!      name ='BootstrapSTDBiased'
-!      std = SQRT(mem % bootstrapMean(1))
-!      call outFile % addValue(std)
+    else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
+      name ='BootstrapSTDBiased'
+      std = SQRT(mem % bootstrapMean(1))
+      call outFile % printResult(std, std, name)
 
-!      name ='BootstrapSTDBiasAdjusted'
-!      std = SQRT(mem % bootstrapVar(1))
-!      call outFile % addValue(std)
+      name ='BootstrapSTDBiasAdjusted'
+      std = SQRT(mem % bootstrapVar(1))
+      call outFile % printResult(std, std, name)
 
     end if
   

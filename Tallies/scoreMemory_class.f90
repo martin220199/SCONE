@@ -167,7 +167,6 @@ contains
     if (present(cycles)) self % cycles = cycles  
 
     if (present(bootstrapV)) then !bootstrap score
-      print *, 'TRUE', bootstrapV
       self % bootstrapV = bootstrapV
       self % nBootstraps = nBootstraps
 
@@ -176,8 +175,6 @@ contains
 
       allocate(self % bootstrapMean(self % N))
       allocate(self % bootstrapVar(self % N))
-    else
-      print *, 'FALSE'
     end if
 
   end subroutine init
@@ -266,7 +263,6 @@ contains
     self % bins(idx, CSUM2) = self % bins(idx, CSUM2) + score * score
 
     if (self % bootstrapV > 0) then
-      print *, 'plugin- add-in!!', self % bootstrapV, idx + 1, self % batchN, score
       self % plugInSamples(idx + 1, self % batchN) = score
     end if
 
@@ -397,15 +393,12 @@ contains
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
-  elemental subroutine getResult_withSTD(self, mean, STD, idx, samples, NUMBER1, NUMBER2,NUMBER3)
+  elemental subroutine getResult_withSTD(self, mean, STD, idx, samples)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
     integer(longInt), intent(in)           :: idx
     integer(shortInt), intent(in),optional :: samples
-    integer(shortInt), intent(inout), optional :: NUMBER1,NUMBER3
-    real(defReal), intent(inout), optional :: NUMBER2
-
     integer(shortInt)                      :: N, i
     real(defReal)                          :: inv_N, inv_Nm1
 
@@ -422,10 +415,6 @@ contains
     else
       N = self % batchN
     end if
-
-    if (present(NUMBER1)) NUMBER1 = N
-    if (present(NUMBER2)) NUMBER2 = self % bins(idx, CSUM)
-    if (present(NUMBER3)) NUMBER3 = self % bootstrapV
 
     ! Calculate mean
     mean = (self % bins(idx, CSUM) / N)
@@ -535,14 +524,14 @@ contains
     bootstrapMean = ZERO
     bootstrapVar = ZERO
 
-    print*, 'post analysis bootstrapping'
+    do i=1, size(self % plugInSamples(1,:))
+      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+    end do
 
     !$omp parallel do private(mean, var, bootstrapAccumulator, plugInMean, bootstrapMean, bootstrapVar)
     do i = 1, self % Ntallies
 
       plugInMean = sum(self % plugInSamples(i,:)) / N
-
-      print *, 'pluginMean', plugInMean
 
       bootstrapMean(i) = plugInMean
       bootstrapVar(i) = plugInMean * plugInMean
