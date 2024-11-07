@@ -8,3 +8,5 @@ cream.egg-info/
 !/.gitignore
 
 Build/*
+./Build/
+./Build/*

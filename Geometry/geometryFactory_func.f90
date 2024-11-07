@@ -11,7 +11,7 @@ module geometryFactory_func
   ! Geometry
   use geometry_inter,    only : geometry
   use geometryStd_class, only : geometryStd
-  use geometryReg_mod,   only : gr_addGeom => addGeom
+  use geometryReg_mod,   only : gr_addGeom => addGeom, kill
 
   ! Meterial interface
   use materialMenu_mod,  only : mm_nameMap => nameMap
@@ -25,6 +25,7 @@ module geometryFactory_func
 
   ! Public interface
   public :: new_geometry
+  public :: killGeom
 
 contains
 
@@ -79,6 +80,14 @@ contains
     call gr_addGeom(geom, name)
 
   end subroutine new_geometry
+
+
+    subroutine killGeom()
+    character(100), parameter :: Here = 'new_geometry (geometryFactory_func.f90)'
+
+    call kill()
+
+  end subroutine killGeom
 
 
 end module geometryFactory_func

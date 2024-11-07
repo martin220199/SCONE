@@ -1,18 +1,18 @@
 !!
 !! Transport operator for delta tracking
 !!
-module transportOperatorDT_class
+module transportOperatorKineticDT_class
   use numPrecision
   use universalVariables
 
-  use errors_mod,                 only : fatalError
-  use genericProcedures,          only : numToChar
+  use genericProcedures,          only : fatalError, numToChar
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
+  use rng_class,                  only : rng
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator, init_super => init
+  use transportOperator_inter,    only : transportOperator
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
@@ -22,7 +22,6 @@ module transportOperatorDT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -31,38 +30,44 @@ module transportOperatorDT_class
   !!
   !! Transport operator that moves a particle with delta tracking
   !!
-  type, public, extends(transportOperator) :: transportOperatorDT
+  type, public, extends(transportOperator) :: transportOperatorKineticDT
   contains
     procedure :: transit => deltaTracking
-    ! Override procedure
-    procedure :: init
-  end type transportOperatorDT
+  end type transportOperatorKineticDT
 
 contains
 
-  !!
-  !! Performs delta tracking until a real collision point is found
-  !!
   subroutine deltaTracking(self, p, tally, thisCycle, nextCycle)
-    class(transportOperatorDT), intent(inout) :: self
+    class(transportOperatorKineticDT), intent(inout) :: self
     class(particle), intent(inout)            :: p
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
-    character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorKineticDT_class.f90)'
 
-    ! Get majorant XS inverse: 1/Sigma_majorant
+    ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
-   ! Should never happen! Prevents Inf distances
+    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
+      if (p % time + distance / p % getSpeed() > p % timeMax) then
+        distance = distance * (p % timeMax - p % time)/(distance / p % getSpeed())
+        p % fate = AGED_FATE
+        p % time = p % timeMax
+        call self % geom % teleport(p % coords, distance)
+        return
+      endif
+
       ! Move partice in the geometry
       call self % geom % teleport(p % coords, distance)
+
+      ! Update time
+      p % time = p % time + distance / p % getSpeed()
 
       ! If particle has leaked, exit
       if (p % matIdx() == OUTSIDE_FILL) then
@@ -72,7 +77,7 @@ contains
       end if
 
       ! Check for void
-      if (p % matIdx() == VOID_MAT) then
+      if(p % matIdx() == VOID_MAT) then
         call tally % reportInColl(p, .true.)
         cycle DTLoop
       end if
@@ -84,7 +89,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
@@ -97,22 +102,7 @@ contains
     end do DTLoop
 
     call tally % reportTrans(p)
-
   end subroutine deltaTracking
 
-  !!
-  !! Initialise DT transport operator
-  !!
-  !! See transportOperator_inter for more details
-  !!
-  subroutine init(self, dict)
-    class(transportOperatorDT), intent(inout) :: self
-    class(dictionary), intent(in)             :: dict
 
-    ! Initialise superclass
-    call init_super(self, dict)
-
-  end subroutine init
-
-
-end module transportOperatorDT_class
+end module transportOperatorKineticDT_class

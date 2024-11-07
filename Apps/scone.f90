@@ -75,25 +75,32 @@ program scone
   file_unit_6 = 15
   open(unit=file_unit_6, file=filename_6, status='replace')
 
-  do k = 1, 500
 
-    print *, '------- k', k
-
-    if (allocated(core)) then
-      call core % kill()
-      deallocate(core)
-    end if
-
-    if (clOptionIsPresent('--plot')) then
-      allocate(vizPhysicsPackage :: core)
-      call core % init(input)
-    else
-      allocate( core, source = new_physicsPackage(input))
-    endif
-
+  if (clOptionIsPresent('--plot')) then
+    allocate(vizPhysicsPackage :: core)
+    call core % init(input)
     call core % run()
+  
+  else
 
-  end do
+    do k = 1, 1
+
+      print *, '------- k', k
+
+      if (allocated(core)) then
+        call core % kill()
+        deallocate(core)
+      end if
+
+      allocate( core, source = new_physicsPackage(input))
+
+
+      call core % run()
+
+    end do
+
+  end if
+
 
   ! Close the file
   close(file_unit_1)

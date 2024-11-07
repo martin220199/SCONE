@@ -2,6 +2,7 @@ module particle_class
 
   use numPrecision
   use universalVariables
+  use tallyCodes
   use genericProcedures
   use coord_class,       only : coordList
   use RNG_class,         only : RNG
@@ -34,9 +35,7 @@ module particle_class
   !!   isMG     -> True if particle uses MG data
   !!   type     -> Physical Type of the particle (NEUTRON, PHOTON etc.)
   !!   time     -> Position in time of the particle [s]
-  !!   lambda_i -> Decay constants for precursor groups [/s]
-  !!   fd_i     -> Fraction of precursors in each group (usually beta_i/beta)
-  !!   E_out_i  -> Sampled energy out for each precursor's delayed neutron [MeV]
+  !!   lambda   -> Decay constant of precursor [/s]
   !!   matIdx   -> material Index in which particle is present
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
   !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
@@ -52,12 +51,12 @@ module particle_class
     real(defReal),dimension(3) :: dir  = ZERO       ! Global direction
     real(defReal)              :: E    = ZERO       ! Energy
     integer(shortInt)          :: G    = 0          ! Energy group
+    logical(defBool)           :: isDead
     logical(defBool)           :: isMG = .false.    ! Is neutron multi-group
+    integer(shortInt)          :: fate = no_FATE    !Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type = P_NEUTRON  ! Particle physical type
     real(defReal)              :: time = ZERO       ! Particle time position
-    real(defReal),dimension(precursorGroups):: lambda_i = -ONE   ! Precursor decay constants
-    real(defReal),dimension(precursorGroups):: fd_i     = -ONE   ! Precursor group fractions
-    real(defReal),dimension(precursorGroups):: E_out_i  = -ONE   ! Delayed neutron energies
+    real(defReal)              :: lambda            ! Precursor decay constant
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
@@ -111,17 +110,16 @@ module particle_class
     real(defReal)              :: time      ! Particle time point
 
     ! Precursor particle data
-    real(defReal), dimension(precursorGroups) :: lambda_i  ! Precursor decay constants
-    real(defReal), dimension(precursorGroups) :: fd_i      ! Precursor fractions
-    real(defReal), dimension(precursorGroups) :: E_out_i   ! Delayed neutron energies
+    real(defReal)              :: lambda    ! Precursor decay constant
 
     ! Particle flags
     real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
     real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
-    integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
+    integer(shortInt)          :: fate = no_FATE ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
+    logical(defBool)           :: criticalSource = .false.
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -152,10 +150,8 @@ module particle_class
     procedure                  :: getSpeed
 
     ! Inquiry about precursor parameters
-    procedure               :: getPrecWeight
-    procedure               :: getExpPrecWeight
-    procedure               :: getTimedWeight
-    procedure               :: getDelayedEnergy
+    procedure               :: forcedPrecursorDecayWgt
+    procedure               :: getExpectedDelayedWgt
 
     ! Operations on coordinates
     procedure            :: moveGlobal
@@ -198,11 +194,9 @@ contains
   !!   w   -> particle weight
   !! Optional arguments:
   !!   t        -> particle time (default = 0.0)
-  !!   lambda_i -> precursor decay constant (default = -1.0)
-  !!   fd_i     -> precursor fraction (default = -1.0)
   !!   type     -> particle type (default = P_NEUTRON)
   !!
-  pure subroutine buildCE(self, r, dir, E, w, t, type, lambda_i, fd_i, E_out_i)
+  pure subroutine buildCE(self, r, dir, E, w, t, type)
     class(particle), intent(inout)          :: self
     real(defReal),dimension(3),intent(in)   :: r
     real(defReal),dimension(3),intent(in)   :: dir
@@ -210,10 +204,6 @@ contains
     real(defReal),intent(in)                :: w
     real(defReal),optional,intent(in)       :: t
     integer(shortInt),intent(in),optional   :: type
-    real(defReal),dimension(precursorGroups),optional,intent(in) :: lambda_i
-    real(defReal),dimension(precursorGroups),optional,intent(in) :: fd_i
-    real(defReal),dimension(precursorGroups),optional,intent(in) :: E_out_i
-
 
     call self % coords % init(r, dir)
     self % E  = E
@@ -227,24 +217,6 @@ contains
       self % time = t
     else
       self % time = ZERO
-    end if
-
-    if(present(lambda_i)) then
-      self % lambda_i = lambda_i
-    else
-      self % lambda_i = -ONE
-    end if
-
-    if(present(fd_i)) then
-      self % fd_i = fd_i
-    else
-      self % fd_i = -ONE
-    end if
-
-    if(present(E_out_i)) then
-      self % E_out_i = E_out_i
-    else
-      self % E_out_i = -ONE
     end if
 
     if(present(type)) then
@@ -264,11 +236,9 @@ contains
   !!   w   -> particle weight
   !! Optional arguments:
   !!   t   -> particle time (default = 0.0)
-  !!   lambda_i -> precursor decay constant (default = -1.0)
-  !!   fd_i     -> precursor fraction (default = -1.0)
   !!   type-> particle type (default = P_NEUTRON)
   !!
-  subroutine buildMG(self, r, dir, G, w, t, type, lambda_i, fd_i)
+  subroutine buildMG(self, r, dir, G, w, t, type)
     class(particle), intent(inout)          :: self
     real(defReal),dimension(3),intent(in)   :: r
     real(defReal),dimension(3),intent(in)   :: dir
@@ -276,8 +246,6 @@ contains
     integer(shortInt),intent(in)            :: G
     real(defReal),intent(in),optional       :: t
     integer(shortInt),intent(in),optional   :: type
-    real(defReal),dimension(precursorGroups),optional,intent(in) :: lambda_i
-    real(defReal),dimension(precursorGroups),optional,intent(in) :: fd_i
 
     call self % coords % init(r, dir)
     self % G  = G
@@ -291,18 +259,6 @@ contains
       self % time = t
     else
       self % time = ZERO
-    end if
-
-    if(present(lambda_i)) then
-      self % lambda_i = lambda_i
-    else
-      self % lambda_i = -ONE
-    end if
-
-    if(present(fd_i)) then
-      self % fd_i = fd_i
-    else
-      self % fd_i = -ONE
     end if
 
     if(present(type)) then
@@ -327,12 +283,12 @@ contains
     LHS % coords % lvl(1) % dir = RHS % dir
     LHS % E                     = RHS % E
     LHS % G                     = RHS % G
+    LHS % isDead                = RHS % isDead
     LHS % isMG                  = RHS % isMG
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
-    LHS % lambda_i              = RHS % lambda_i
-    LHS % fd_i                  = RHS % fd_i
-    LHS % E_out_i               = RHS % E_out_i
+    LHS % lambda                = RHS % lambda
+    LHS % fate                  = RHS % fate    
 
   end subroutine particle_fromParticleState
 
@@ -528,56 +484,16 @@ contains
   !! Errors:
   !!
   !!
-  function getPrecWeight(self, t, delta_T) result(w_d)
+  function forcedPrecursorDecayWgt(self, t, delta_T) result(w_d)
     class(particle), intent(in) :: self
     real(defReal), intent(in)   :: t
     real(defReal), intent(in)   :: delta_T
     integer(shortInt)           :: i
     real(defReal)               :: w_d
 
-    w_d = ZERO
-    if (self % type == P_PRECURSOR) then
-        ! Loop over precursor groups
-        do i=1, precursorGroups
-            w_d = w_d + self % fd_i(i) * self % lambda_i(i) *&
-                    exp(-self % lambda_i(i) * (t - self % time))
-        end do
-    end if
-    w_d = w_d * self % w * delta_T
-  end function getPrecWeight
+    w_d = self % w * delta_T * self % lambda * exp(-self % lambda * (t - self % time))
 
-  !!
-  !! Return expected neutron weight for decay in next time step
-  !!
-  !! Args:
-  !!   t1     -> start time of next time step
-  !!   step_T -> length of next time step
-  !!
-  !! Result:
-  !!   Expected neutron weight for decay in next time step
-  !!   Returns ZERO if particle is not a precursor
-  !!
-  !! Errors:
-  !!
-  !!
-  function getExpPrecWeight(self, t1, step_T) result(w_d_av)
-    class(particle), intent(in) :: self
-    real(defReal), intent(in)   :: t1, step_T
-    integer(shortInt)           :: i
-    real(defReal)               :: w_d_av
-
-    w_d_av = ZERO
-    if (self % type == P_PRECURSOR) then
-        ! Loop over precursor groups
-        do i=1, precursorGroups
-            w_d_av = w_d_av + self % fd_i(i) * &
-                    (exp(-self % lambda_i(i) * (t1 - self % time)) - &
-                    exp(-self % lambda_i(i) * (t1 + step_T - self % time)))
-        end do
-    end if
-    w_d_av = w_d_av * self % w
-
-  end function getExpPrecWeight
+  end function forcedPrecursorDecayWgt
 
   !!
   !! Return current timed weight of particle
@@ -591,88 +507,18 @@ contains
   !!
   !! Errors:
   !!
-  !!
-  function getTimedWeight(self, t) result(w_Timed)
-    class(particle), intent(in) :: self
-    real(defReal), intent(in)   :: t
-    integer(shortInt)           :: i
-    real(defReal)               :: w_Timed
+  function getExpectedDelayedWgt(self, t_idx, timeIncrement) result(expectedDelayedWgt)
+    class(particle), intent(in)   :: self
+    integer(shortInt), intent(in) :: t_idx
+    real(defReal), intent(in)     :: timeIncrement
+    integer(shortInt)             :: i
+    real(defReal)                 :: t1, expectedDelayedWgt
 
-    w_Timed = ZERO
-    if (self % type == P_PRECURSOR) then
-        ! Loop over precursor groups
-        do i=1, precursorGroups
-            w_Timed = w_Timed + self % fd_i(i) * exp(-self % lambda_i(i) * (t - self % time))
-        end do
-        !print *, 'lambda_i:       ', numToChar(self % lambda_i)
-        !print *
-    end if
-    ! Multiply by original weight
-    w_Timed = w_Timed * self % w
-    !print *, 'Self time:      ', numToChar(self % time)
-    !print *, 'Regular weight: ', numToChar(self % w)
-    !print *, 'Current time:   ', numToChar(t)
-    !print *, 'Timed weight:   ', numToChar(w_Timed)
-  end function getTimedWeight
+    t1 = t_idx * timeIncrement
+    expectedDelayedWgt = self % w * exp(self % lambda * self % time) &
+                                  * (exp(-self % lambda * t1) - exp(-self % lambda * (t1 + timeIncrement)))
 
-
-  !!
-  !! Sample and return precursor energy at t
-  !!
-  !! Args:
-  !!   t      -> current time [s]
-  !!
-  !! Result:
-  !!   Samples from array of energies (see sampleDelayed in fissionCE)
-  !!   Should automatically select the only energy if particle represents
-  !!   only 1 precursor group
-  !!
-  !! Errors:
-  !!
-  !!
-  function getDelayedEnergy(self, t) result(E_out)
-    class(particle), intent(in)               :: self
-    real(defReal), intent(in)                 :: t
-    real(defReal)                             :: r1, w_Prob
-    real(defReal), dimension(precursorGroups) :: probArray
-    integer(shortInt)                         :: i
-    real(defReal)                             :: E_out
-
-    if (self % type == P_PRECURSOR) then
-        r1 = self % pRNG % get()
-
-        w_Prob = ZERO
-
-        ! Create w_Prob by summing over all groups
-        !print *, "E_out_i"
-        do i=1, precursorGroups
-            !print *, numToChar(self % E_out_i(i))
-            w_Prob = w_Prob + self % fd_i(i) * self % lambda_i(i) *&
-                                    exp(-self % lambda_i(i) * (t - self % time))
-        end do
-
-        ! Create array of probabilities of selecting each group
-        do i=1, precursorGroups
-            probArray(i) = self % fd_i(i) * self % lambda_i(i) *&
-                                    exp(-self % lambda_i(i) * (t - self % time)) / w_Prob
-        end do
-
-        ! Select a precursor energy
-        do i=1, precursorGroups
-            r1 = r1 - probArray(i)
-            if(r1 < ZERO) then
-                E_out = self % E_out_i(i)
-                return
-            end if
-        end do
-
-        ! Sampling fails
-        print *, 'Precursor energy sampling failed in particle object'
-        E_out = self % E_out_i(precursorGroups)
-    else
-        E_out = ZERO
-    end if
-  end function getDelayedEnergy
+  end function getExpectedDelayedWgt
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
@@ -851,14 +697,16 @@ contains
     class(particleState), intent(out)  :: LHS
     class(particle), intent(in)        :: RHS
 
-    LHS % wgt  = RHS % w
-    LHS % r    = RHS % rGlobal()
-    LHS % dir  = RHS % dirGlobal()
-    LHS % E    = RHS % E
-    LHS % G    = RHS % G
-    LHS % isMG = RHS % isMG
-    LHS % type = RHS % type
-    LHS % time = RHS % time
+    LHS % wgt    = RHS % w
+    LHS % r      = RHS % rGlobal()
+    LHS % dir    = RHS % dirGlobal()
+    LHS % E      = RHS % E
+    LHS % G      = RHS % G
+    LHS % isDead = RHS % isDead
+    LHS % isMG   = RHS % isMG
+    LHS % type   = RHS % type
+    LHS % time   = RHS % time
+    LHS % fate   = RHS % fate
 
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx
@@ -881,11 +729,13 @@ contains
     isEqual = isEqual .and. all(LHS % r   == RHS % r)
     isEqual = isEqual .and. all(LHS % dir == RHS % dir)
     isEqual = isEqual .and. LHS % time == RHS % time
+    isEqual = isEqual .and. LHS % isDead .eqv. RHS % isDead
     isEqual = isEqual .and. LHS % isMG .eqv. RHS % isMG
     isEqual = isEqual .and. LHS % type == RHS % type
     isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
+    isEqual = isEqual .and. LHS % fate == RHS % fate
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -948,8 +798,6 @@ contains
     self % G    = 0
     self % isMG = .false.
     self % type = P_NEUTRON
-    self % lambda_i = -ONE
-    self % fd_i     = -ONE
     self % time = ZERO
     self % matIdx   = -1
     self % cellIdx  = -1

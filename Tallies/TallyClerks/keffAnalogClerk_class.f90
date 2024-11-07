@@ -199,8 +199,7 @@ contains
 
     ! Get result value
     call mem % getResult(k, STD, self % getMemAddress())
-    !print *, STD, ','
-    write(12, '(F24.16, ",")') STD
+!    write(12, '(F24.16, ",")') STD
 
     ! Print to output file
     call outFile % startBlock(self % getName() )
@@ -212,20 +211,19 @@ contains
       val = mem % bootstrapMean(1)
       std = SQRT(mem % bootstrapVar(1))
       call outFile % printResult(val, std, name)
-      write(11, '(F24.16, ",")') std
-      write(15, '(F24.16, ",")') val
-      !print *, std
+!      write(11, '(F24.16, ",")') std
+!      write(15, '(F24.16, ",")') val
 
     else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
       name ='BootstrapSTDBiased'
       std = SQRT(mem % bootstrapMean(1))
       call outFile % printResult(std, std, name)
-      write(11, '(F24.16, ",")') std
+!      write(11, '(F24.16, ",")') std
 
       name ='BootstrapSTDBiasAdjusted'
       std = SQRT(mem % bootstrapVar(1))
       call outFile % printResult(std, std, name)
-      write(11, '(F24.16, ",")') std
+!      write(11, '(F24.16, ",")') std
 
     end if
   

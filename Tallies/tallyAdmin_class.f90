@@ -143,6 +143,9 @@ module tallyAdmin_class
     ! Display procedures
     procedure :: display
 
+    ! Number of batches per time step for kinetic
+    procedure :: setNumBatchesPerTimeStep
+
     ! Convergance check
     procedure :: isConverged
 
@@ -171,7 +174,7 @@ contains
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
     integer(shortInt)                           :: i, j, cyclesPerBatch
-    integer(shortInt)                           :: cycles, nBootstraps
+    integer(shortInt)                           :: timeSteps, CyclesPerTime, nBootstraps
     logical(defBool)                            :: useBootstrap, useMean, useVarianceBiased, useVarianceUnbiased
     integer(longInt)                            :: memSize, memLoc
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
@@ -221,25 +224,28 @@ contains
 
     ! NB TODO
     call dict % getOrDefault(useBootstrap,'useBootstrap', .false.)
+    print *, '---', useBootstrap, names
+    call dict % getOrDefault(timeSteps,'timeSteps',1)
+    call dict % getOrDefault(CyclesPerTime, 'cycles',1)
 
     if (useBootstrap .eqv. .true.) then
 
       !Init all params needed here
-      call dict % get(nBootstraps, 'nBootstraps')
+      call dict % getOrDefault(nBootstraps, 'nBootstraps', 1)
       call dict % getOrDefault(useMean,'useMean', .false.) !1
       call dict % getOrDefault(useVarianceUnbiased,'useVarianceUnbiased', .false.) !2
       call dict % getOrDefault(useVarianceBiased,'useVarianceBiased', .false.) !3
 
       !transfer to memory
       if (useMean .eqv. .true.) then
-        call dict % get(cycles, 'cycles')
-        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 1)
+        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
+        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 1)
       else if (useVarianceUnbiased .eqv. .true.) then
-        call dict % get(cycles, 'cycles')
-        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 2)
+        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
+        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 2)
       else if (useVarianceBiased .eqv. .true.) then
-        call dict % get(cycles, 'cycles')
-        call self % mem % init(memSize, 1, cycles = cycles, nBootstraps = nBootstraps, bootstrapV = 3)
+        call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, &
+        timeSteps = timeSteps,CyclesPerTime = CyclesPerTime, nBootstraps = nBootstraps, bootstrapV = 3)
       else
         call fatalError(Here, 'need bootstrap version')
       end if
@@ -247,8 +253,9 @@ contains
       !-> perform bootstrap after each time interval so dont need to store
       ! that much. Based on initialised vals, i.e., bootstrap mean, biasedvar,
       !unbiased var etc.
+    
     else
-      call self % mem % init(memSize, 1)
+      call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, timeSteps = timeSteps, CyclesPerTime = CyclesPerTime)
     end if
 
     ! Assign memory locations to the clerks
@@ -440,6 +447,23 @@ contains
     isIt = .false.
 
   end function isConverged
+
+  !!
+  !! Set number of batches used per time step in ScoreMemory
+  !!
+  !! Args:
+  !!   batchN
+  !!
+  !! Errors:
+  !!   None
+  !!
+  subroutine setNumBatchesPerTimeStep(self, batchN) 
+    class(tallyAdmin), intent(inout) :: self
+    integer(shortInt), intent(in) :: batchN
+
+    call self % mem % setNumBatchesPerTimeStep(batchN)
+
+  end subroutine setNumBatchesPerTimeStep
 
   !!
   !! Add all results to outputfile

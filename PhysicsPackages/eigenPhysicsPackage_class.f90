@@ -26,7 +26,7 @@ module eigenPhysicsPackage_class
                                              gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
                                              gr_kill => kill
 
-  use geometryFactory_func,           only : new_geometry
+  use geometryFactory_func,           only : new_geometry, killGeom
 
   ! Fields
   use field_inter,                    only : field

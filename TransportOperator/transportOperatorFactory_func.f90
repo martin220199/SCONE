@@ -12,7 +12,7 @@ module transportOperatorFactory_func
   use transportOperatorST_class,        only : transportOperatorST
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
-  !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
+  use transportOperatorKineticDT_class, only : transportOperatorKineticDT
 
   implicit none
   private
@@ -54,6 +54,9 @@ contains
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
+
+      case('transportOperatorKineticDT')
+        allocate( transportOperatorKineticDT :: new)
 
       case default
         print *, AVALIBLE_transportOps
