@@ -75,7 +75,7 @@ program scone
   file_unit_6 = 15
   open(unit=file_unit_6, file=filename_6, status='replace')
 
-  do k = 1, 1000
+  do k = 1, 500
 
     print *, '------- k', k
 

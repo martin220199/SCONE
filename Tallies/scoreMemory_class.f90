@@ -524,9 +524,11 @@ contains
     bootstrapMean = ZERO
     bootstrapVar = ZERO
 
+    !$omp parallel do 
     do i=1, size(self % plugInSamples(1,:))
       write(10, '(F24.16, ",")') self % plugInSamples(1,i)
     end do
+    !$omp end parallel do 
 
     !$omp parallel do private(mean, var, bootstrapAccumulator, plugInMean, bootstrapMean, bootstrapVar)
     do i = 1, self % Ntallies
@@ -610,6 +612,12 @@ contains
     bootstrapAccumulator_sq = ZERO
     bootstrapMean = ZERO
 
+    !$omp parallel do 
+    do i=1, size(self % plugInSamples(1,:))
+      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+    end do
+    !$omp end parallel do 
+
     !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies
 
@@ -687,6 +695,12 @@ contains
     bootstrapAccumulator = ZERO
     bootstrapAccumulator_sq = ZERO
     bootstrapMean = ZERO
+
+    !$omp parallel do 
+    do i=1, size(self % plugInSamples(1,:))
+      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+    end do
+    !$omp end parallel do 
 
     !$omp parallel do private(mean, mean_biasAdj, bootstrapAccumulator, bootstrapAccumulator_sq, plugInVar, bootstrapMean)
     do i = 1, self % Ntallies

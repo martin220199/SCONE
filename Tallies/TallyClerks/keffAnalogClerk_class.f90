@@ -220,10 +220,12 @@ contains
       name ='BootstrapSTDBiased'
       std = SQRT(mem % bootstrapMean(1))
       call outFile % printResult(std, std, name)
+      write(11, '(F24.16, ",")') std
 
       name ='BootstrapSTDBiasAdjusted'
       std = SQRT(mem % bootstrapVar(1))
       call outFile % printResult(std, std, name)
+      write(11, '(F24.16, ",")') std
 
     end if
   
