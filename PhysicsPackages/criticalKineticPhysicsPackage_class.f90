@@ -23,7 +23,9 @@ module criticalKineticPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
-                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
+                                             gr_kill => kill  
+
   use geometryFactory_func,           only : new_geometry, killGeom
 
   ! Fields
@@ -136,6 +138,7 @@ module criticalKineticPhysicsPackage_class
     real (defReal)    :: time_transport = 0.0
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
+    real (defReal)    :: bootstrapTime = ZERO
 
   contains
     procedure :: init
@@ -699,15 +702,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      call self % currentTime(i) % init(100*self % bufferSize)
+      call self % nextTime(i) % init(100*self % bufferSize)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(3*self % bufferSize)
+        call self % precursorDungeons(i) % init(100*self % bufferSize)
       end do
     end if
 
@@ -917,6 +920,7 @@ contains
     real(defReal), intent(in)                           :: timeIncrement
     character(nameLen)                                  :: geomName
     integer(shortInt), dimension(:), allocatable        :: kineticGeomLocs
+    real(defReal)                                       :: time1, time2
     integer(shortInt)                                   :: kineticGeomIdx
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
     !$omp threadprivate(p, p_d, buffer, collOpKinetic, transOpKinetic, pRNG, decay_T)
@@ -1235,8 +1239,23 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
 
+
+      !report time end
+      !time bootstrapping
+      call timerStop(self % timerMain)
+      time1 = TimerTime(self % timerMain)
+      call tally % reportTimeEnd(pRNG)
+      call timerStop(self % timerMain)
+      time2 = TimerTime(self % timerMain)
+      self % bootstrapTime = self % bootstrapTime + time2 - time1
+
+      !Load elapsed time
+      self % time_transport = self % time_transport + elapsed_T
+
+
       call tally % setNumBatchesPerTimeStep(N_cycles)
     end do
+
 
   end subroutine cyclesKinetic
 
@@ -1270,7 +1289,12 @@ contains
     call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
 
     name = 'Transport_time'
+    call out % printValue(timerTime(self % timerMain) - self % bootstrapTime,name)
+    write(14, '(F24.16, ",")') timerTime(self % timerMain) - self % bootstrapTime
+
+    name = 'Transport_time_bootstrap'
     call out % printValue(timerTime(self % timerMain),name)
+    write(13, '(F24.16, ",")') timerTime(self % timerMain)
 
     ! Print tally
     call self % tally % print(out)
@@ -1285,7 +1309,9 @@ contains
   subroutine kill(self)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
 
-    ! TODO: This subroutine
+    call ndreg_kill()
+    call gr_kill()
+
 
   end subroutine kill
 

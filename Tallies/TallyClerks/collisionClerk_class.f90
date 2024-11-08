@@ -255,9 +255,11 @@ contains
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
-    integer(shortInt)                          :: i
+    integer(shortInt)                          :: i, Nsamples, numBatchesPerTimeBin
     integer(shortInt),dimension(:),allocatable :: resArrayShape
     character(nameLen)                         :: name
+    real(defReal)                              :: FoM
+    logical(defBool)                           :: bootstrapScore
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -278,14 +280,47 @@ contains
     ! Start array
     name ='Res'
     call outFile % startArray(name, resArrayShape)
-
+    !TODO: only do either or
+    !if (mem % bootstrapV == 0) then 
     ! Print results to the file
     do i=1,product(resArrayShape)
       call mem % getResult(val, std, self % getMemAddress() - 1 + i)
       call outFile % addResult(val, std)
     end do
-
     call outFile % endArray()
+
+    if (mem % bootstrapV == 1) then
+      name ='BootstrapRes'
+      call outFile % startArray(name, resArrayShape)
+      ! Print results to the file
+      do i=1,product(resArrayShape)
+        val = mem % bootstrapMean(i)
+        std = SQRT(mem % bootstrapVar(i))
+        call outFile % addResult(val, std)
+      end do
+      call outFile % endArray()
+
+    else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
+      name ='BootstrapSTDBiased'
+      call outFile % startArray(name, resArrayShape)
+      ! Print results to the file
+      do i=1,product(resArrayShape)
+        std = SQRT(mem % bootstrapMean(i))
+        call outFile % addValue(std)
+      end do
+      call outFile % endArray()
+
+      name ='BootstrapSTDBiasAdjusted'
+      call outFile % startArray(name, resArrayShape)
+      ! Print results to the file
+      do i=1,product(resArrayShape)
+        std = SQRT(mem % bootstrapVar(i))
+        call outFile % addValue(std)
+      end do
+      call outFile % endArray()
+
+    end if
+
 
     call outFile % endBlock()
 
