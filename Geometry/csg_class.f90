@@ -93,6 +93,8 @@ contains
       loud = .true.
     end if
 
+    loud = .false.
+
     ! Print beggining
     if (loud) then
       print *, repeat('<>', MAX_COL/2)

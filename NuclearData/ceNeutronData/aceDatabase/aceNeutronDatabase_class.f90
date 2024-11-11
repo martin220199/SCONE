@@ -464,6 +464,8 @@ contains
       loud = .true.
     end if
 
+    loud = .false.
+
     ! Verify pointer
     if (.not.associated(ptr, self)) then
       call fatalError(Here,"Pointer needs to be associated with the self")

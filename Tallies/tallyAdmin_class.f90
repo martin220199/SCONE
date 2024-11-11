@@ -224,7 +224,6 @@ contains
 
     ! NB TODO
     call dict % getOrDefault(useBootstrap,'useBootstrap', .false.)
-    print *, '---', useBootstrap, names
     call dict % getOrDefault(timeSteps,'timeSteps',1)
     call dict % getOrDefault(CyclesPerTime, 'cycles',1)
 

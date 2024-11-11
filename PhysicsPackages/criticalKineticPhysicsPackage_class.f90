@@ -254,10 +254,10 @@ contains
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+      !print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      !print *, "Constructing visualisation"
       call viz % makeViz()
       call viz % kill()
     endif
@@ -358,41 +358,41 @@ contains
   subroutine run(self)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION /\/\"
+    !print *, repeat("<>",50)
+    !print *, "/\/\ EIGENVALUE CALCULATION /\/\"
 
     call self % generateInitialState()
     call self % cyclesCritical(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % cyclesCritical(self % activeTally, self % activeAtch, self % N_active - 1)
     call self % collectResultsCritical()
 
-    print *
-    print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
-    print *
+    !print *
+    !print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
+    !print *
 
-    print *, repeat("<>",50)
-    print *, "/\/\ INITIALISING TIME DEPENDENT /\/\"
+    !print *, repeat("<>",50)
+    !print *, "/\/\ INITIALISING TIME DEPENDENT /\/\"
     call self % initKinetic()
-    print *
-    print *, "\/\/ END OF TIME DEPENDENT INITIALISATION \/\/"
-    print *
+    !print *
+    !print *, "\/\/ END OF TIME DEPENDENT INITIALISATION \/\/"
+    !print *
 
-    print *, repeat("<>",50)
-    print *, "/\/\ COUPLING TO TIME DEPENDENT /\/\"
+    !print *, repeat("<>",50)
+    !print *, "/\/\ COUPLING TO TIME DEPENDENT /\/\"
     call self % coupleKinetic(self % inactiveTally, self % inactiveAtch, self % N_stepBacks)
-    print *
-    print *, "\/\/ END OF TIME DEPENDENT COUPLING \/\/"
-    print *
+    !print *
+    !print *, "\/\/ END OF TIME DEPENDENT COUPLING \/\/"
+    !print *
 
-    print *, repeat("<>",50)
-    print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
+    !print *, repeat("<>",50)
+    !print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
 
     call self % cyclesKinetic(self % tally, self % N_cycles, self % N_timeBins, self % timeIncrement)
     call self % collectResultsKinetic()
 
-    print *
-    print *, "\/\/ END OF TIME DEPENDENT CALCULATION \/\/"
-    print *
+    !print *
+    !print *, "\/\/ END OF TIME DEPENDENT CALCULATION \/\/"
+    !print *
   end subroutine
 
   !!
@@ -401,14 +401,14 @@ contains
   subroutine printSettingsCritical(self)
     class(criticalKineticPhysicsPackage), intent(in) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
-    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
-    print *, "Active Cycles:      ", numToChar(self % N_active)
-    print *, "Neutron Population: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    !print *, repeat("<>",50)
+    !print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
+    !print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
+    !print *, "Active Cycles:      ", numToChar(self % N_active)
+    !print *, "Neutron Population: ", numToChar(self % pop)
+    !print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
+    !print *
+    !print *, repeat("<>",50)
   end subroutine printSettingsCritical
 
   !!
@@ -425,9 +425,9 @@ contains
     call self % nextCycle % init(10 * self % pop)
 
     ! Generate initial surce
-    print *, "GENERATING INITIAL FISSION SOURCE"
+    !print *, "GENERATING INITIAL FISSION SOURCE"
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
-    print *, "DONE!"
+    !print *, "DONE!"
 
   end subroutine generateInitialState
 
@@ -570,14 +570,14 @@ contains
 
 
       ! Display progress
-      call printFishLineR(i)
-      print *
-      print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      !call printFishLineR(i)
+      !print *
+      !print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
+      !print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
+      !print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+      !print *, 'End time:     ', trim(secToChar(end_T))
+      !print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      !call tally % display()
     end do
 
     ! Load elapsed time
@@ -728,14 +728,14 @@ contains
     TStart = 0.0
     Tstop = self % timeIncrement * self % N_timeBins
     Tincrement = self % timeIncrement
-    print *, repeat("<>",50)
-    print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
-    print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
-    print *, "Source batches:                     ", numToChar(self % N_cycles)
-    print *, "Initial Population per batch:       ", numToChar(self % pop)
-    print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    !print *, repeat("<>",50)
+    !print *, "/\/\ TIME DEPENDENT CALCULATION /\/\"
+    !print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
+    !print *, "Source batches:                     ", numToChar(self % N_cycles)
+    !print *, "Initial Population per batch:       ", numToChar(self % pop)
+    !print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
+    !print *
+    !print *, repeat("<>",50)
   end subroutine printSettingsKinetic
 
   subroutine coupleKinetic(self, tally, tallyAtch, N_stepBacks)
@@ -871,7 +871,7 @@ contains
         self % keff_0 = k_new
       else
         batchTracker = batchTracker + 1
-        print *, 'Generated critical batch: ', batchTracker, '/', self % N_cycles
+        !print *, 'Generated critical batch: ', batchTracker, '/', self % N_cycles
       end if
   
     end do
@@ -1231,13 +1231,13 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      call printFishLineR(t)
-      print *
-      print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      !call printFishLineR(t)
+      !print *
+      !print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
+      !print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+      !print *, 'End time:     ', trim(secToChar(end_T))
+      !print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      !call tally % display()
 
 
       !report time end
@@ -1308,9 +1308,21 @@ contains
   !!
   subroutine kill(self)
     class(criticalKineticPhysicsPackage), intent(inout) :: self
+    integer(shortInt)             :: i
 
     call ndreg_kill()
     call gr_kill()
+
+    call self % inactiveTally % kill()
+    call self % activeTally % kill()
+    call self % tally % kill()
+
+    do i = 1, size(self % currentTime)
+      call self % currentTime(i) % kill()
+      call self % nextTime(i) % kill()
+      call self % tempTime(i) % kill()
+      call self % precursorDungeons(i) % kill()
+    end do
 
 
   end subroutine kill

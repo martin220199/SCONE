@@ -1,12 +1,12 @@
 type criticalKineticPhysicsPackage;
 
-pop      20000;  //20000
+pop      20000; //20000
 timeSteps   10;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.0e-1;
 cycles 2;//30;
-buffer 5000;   //5000
+buffer 6000;
 active   50;
 inactive 100;
 
@@ -42,7 +42,13 @@ tally  {
 
   flux_time { type collisionClerk;
 
-    map { type timeMap; grid lin; min 0.0; max 10.0e-1; N 10;}
+    map { type multiMap; maps (map1 map2 map4);
+
+    map1 {type spaceMap;  axis x;  grid lin; min -21.42; max 21.42; N 34;} // N 34;}
+    map2 {type spaceMap;  axis y;  grid lin; min -21.42; max 21.42; N 34;} // N 34;}
+    map4 { type timeMap; grid lin; min 0.0; max 10.0e-1; N 10;} 
+    }
+    //map { type timeMap; grid lin; min 0.0; max 10.0e-1; N 10;}
     response (flux); flux {type fluxResponse;}
 
     }

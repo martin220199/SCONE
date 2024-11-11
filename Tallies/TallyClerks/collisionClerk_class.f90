@@ -255,7 +255,7 @@ contains
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
-    integer(shortInt)                          :: i, Nsamples, numBatchesPerTimeBin
+    integer(shortInt)                          :: i, Nsamples, numBatchesPerTimeBin, loc
     integer(shortInt),dimension(:),allocatable :: resArrayShape
     character(nameLen)                         :: name
     real(defReal)                              :: FoM
@@ -278,27 +278,29 @@ contains
     end if
 
     ! Start array
-    name ='Res'
-    call outFile % startArray(name, resArrayShape)
-    !TODO: only do either or
-    !if (mem % bootstrapV == 0) then 
-    ! Print results to the file
-    do i=1,product(resArrayShape)
-      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
-      call outFile % addResult(val, std)
+    !name ='Res'
+    !call outFile % startArray(name, resArrayShape)
+    do i=1,10!product(resArrayShape)
+      loc = (i - 1) * 34 * 34 + 1
+      call mem % getResult(val, std, self % getMemAddress() - 1 + loc)
+      write(12, '(F24.6, ",")') std
+      !call outFile % addResult(val, std)
     end do
-    call outFile % endArray()
+    !call outFile % endArray()
 
     if (mem % bootstrapV == 1) then
-      name ='BootstrapRes'
+    !  name ='BootstrapRes'
       call outFile % startArray(name, resArrayShape)
       ! Print results to the file
-      do i=1,product(resArrayShape)
-        val = mem % bootstrapMean(i)
-        std = SQRT(mem % bootstrapVar(i))
-        call outFile % addResult(val, std)
+      do i=1,10!product(resArrayShape)
+        loc = (i - 1) * 34 * 34 + 1
+        val = mem % bootstrapMean(loc)
+        std = SQRT(mem % bootstrapVar(loc))
+        !call outFile % addResult(val, std)
+        write(11, '(F24.6, ",")') std
+        write(15, '(F24.6, ",")') val
       end do
-      call outFile % endArray()
+    !  call outFile % endArray()
 
     else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
       name ='BootstrapSTDBiased'
@@ -307,6 +309,7 @@ contains
       do i=1,product(resArrayShape)
         std = SQRT(mem % bootstrapMean(i))
         call outFile % addValue(std)
+        write(11, '(F24.6, ",")') std
       end do
       call outFile % endArray()
 
@@ -316,13 +319,14 @@ contains
       do i=1,product(resArrayShape)
         std = SQRT(mem % bootstrapVar(i))
         call outFile % addValue(std)
+        write(11, '(F24.6, ",")') std
       end do
       call outFile % endArray()
 
     end if
 
 
-    call outFile % endBlock()
+    !call outFile % endBlock()
 
   end subroutine print
 

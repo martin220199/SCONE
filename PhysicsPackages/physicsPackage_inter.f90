@@ -16,6 +16,7 @@ module physicsPackage_inter
   contains
     procedure(init), deferred :: init
     procedure(run),deferred   :: run
+    procedure(run),deferred   :: kill
   end type physicsPackage
 
   abstract interface

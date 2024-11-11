@@ -418,7 +418,7 @@ contains
     class(scoreMemory), intent(inout) :: self
     integer(shortInt), intent(in)     :: batchN
 
-    self % batchN = batchN
+    !self % batchN = batchN
 
   end subroutine setNumBatchesPerTimeStep
 
@@ -447,7 +447,7 @@ contains
     if( present(samples)) then
       N = samples
     else
-      N = self % batchN
+      N = self % cyclesPerTime !self % batchN
     end if
 
     ! Calculate mean
@@ -486,7 +486,7 @@ contains
     if( present(samples)) then
       N = samples
     else
-      N = self % batchN
+      N = self % cyclesPerTime !self % batchN
     end if
 
     ! Calculate mean
@@ -564,12 +564,13 @@ contains
 
     loc = (self % timeN - 1_longInt) * self % Ntallies
 
-
-    !$omp parallel do
-    do i=1, size(self % plugInSamples(1,:))
-      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+    do i = 1, 1 !self % Ntallies
+      !$omp parallel do
+      do j = 1, self % CyclesPerTime
+        write(10, '(F24.6, ",")') self % plugInSamples(i,j)
+      end do 
+      !$omp end parallel do
     end do
-    !$omp end parallel do
 
     !$omp parallel do private(mean, var, bootstrapAccumulator, plugInMean, bootstrapMean, bootstrapVar)
     do i = 1, self % Ntallies
