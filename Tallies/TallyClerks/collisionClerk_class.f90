@@ -281,7 +281,7 @@ contains
     !name ='Res'
     !call outFile % startArray(name, resArrayShape)
     do i=1,10!product(resArrayShape)
-      loc = (i - 1) * 34 * 34 + 1
+      loc = (i - 1) * 100 * 100 + 1 !(i - 1) * 100 * 100 + 1
       call mem % getResult(val, std, self % getMemAddress() - 1 + loc)
       write(12, '(F24.6, ",")') std
       !call outFile % addResult(val, std)
@@ -293,7 +293,7 @@ contains
       call outFile % startArray(name, resArrayShape)
       ! Print results to the file
       do i=1,10!product(resArrayShape)
-        loc = (i - 1) * 34 * 34 + 1
+        loc = (i - 1) * 100 * 100 + 1 !(i - 1) * 100 * 100 + 1
         val = mem % bootstrapMean(loc)
         std = SQRT(mem % bootstrapVar(loc))
         !call outFile % addResult(val, std)
@@ -303,25 +303,37 @@ contains
     !  call outFile % endArray()
 
     else if ((mem % bootstrapV == 2) .or. (mem % bootstrapV == 3)) then
-      name ='BootstrapSTDBiased'
-      call outFile % startArray(name, resArrayShape)
-      ! Print results to the file
-      do i=1,product(resArrayShape)
-        std = SQRT(mem % bootstrapMean(i))
-        call outFile % addValue(std)
-        write(11, '(F24.6, ",")') std
-      end do
-      call outFile % endArray()
+      !name ='BootstrapSTDBiased'
+      !call outFile % startArray(name, resArrayShape)
+      !! Print results to the file
+      !do i=1,10
+      !  std = SQRT(mem % bootstrapMean(i))
+      !  call outFile % addValue(std)
+      !  !write(11, '(F24.6, ",")') std
+      !end do
+      !call outFile % endArray()
+!
+      !name ='BootstrapSTDBiasAdjusted'
+      !call outFile % startArray(name, resArrayShape)
+      !! Print results to the file
+      !do i=1,10
+      !  std = SQRT(mem % bootstrapVar(i))
+      !  call outFile % addValue(std)
+      !  !write(11, '(F24.6, ",")') std
+      !end do
+      !call outFile % endArray()
 
-      name ='BootstrapSTDBiasAdjusted'
-      call outFile % startArray(name, resArrayShape)
-      ! Print results to the file
-      do i=1,product(resArrayShape)
-        std = SQRT(mem % bootstrapVar(i))
-        call outFile % addValue(std)
+
+      do i=1,10
+        loc = (i - 1) * 100 * 100 + 1 
+
+        std = SQRT(mem % bootstrapMean(loc))
+        write(11, '(F24.6, ",")') std
+
+        std = SQRT(mem % bootstrapVar(loc))
         write(11, '(F24.6, ",")') std
       end do
-      call outFile % endArray()
+
 
     end if
 

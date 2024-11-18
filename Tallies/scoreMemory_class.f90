@@ -659,7 +659,8 @@ contains
 
     !$omp parallel do 
     do i=1, size(self % plugInSamples(1,:))
-      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+      !write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+      write(10, '(F24.6, ",")') self % plugInSamples(1,i)
     end do
     !$omp end parallel do 
 
@@ -747,7 +748,8 @@ contains
 
     !$omp parallel do 
     do i=1, size(self % plugInSamples(1,:))
-      write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+      !write(10, '(F24.16, ",")') self % plugInSamples(1,i)
+      write(10, '(F24.6, ",")') self % plugInSamples(1,i)
     end do
     !$omp end parallel do 
 

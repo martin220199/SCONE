@@ -451,6 +451,7 @@ contains
     character(100),parameter :: Here ='cycles (criticalKineticPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOpCritical, transOpCritical, pRNG)
 
+    print *, 'CRITICAL'
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
@@ -924,6 +925,8 @@ contains
     integer(shortInt)                                   :: kineticGeomIdx
     character(100),parameter :: Here ='cycles (timeDependentPhysicsPackage_class.f90)'
     !$omp threadprivate(p, p_d, buffer, collOpKinetic, transOpKinetic, pRNG, decay_T)
+
+    print *, 'KINETIC'
 
     !$omp parallel
     ! Create particle buffer

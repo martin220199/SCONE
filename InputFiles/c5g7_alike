@@ -34,11 +34,11 @@ tally  {
   timeSteps  10;
   cycles 2;
   nBootstraps 1000; //1000
-  useMean 1;
+  //useMean 1;
 
   // useMean
   //useVarianceUnbiased
-  //useVarianceBiased
+  useVarianceBiased 1;
 
   flux_time { type collisionClerk;
 
