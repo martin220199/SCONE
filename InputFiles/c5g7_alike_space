@@ -5,7 +5,7 @@ timeSteps   10;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.0e-1;
-cycles 2;//30;
+cycles 10;//30;
 buffer 5000; //5000
 active   50;
 inactive 100;
@@ -32,12 +32,12 @@ tally  {
 
   useBootstrap 1;
   timeSteps  10;
-  cycles 2;
+  cycles 10;
   nBootstraps 1000; //1000
  // useMean 1;
 
   // useMean
-  //useVarianceUnbiased
+  //useVarianceUnbiased 0;
   useVarianceBiased 1;
 
   flux_time { type collisionClerk;
