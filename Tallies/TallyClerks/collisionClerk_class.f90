@@ -226,7 +226,7 @@ contains
     ! Append all bins
     do i = 1, self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
-      call mem % scoreFET(scoreVal, adrr + i, p % time)
+      call mem % scoreFET(scoreVal, p % time)
       !call mem % score(scoreVal, adrr + i)
     end do
 
@@ -251,13 +251,15 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
-    class(collisionClerk), intent(in)          :: self
-    class(outputFile), intent(inout)           :: outFile
-    type(scoreMemory), intent(in)              :: mem
-    real(defReal)                              :: val, std
-    integer(shortInt)                          :: i
-    integer(shortInt),dimension(:),allocatable :: resArrayShape
-    character(nameLen)                         :: name
+    class(collisionClerk), intent(in)           :: self
+    class(outputFile), intent(inout)            :: outFile
+    type(scoreMemory), intent(in)               :: mem
+    real(defReal), save                         :: val, std
+    integer(longInt)                            :: i
+    integer(shortInt),dimension(:),allocatable  :: resArrayShape
+    real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
+    character(nameLen)                          :: name
+    !$omp threadprivate(val, std)
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -267,24 +269,32 @@ contains
       call self % map % print(outFile)
     end if
 
-    ! Write results.
-    ! Get shape of result array
-    if(allocated(self % map)) then
-      resArrayShape = [size(self % response), self % map % binArrayShape()]
-    else
-      resArrayShape = [size(self % response)]
-    end if
-
+    print *, '--- FIRST'
     ! Start array
-    name ='Res'
-    call outFile % startArray(name, resArrayShape)
-
-    ! Print results to the file
-    do i=1,product(resArrayShape)
-      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
+    name ='FET_coeff'
+    call outFile % startArray(name, [1, mem % maxFetOrder])
+    !$omp parallel do
+    do i = 1, mem % maxFetOrder
+      print *, i
+      call mem % getResult(val, std, i)
+      fet_coeff_arr(i) = val
+      fet_coeff_std_arr(i) = std
       call outFile % addResult(val, std)
     end do
+    !$omp end parallel do
+    call outFile % endArray()
 
+    print *, '--- SECOND'
+    ! Start array
+    name ='Res'
+    call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
+    !$omp parallel do
+    do i = 1, size(mem % FET_evalPoints)
+      print *, i, size(mem % FET_evalPoints)
+      call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
+      call outFile % addResult(val, std)
+    end do
+    !$omp end parallel do
     call outFile % endArray()
 
     call outFile % endBlock()

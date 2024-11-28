@@ -146,6 +146,8 @@ module tallyAdmin_class
     ! Convergance check
     procedure :: isConverged
 
+    procedure :: setNumBatchesPerTimeStep
+
     ! File writing procedures
     procedure :: print
 
@@ -170,6 +172,8 @@ contains
     character(nameLen),dimension(:),allocatable :: names
     integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
+    real(defReal)                               :: minT, maxT
+    real(defReal), dimension(:), allocatable    :: FET_evalPoints
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
     ! Clean itself
@@ -214,10 +218,16 @@ contains
     !Read max FET order
     call dict % get(maxFetOrder,'maxFetOrder')
 
+    !Read min/max times for time domain transform, and evalTimes
+    call dict % get(maxT,'maxT')
+    call dict % getOrDefault(minT,'minT', ZERO)
+    call dict % get(FET_evalPoints, 'evalpoints')
+
     ! Initialise score memory
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch)
+    call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
+                          minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints)
 
     ! Assign memory locations to the clerks
     memLoc = 1
@@ -408,6 +418,23 @@ contains
     isIt = .false.
 
   end function isConverged
+
+  !!
+  !! Set number of batches used per time step in ScoreMemory
+  !!
+  !! Args:
+  !!   batchN
+  !!
+  !! Errors:
+  !!   None
+  !!
+  subroutine setNumBatchesPerTimeStep(self, batchN) 
+    class(tallyAdmin), intent(inout) :: self
+    integer(shortInt), intent(in) :: batchN
+
+    call self % mem % setNumBatchesPerTimeStep(batchN)
+
+  end subroutine setNumBatchesPerTimeStep
 
   !!
   !! Add all results to outputfile

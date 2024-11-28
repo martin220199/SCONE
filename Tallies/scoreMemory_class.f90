@@ -80,7 +80,7 @@ module scoreMemory_class
   type, public :: scoreMemory
       !private
       real(defReal),dimension(:,:),allocatable   :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
-      real(defReal),dimension(:,:,:),allocatable :: parallelBins  !! Space for scoring for different threads
+      real(defReal),dimension(:,:),allocatable   :: parallelBins  !! Space for scoring for different threads
       integer(longInt)                           :: N = 0         !! Size of memory (number of bins)
       integer(shortInt)                          :: nThreads = 0  !! Number of threads used for parallelBins
       integer(shortInt)                          :: id            !! Id of the tally
@@ -88,6 +88,8 @@ module scoreMemory_class
       integer(shortInt)                          :: cycles = 0    !! Cycles counter
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder
+      real(defReal)                              :: minT, maxT
+      real(defReal), dimension(:), allocatable   :: FET_evalPoints             
   contains
     ! Interface procedures
     procedure :: init
@@ -100,7 +102,15 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: setNumBatchesPerTimeStep
     procedure :: scoreFET
+    procedure :: basis
+    procedure :: transDomain
+    procedure :: weighted
+    procedure :: orthonormalisation
+    procedure :: evaluatePolynomial
+    procedure :: legendre_polynomial
+    procedure :: getFETResult
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -120,23 +130,35 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, maxFetOrder, batchSize)
+  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
     integer(shortInt),intent(in)          :: id, maxFetOrder
     integer(shortInt),optional,intent(in) :: batchSize
+    real(defReal), intent(in)             :: minT, maxT
+    real(defReal), dimension(:), optional,intent(in) :: FET_evalPoints
+    integer(shortInt)                     :: i
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % maxFetOrder = maxFetOrder
+    self % minT = minT
+    self % maxT = maxT
+    do i = 1, size(FET_evalPoints)
+      if( FET_evalPoints(i) < self % minT .or. FET_evalPoints(i) > self % maxT) then
+        call fatalError(Here, 'time must be between minT and maxT')
+      end if
+
+    end do
+    self % FET_evalPoints = FET_evalPoints
 
     ! Allocate space and zero all bins
-    allocate( self % bins(N, DIM2))
+    allocate( self % bins(maxFetOrder, DIM2))
     self % bins = ZERO
 
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(N + array_pad, self % nThreads, maxFetOrder))
+    allocate( self % parallelBins(maxFetOrder, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -274,7 +296,7 @@ contains
   subroutine closeCycle(self, normFactor)
     class(scoreMemory), intent(inout) :: self
     real(defReal),intent(in)          :: normFactor
-    integer(longInt)                  :: i
+    integer(shortInt)                 :: k
     real(defReal), save               :: res
     !$omp threadprivate(res)
 
@@ -284,24 +306,24 @@ contains
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       
       !$omp parallel do
-      do i = 1, self % N
+      do k = 1, self % maxFetOrder
         
         ! Normalise scores
-        self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
-        res = sum(self % parallelBins(i,:))
+        !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
+        res = sum(self % parallelBins(k,:))
         
         ! Zero all score bins
-        self % parallelBins(i,:) = ZERO
+        self % parallelBins(k,:) = ZERO
        
         ! Increment cumulative sums 
-        self % bins(i,CSUM)  = self % bins(i,CSUM) + res
-        self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
+        self % bins(k,CSUM)  = self % bins(k, CSUM) + res
+        self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
 
       end do
       !$omp end parallel do
 
       ! Increment batch counter
-      self % batchN = self % batchN + 1
+      !self % batchN = self % batchN + 1
 
     end if
 
@@ -360,46 +382,132 @@ contains
 
   end function getBatchSize
 
-  subroutine scoreFET(self, score, idx, t)
+  !!
+  !! Set number of batches used per time step in ScoreMemory
+  !!
+  !! Args:
+  !!   batchN
+  !!
+  !! Errors:
+  !!   None
+  !!
+  subroutine setNumBatchesPerTimeStep(self, batchN) 
+    class(scoreMemory), intent(inout) :: self
+    integer(shortInt), intent(in)     :: batchN
+
+    self % batchN = batchN
+
+  end subroutine setNumBatchesPerTimeStep
+
+  subroutine scoreFET(self, score, t)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score
-    integer(longInt), intent(in)      :: idx
     real(defReal), intent(in)         :: t
     integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
     character(100),parameter :: Here = 'scoreFET (scoreMemory_class.f90)'
-
-    ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
-      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
-                            & memory with size '//numToChar(self % N))
-    end if
 
     thread_idx = ompGetThreadNum() + 1
 
-    !parallelise?
+    !$omp parallel do
     do k = 1, self % maxFetOrder
-    ! Add the score
-    self % parallelBins(idx, thread_idx, k) = &
-            self % parallelBins(idx, thread_idx, k) + score * self % basis(k,t)
+      ! Add the score
+      self % parallelBins(k, thread_idx) = &
+              self % parallelBins(k, thread_idx) + score * self % basis(k,t)
     end do
+    !$omp end parallel do
 
   end subroutine scoreFET
-
 
   function basis(self, k, t) result(phi)
     class(scoreMemory), intent(in) :: self
     integer(shortInt), intent(in)  :: k
     real(defReal), intent(in)      :: t
-    real(defReal)                  :: phi
+    real(defReal)                  :: phi, t_trans
+
+    phi = ONE
 
     !time transform
-    call self % transDomain(t(intentinout))
+    t_trans = self % transDomain(t)
+
     !weight
-    call self % weighted(phi(intentinout))
+    call self % weighted(k, phi)
+
     !evaluate polynomial
-    call self % evaluatePolynomial(phi(intentinout),t)
+    call self % evaluatePolynomial(k, phi,t_trans)
 
   end function basis
+
+  function transDomain(self, t) result(t_trans)
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t
+    real(defReal)                  :: t_trans
+
+    t_trans = TWO * ((t - self % minT) / (self % maxT - self % minT)) - ONE
+
+  end function transDomain
+
+  subroutine weighted(self, k, phi) 
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal), intent(inout)   :: phi
+
+    phi = ONE
+
+  end subroutine weighted
+
+  function orthonormalisation(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = (TWO * k + ONE) / (TWO)
+
+  end function orthonormalisation
+
+  subroutine evaluatePolynomial(self, k, phi, t_trans)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal), intent(inout)   :: phi
+    real(defReal), intent(in)      :: t_trans
+
+    phi = phi * self % legendre_polynomial(k, t_trans)
+
+  end subroutine evaluatePolynomial
+
+  ! Calculate the Legendre polynomial P_k(x)
+  ! Inputs:
+  !   k - Integer order of the polynomial (non-negative)
+  !   x - Real input value (-1 <= x <= 1)
+  ! Output:
+  !   p_k - Value of the Legendre polynomial P_k(x)
+  function legendre_polynomial(self, k, x) result(p_k)
+      class(scoreMemory), intent(in) :: self
+      integer(shortInt), intent(in)  :: k
+      real(defReal), intent(in)      :: x
+      real(defReal)                  :: p_k, p_prev, p_curr, p_next
+      integer(shortInt)              :: i
+
+      ! Handle base cases
+      if (k == 0) then
+          p_k = 1.0_8
+          return
+      else if (k == 1) then
+          p_k = x
+          return
+      end if
+
+      p_prev = 1.0_8
+      p_curr = x
+
+      do i = 2, k
+          p_next = ((2.0_8 * i - 1.0_8) * x * p_curr - (i - 1.0_8) * p_prev) / i
+          p_prev = p_curr
+          p_curr = p_next
+      end do
+
+      p_k = p_curr
+  end function legendre_polynomial
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -416,7 +524,7 @@ contains
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if( idx < 0_longInt .or. idx > self % maxFetOrder) then
       mean = ZERO
       STD = ZERO
       return
@@ -473,6 +581,40 @@ contains
     mean = self % bins(idx, CSUM) / N
 
   end subroutine getResult_withoutSTD
+
+  !!
+  !! Load mean result provided argument
+  !! Load from bin indicated by idx
+  !! Returns 0 if index is invalid
+  !!
+  subroutine getFETResult(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)         :: self
+    real(defReal), intent(out)             :: mean
+    real(defReal),intent(out)              :: STD
+    real(defReal), intent(in)              :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                          :: t_trans
+    real(defReal), save                    :: factor
+    integer(shortInt)                      :: k
+    character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
+    !$omp threadprivate(factor)
+
+    t_trans = self % transDomain(time)
+    mean = ZERO
+    STD = ZERO
+
+    !$omp parallel do
+    do k = 1, self % maxFetOrder
+      factor = fet_coeff_arr(k) * self % orthonormalisation(k)
+      call self % evaluatePolynomial(k, factor,t_trans)
+      mean = mean + factor
+      STD = STD + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k)
+    end do
+    !$omp end parallel do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult
 
   !!
   !! Obtain value of a score in a bin

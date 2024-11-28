@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000; //1000000
-timeSteps   70;
+pop      100000; //1000000
+timeSteps   1;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-05;
-buffer 1000000;
-
+timeIncrement 1.E-06;
+buffer 100000;
+cycles 5;
 combing 1; //toggle on or off
 //precursors 0; //toggle on or off
 
@@ -24,10 +24,13 @@ source {
 }
 
 tally  {
-  maxFetOrder 10;
+  maxFetOrder 50;
+  maxT 1E-06; //timeSteps*timeIncrement for each piecewise
+  evalpoints (0.5E-07 1.5E-07 2.5E-07 3.5E-07 4.5E-07 5.5E-07 6.5E-07 7.5E-07 8.5E-07 9.5E-07);
+  //minT 0.0;
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    //map { type timeMap; grid lin; min 0.0; max 7E-04; N 70;}
-    //map { type timeMap; grid lin; min 0.0; max 7E-04; N 70;}
+    //map { type timeMap; grid lin; min 0.0; max 7E-05; N 70;}
+    //map { type timeMap; grid lin; min 0.0; max 7E-05; N 70;}
     response (flux); flux {type fluxResponse;}
     handleVirtual 1;
   }

@@ -141,7 +141,7 @@ contains
     type(outputFile)                             :: out
 
     ! Configure memory
-    call mem % init(10_longInt, 1, 1)
+    call mem % init(10_longInt, 1, 1, 1, 0.0_defReal, 1.0_defReal)
     call this % clerk % setMemAddress(1_longInt)
     call out % init('dummyPrinter', fatalErrors = .false.)
 
