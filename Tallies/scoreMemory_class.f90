@@ -133,9 +133,9 @@ contains
   subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
-    integer(shortInt),intent(in)          :: id, maxFetOrder
-    integer(shortInt),optional,intent(in) :: batchSize
-    real(defReal), intent(in)             :: minT, maxT
+    integer(shortInt),intent(in)          :: id
+    integer(shortInt),optional,intent(in) :: maxFetOrder, batchSize
+    real(defReal), optional, intent(in)             :: minT, maxT
     real(defReal), dimension(:), optional,intent(in) :: FET_evalPoints
     integer(shortInt)                     :: i
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
@@ -152,13 +152,13 @@ contains
     self % FET_evalPoints = FET_evalPoints
 
     ! Allocate space and zero all bins
-    allocate( self % bins(maxFetOrder, DIM2))
+    allocate( self % bins(maxFetOrder + 1, DIM2))
     self % bins = ZERO
 
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(maxFetOrder, self % nThreads))
+    allocate( self % parallelBins(maxFetOrder + 1, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -190,6 +190,7 @@ contains
 
    if(allocated(self % bins)) deallocate(self % bins)
    if(allocated(self % parallelBins)) deallocate(self % parallelBins)
+   if(allocated(self % FET_evalPoints)) deallocate(self % FET_evalPoints)
    self % N = 0
    self % nThreads = 0
    self % batchN = 0
@@ -306,7 +307,7 @@ contains
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       
       !$omp parallel do
-      do k = 1, self % maxFetOrder
+      do k = 1, self % maxFetOrder + 1
         
         ! Normalise scores
         !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
@@ -410,10 +411,10 @@ contains
     thread_idx = ompGetThreadNum() + 1
 
     !$omp parallel do
-    do k = 1, self % maxFetOrder
+    do k = 1, self % maxFetOrder + 1
       ! Add the score
       self % parallelBins(k, thread_idx) = &
-              self % parallelBins(k, thread_idx) + score * self % basis(k,t)
+              self % parallelBins(k, thread_idx) + score * self % basis(k - 1, t)
     end do
     !$omp end parallel do
 
@@ -431,10 +432,10 @@ contains
     t_trans = self % transDomain(t)
 
     !weight
-    call self % weighted(k, phi)
+    call self % weighted(t_trans, phi)
 
     !evaluate polynomial
-    call self % evaluatePolynomial(k, phi,t_trans)
+    call self % evaluatePolynomial(k, phi, t_trans)
 
   end function basis
 
@@ -447,9 +448,9 @@ contains
 
   end function transDomain
 
-  subroutine weighted(self, k, phi) 
+  subroutine weighted(self, t_trans, phi) 
     class(scoreMemory), intent(in) :: self
-    integer(shortInt), intent(in)  :: k
+    real(defReal), intent(in)  :: t_trans
     real(defReal), intent(inout)   :: phi
 
     phi = ONE
@@ -524,7 +525,7 @@ contains
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % maxFetOrder) then
+    if( idx - 1 < 0_longInt .or. idx - 1 > self % maxFetOrder) then
       mean = ZERO
       STD = ZERO
       return
@@ -565,7 +566,7 @@ contains
     integer(shortInt)                      :: N
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if( idx - 1 < 0_longInt .or. idx - 1 > self % maxFetOrder) then
       mean = ZERO
       return
     end if
@@ -591,26 +592,39 @@ contains
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
+    !real(defReal), dimension(self % nThreads)             :: mean_p
+    !real(defReal), dimension(self % nThreads)             :: STD_p
     real(defReal), intent(in)              :: time
     real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
     real(defReal)                          :: t_trans
     real(defReal), save                    :: factor
     integer(shortInt)                      :: k
+    integer(shortInt), save                 :: thread_idx
     character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
-    !$omp threadprivate(factor)
+    !!$omp threadprivate(factor, thread_idx)
 
     t_trans = self % transDomain(time)
+    !mean_p = ZERO
+    !STD_p = ZERO
     mean = ZERO
     STD = ZERO
 
-    !$omp parallel do
-    do k = 1, self % maxFetOrder
-      factor = fet_coeff_arr(k) * self % orthonormalisation(k)
-      call self % evaluatePolynomial(k, factor,t_trans)
+    !!$omp parallel do
+    do k = 1, self % maxFetOrder + 1
+      !thread_idx = ompGetThreadNum() + 1
+      factor = fet_coeff_arr(k) * self % orthonormalisation(k - 1)
+      call self % evaluatePolynomial(k - 1, factor, t_trans)
+      !mean_p(thread_idx) = mean_p(thread_idx) + factor
+      !STD_p(thread_idx) = STD_p(thread_idx) + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
+
       mean = mean + factor
-      STD = STD + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k)
+      STD = STD + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
     end do
-    !$omp end parallel do
+    !!$omp end parallel do
+
+
+    !mean = sum(mean_p)
+    !STD = sum(STD_p)
 
     STD = SQRT(STD)
 

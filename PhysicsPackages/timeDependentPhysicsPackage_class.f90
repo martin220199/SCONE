@@ -488,6 +488,8 @@ contains
     ! Print tally
     call self % tally % print(out)
 
+    call self % tally % kill()
+
     call out % writeToFile(self % outputFile)
 
   end subroutine collectResults

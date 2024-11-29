@@ -254,12 +254,11 @@ contains
     class(collisionClerk), intent(in)           :: self
     class(outputFile), intent(inout)            :: outFile
     type(scoreMemory), intent(in)               :: mem
-    real(defReal), save                         :: val, std
+    real(defReal)                               :: val, std
     integer(longInt)                            :: i
     integer(shortInt),dimension(:),allocatable  :: resArrayShape
     real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
     character(nameLen)                          :: name
-    !$omp threadprivate(val, std)
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -269,32 +268,26 @@ contains
       call self % map % print(outFile)
     end if
 
-    print *, '--- FIRST'
     ! Start array
     name ='FET_coeff'
-    call outFile % startArray(name, [1, mem % maxFetOrder])
-    !$omp parallel do
-    do i = 1, mem % maxFetOrder
-      print *, i
+    call outFile % startArray(name, [1, mem % maxFetOrder + 1])
+    do i = 1, mem % maxFetOrder + 1
       call mem % getResult(val, std, i)
       fet_coeff_arr(i) = val
       fet_coeff_std_arr(i) = std
       call outFile % addResult(val, std)
     end do
-    !$omp end parallel do
     call outFile % endArray()
 
-    print *, '--- SECOND'
     ! Start array
     name ='Res'
     call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
-    !$omp parallel do
+
     do i = 1, size(mem % FET_evalPoints)
-      print *, i, size(mem % FET_evalPoints)
       call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
       call outFile % addResult(val, std)
     end do
-    !$omp end parallel do
+
     call outFile % endArray()
 
     call outFile % endBlock()
