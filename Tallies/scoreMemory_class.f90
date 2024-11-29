@@ -589,19 +589,25 @@ contains
   !! Returns 0 if index is invalid
   !!
   subroutine getFETResult(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
-    class(scoreMemory), intent(in)         :: self
-    real(defReal), intent(out)             :: mean
-    real(defReal),intent(out)              :: STD
-    !real(defReal), dimension(self % nThreads)             :: mean_p
-    !real(defReal), dimension(self % nThreads)             :: STD_p
-    real(defReal), intent(in)              :: time
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal),intent(out)                                :: STD
+    !real(defReal), dimension(self % nThreads)               :: mean_p
+    !real(defReal), dimension(self % nThreads)               :: STD_p
+    real(defReal), intent(in)                                :: time
     real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
-    real(defReal)                          :: t_trans
-    real(defReal), save                    :: factor
-    integer(shortInt)                      :: k
-    integer(shortInt), save                 :: thread_idx
+    real(defReal)                                            :: t_trans
+    !real(defReal), save                                     :: factor
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    !integer(shortInt), save                                 :: thread_idx
     character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
     !!$omp threadprivate(factor, thread_idx)
+
+    ! TODO: Have considered parallellising here but negligible compared to transport FET overhead.
+    ! In general, for evaluation vs computation of FET coeff. so keep it as it is now.
+    ! Uncomment when dealing with many evaluation points and high order FET to test if parallelisation
+    ! helps.
 
     t_trans = self % transDomain(time)
     !mean_p = ZERO
@@ -616,12 +622,10 @@ contains
       call self % evaluatePolynomial(k - 1, factor, t_trans)
       !mean_p(thread_idx) = mean_p(thread_idx) + factor
       !STD_p(thread_idx) = STD_p(thread_idx) + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
-
       mean = mean + factor
       STD = STD + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
     end do
     !!$omp end parallel do
-
 
     !mean = sum(mean_p)
     !STD = sum(STD_p)
