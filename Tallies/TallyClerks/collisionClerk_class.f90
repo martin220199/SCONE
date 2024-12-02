@@ -280,6 +280,14 @@ contains
     call outFile % endArray()
 
     ! Start array
+    name ='evalPts'
+    call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
+    do i = 1, size(mem % FET_evalPoints)
+      call outFile % addValue(mem % FET_evalPoints(i))
+    end do
+    call outFile % endArray()
+
+    ! Start array
     name ='Res'
     call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
 

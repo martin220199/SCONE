@@ -4,7 +4,7 @@ pop      100000; //1000000
 timeSteps   1;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-06;
+timeIncrement 1.E-05;
 buffer 100000;
 cycles 5;
 combing 1;
@@ -23,8 +23,8 @@ source {
 }
 
 tally  {
-  maxFetOrder 50;
-  maxT 1E-06;
+  maxFetOrder 50; //50
+  maxT 1E-05;
 
   //T=10, 100, 1000
   evalpoints 10;

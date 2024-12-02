@@ -173,7 +173,7 @@ contains
     integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
     real(defReal)                               :: minT, maxT
-    real(defReal), dimension(:), allocatable    :: FET_evalPoints
+    integer(shortInt)                           :: FET_evalPoints
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
     ! Clean itself

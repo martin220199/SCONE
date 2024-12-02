@@ -171,6 +171,7 @@ contains
     do t = 1, N_timeBins
 
       do i = 1, N_cycles
+        print *, '----- cycle ', i
 
         if (t == 1) then
           call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)

@@ -131,25 +131,27 @@ contains
   !! Optionaly change batchSize from 1 to any +ve number
   !!
   subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints)
-    class(scoreMemory),intent(inout)      :: self
-    integer(longInt),intent(in)           :: N
-    integer(shortInt),intent(in)          :: id
-    integer(shortInt),optional,intent(in) :: maxFetOrder, batchSize
-    real(defReal), optional, intent(in)             :: minT, maxT
-    real(defReal), dimension(:), optional,intent(in) :: FET_evalPoints
-    integer(shortInt)                     :: i
+    class(scoreMemory),intent(inout)       :: self
+    integer(longInt),intent(in)            :: N
+    integer(shortInt),intent(in)           :: id
+    integer(shortInt),optional,intent(in)  :: maxFetOrder, batchSize
+    real(defReal), optional, intent(in)    :: minT, maxT
+    integer(shortInt), optional,intent(in) :: FET_evalPoints
+    integer(shortInt)                      :: i
+    real(defReal)                          :: offset, deltaEval
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % maxFetOrder = maxFetOrder
     self % minT = minT
     self % maxT = maxT
-    do i = 1, size(FET_evalPoints)
-      if( FET_evalPoints(i) < self % minT .or. FET_evalPoints(i) > self % maxT) then
-        call fatalError(Here, 'time must be between minT and maxT')
-      end if
 
+    allocate(self % FET_evalPoints(FET_evalPoints))
+    deltaEval = (maxT - minT) / real(FET_evalPoints)
+    offset = minT + deltaEval / TWO
+    do i = 1, FET_evalPoints
+      self % FET_evalPoints(i) = offset
+      offset = offset + deltaEval
     end do
-    self % FET_evalPoints = FET_evalPoints
 
     ! Allocate space and zero all bins
     allocate( self % bins(maxFetOrder + 1, DIM2))
