@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      100000; //1000000
-timeSteps   1;
+pop      1000000; //100000 low fidelity, 1000000 high fidelity
+timeSteps   1000; //1000 for high fidelity
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-06;
-buffer 100000;
-cycles 5;
+timeIncrement 1.E-09;
+buffer 1000000; //100000 low fidelity, 1000000 high fidelity
+cycles 10; // 5 low fidelity, 10 high fidelity
 combing 1;
 
 outputFormat asciiJSON;
@@ -23,10 +23,12 @@ source {
 }
 
 tally  {
+  //maxFetOrder 50; //50
   //maxT 1E-06;
+  //evalpoints 100;
 
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    map { type timeMap; grid lin; min 0.0; max 1E-06; N 1;}
+    map { type timeMap; grid lin; min 0.0; max 1E-06; N 1000;} //1000 for high-fidelity
     response (flux); flux {type fluxResponse;}
     handleVirtual 1;
   }
