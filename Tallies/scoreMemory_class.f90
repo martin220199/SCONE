@@ -281,7 +281,7 @@ contains
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
-      
+
       !$omp parallel do
       do i = 1, self % N
         

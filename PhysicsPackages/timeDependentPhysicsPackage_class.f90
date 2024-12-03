@@ -448,8 +448,8 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
 
-      call tally % setNumBatchesPerTimeStep(N_cycles)
     end do
+    call tally % setNumBatchesPerTimeStep(N_cycles)
 
   end subroutine cycles
 
