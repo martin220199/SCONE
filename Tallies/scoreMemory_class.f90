@@ -464,7 +464,7 @@ contains
     integer(shortInt), intent(in)  :: k
     real(defReal)                  :: km
 
-    km = (TWO * k + ONE) / (TWO)
+    km = (TWO * k + ONE) / (self % maxT - self % minT)
 
   end function orthonormalisation
 
