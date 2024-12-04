@@ -89,7 +89,7 @@ module scoreMemory_class
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder
       real(defReal)                              :: deltaT, minT
-      real(defReal), dimension(:), allocatable   :: FET_evalPoints             
+      real(defReal), dimension(:), allocatable   :: FET_evalPoints         
   contains
     ! Interface procedures
     procedure :: init
@@ -408,17 +408,50 @@ contains
     real(defReal), intent(in)         :: t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET (scoreMemory_class.f90)'
 
     thread_idx = ompGetThreadNum() + 1
 
-    !$omp parallel do
-    do k = 1, self % maxFetOrder + 1
+
+    !TODO HERE: instead of looping through k and always recaulcating polynomial
+    !can use past version to calculate next, since recursive depends on previous polynomial!
+    ! HUGE time save!!
+
+    !weight, trans here
+    !time transform
+    t_trans = self % transDomain(t)
+    call self % weighted(t_trans, phi)
+
+
+    !!$omp parallel do
+    do k = 0, self % maxFetOrder
+      !k-1
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = t_trans
+        
+      else
+        p_next = ((2.0_defReal * real(k) - 1.0_defReal) * t_trans * p_curr - (real(k) - 1.0_defReal) * p_prev) / real(k)
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
       ! Add the score
-      self % parallelBins(k, thread_idx) = &
-              self % parallelBins(k, thread_idx) + score * self % basis(k - 1, t)
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k!self % basis(k - 1, t)
     end do
-    !$omp end parallel do
+    !!$omp end parallel do
 
   end subroutine scoreFET
 
@@ -478,7 +511,7 @@ contains
 
   end subroutine evaluatePolynomial
 
-function legendre_polynomial(self, k, x) result(p_k)
+  function legendre_polynomial(self, k, x) result(p_k)
       class(scoreMemory), intent(in) :: self
       integer(shortInt), intent(in)  :: k
       real(defReal), intent(in)      :: x
@@ -487,18 +520,18 @@ function legendre_polynomial(self, k, x) result(p_k)
 
       ! Handle base cases
       if (k == 0) then
-          p_k = 1.0_8
+          p_k = 1.0_defReal
           return
       else if (k == 1) then
           p_k = x
           return
       end if
 
-      p_prev = 1.0_8
+      p_prev = 1.0_defReal
       p_curr = x
 
       do i = 2, k
-          p_next = ((2.0_8 * i - 1.0_8) * x * p_curr - (i - 1.0_8) * p_prev) / i
+          p_next = ((2.0_defReal * real(i) - 1.0_defReal) * x * p_curr - (real(i) - 1.0_defReal) * p_prev) / real(i)
           p_prev = p_curr
           p_curr = p_next
       end do
