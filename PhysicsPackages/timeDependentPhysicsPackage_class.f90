@@ -168,23 +168,22 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do t = 1, N_timeBins
+    do i = 1, N_cycles
+      print *, '----- cycle ', i
 
-      do i = 1, N_cycles
-        print *, '----- cycle ', i
+      call tally % reportCycleStart(self % currentTime(i))
+
+      do t = 1, N_timeBins
 
         if (t == 1) then
           call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
         end if
 
-        call tally % reportCycleStart(self % currentTime(i))
         nParticles = self % currentTime(i) % popSize()
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
           nPrecuCount = self % precursorDungeons(i) % popSize() + 1
         end if
-
-
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -418,7 +417,6 @@ contains
         ! Update RNG
         call self % pRNG % stride(self % pop + 1)
 
-        call tally % reportCycleEnd(self % currentTime(i))
         call self % pRNG % stride(nParticles + 1)
         call self % currentTime(i) % cleanPop()
 
@@ -429,28 +427,21 @@ contains
           call self % nextTime(i) % combing(self % pop, pRNG)
         end if
 
+
+        self % tempTime  => self % nextTime
+        self % nextTime  => self % currentTime
+        self % currentTime => self % tempTime
+
+        ! Calculate times
+        call timerStop(self % timerMain)
+        elapsed_T = timerTime(self % timerMain)
+
+        ! Predict time to end
+        end_T = real(N_timeBins,defReal) * elapsed_T / t
+        T_toEnd = max(ZERO, end_T - elapsed_T)
+
       end do
-
-      self % tempTime  => self % nextTime
-      self % nextTime  => self % currentTime
-      self % currentTime => self % tempTime
-
-      ! Calculate times
-      call timerStop(self % timerMain)
-      elapsed_T = timerTime(self % timerMain)
-
-      ! Predict time to end
-      end_T = real(N_timeBins,defReal) * elapsed_T / t
-      T_toEnd = max(ZERO, end_T - elapsed_T)
-
-      ! Display progress
-      call printFishLineR(t)
-      print *
-      print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      call tally % reportCycleEnd(self % currentTime(i))
 
     end do
     call tally % setNumBatchesPerTimeStep(N_cycles)

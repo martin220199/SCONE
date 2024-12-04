@@ -1,18 +1,18 @@
 type timeDependentPhysicsPackage;
 
-pop      100000; //100000 low fidelity, 1000000 high fidelity
-timeSteps   1; //1000 for high fidelity
+pop      100000;
+timeSteps   10;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-06;
-buffer 100000; //100000 low fidelity, 1000000 high fidelity
-cycles 5; // 5 low fidelity, 10 high fidelity
+timeIncrement 1.E-07;
+buffer 100000;
+cycles 5;
 combing 1;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
 
-transportOperator { type transportOperatorDT; //currently will only support this
+transportOperator { type transportOperatorDT;
                   }
 
 source {
@@ -25,10 +25,9 @@ source {
 tally  {
   maxFetOrder 50; //50
   maxT 1E-06;
-  evalpoints 1000;
+  evalpoints 10;
 
-  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    //map { type timeMap; grid lin; min 0.0; max 1E-06; N 10;} //1000 for high-fidelity
+  flux_time { type collisionClerk;
     response (flux); flux {type fluxResponse;}
     handleVirtual 1;
   }

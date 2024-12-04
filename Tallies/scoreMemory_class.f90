@@ -88,7 +88,7 @@ module scoreMemory_class
       integer(shortInt)                          :: cycles = 0    !! Cycles counter
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder
-      real(defReal)                              :: minT, maxT
+      real(defReal)                              :: deltaT, minT
       real(defReal), dimension(:), allocatable   :: FET_evalPoints             
   contains
     ! Interface procedures
@@ -142,8 +142,8 @@ contains
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % maxFetOrder = maxFetOrder
+    self % deltaT = maxT - minT
     self % minT = minT
-    self % maxT = maxT
 
     allocate(self % FET_evalPoints(FET_evalPoints))
     deltaEval = (maxT - minT) / real(FET_evalPoints)
@@ -446,7 +446,7 @@ contains
     real(defReal), intent(in)      :: t
     real(defReal)                  :: t_trans
 
-    t_trans = TWO * ((t - self % minT) / (self % maxT - self % minT)) - ONE
+    t_trans = TWO * ((t - self % minT) / self % deltaT) - ONE
 
   end function transDomain
 
@@ -464,7 +464,7 @@ contains
     integer(shortInt), intent(in)  :: k
     real(defReal)                  :: km
 
-    km = (TWO * k + ONE) / (self % maxT - self % minT)
+    km = (TWO * k + ONE) / self % deltaT
 
   end function orthonormalisation
 
@@ -478,13 +478,7 @@ contains
 
   end subroutine evaluatePolynomial
 
-  ! Calculate the Legendre polynomial P_k(x)
-  ! Inputs:
-  !   k - Integer order of the polynomial (non-negative)
-  !   x - Real input value (-1 <= x <= 1)
-  ! Output:
-  !   p_k - Value of the Legendre polynomial P_k(x)
-  function legendre_polynomial(self, k, x) result(p_k)
+function legendre_polynomial(self, k, x) result(p_k)
       class(scoreMemory), intent(in) :: self
       integer(shortInt), intent(in)  :: k
       real(defReal), intent(in)      :: x
