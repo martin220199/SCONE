@@ -104,12 +104,9 @@ module scoreMemory_class
     procedure :: getBatchSize
     procedure :: setNumBatchesPerTimeStep
     procedure :: scoreFET
-    procedure :: basis
     procedure :: transDomain
     procedure :: weighted
     procedure :: orthonormalisation
-    procedure :: evaluatePolynomial
-    procedure :: legendre_polynomial
     procedure :: getFETResult
 
     ! Private procedures
@@ -362,7 +359,6 @@ contains
 
   end subroutine closeBin
 
-
   !!
   !! Return true if next closeCycle will close a batch
   !!
@@ -414,20 +410,13 @@ contains
 
     thread_idx = ompGetThreadNum() + 1
 
-
-    !TODO HERE: instead of looping through k and always recaulcating polynomial
-    !can use past version to calculate next, since recursive depends on previous polynomial!
-    ! HUGE time save!!
-
-    !weight, trans here
     !time transform
     t_trans = self % transDomain(t)
+
+    !basis weight
     call self % weighted(t_trans, phi)
 
-
-    !!$omp parallel do
     do k = 0, self % maxFetOrder
-      !k-1
 
       ! Handle base cases
       if (k == 0) then
@@ -449,30 +438,10 @@ contains
 
       ! Add the score
       self % parallelBins(k+1, thread_idx) = &
-              self % parallelBins(k+1, thread_idx) + score * phi * p_k!self % basis(k - 1, t)
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
     end do
-    !!$omp end parallel do
 
   end subroutine scoreFET
-
-  function basis(self, k, t) result(phi)
-    class(scoreMemory), intent(in) :: self
-    integer(shortInt), intent(in)  :: k
-    real(defReal), intent(in)      :: t
-    real(defReal)                  :: phi, t_trans
-
-    phi = ONE
-
-    !time transform
-    t_trans = self % transDomain(t)
-
-    !weight
-    call self % weighted(t_trans, phi)
-
-    !evaluate polynomial
-    call self % evaluatePolynomial(k, phi, t_trans)
-
-  end function basis
 
   function transDomain(self, t) result(t_trans)
     class(scoreMemory), intent(in) :: self
@@ -500,44 +469,6 @@ contains
     km = (TWO * k + ONE) / self % deltaT
 
   end function orthonormalisation
-
-  subroutine evaluatePolynomial(self, k, phi, t_trans)
-    class(scoreMemory), intent(in) :: self
-    integer(shortInt), intent(in)  :: k
-    real(defReal), intent(inout)   :: phi
-    real(defReal), intent(in)      :: t_trans
-
-    phi = phi * self % legendre_polynomial(k, t_trans)
-
-  end subroutine evaluatePolynomial
-
-  function legendre_polynomial(self, k, x) result(p_k)
-      class(scoreMemory), intent(in) :: self
-      integer(shortInt), intent(in)  :: k
-      real(defReal), intent(in)      :: x
-      real(defReal)                  :: p_k, p_prev, p_curr, p_next
-      integer(shortInt)              :: i
-
-      ! Handle base cases
-      if (k == 0) then
-          p_k = 1.0_defReal
-          return
-      else if (k == 1) then
-          p_k = x
-          return
-      end if
-
-      p_prev = 1.0_defReal
-      p_curr = x
-
-      do i = 2, k
-          p_next = ((2.0_defReal * real(i) - 1.0_defReal) * x * p_curr - (real(i) - 1.0_defReal) * p_prev) / real(i)
-          p_prev = p_curr
-          p_curr = p_next
-      end do
-
-      p_k = p_curr
-  end function legendre_polynomial
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -621,43 +552,42 @@ contains
     class(scoreMemory), intent(in)                           :: self
     real(defReal), intent(out)                               :: mean
     real(defReal),intent(out)                                :: STD
-    !real(defReal), dimension(self % nThreads)               :: mean_p
-    !real(defReal), dimension(self % nThreads)               :: STD_p
     real(defReal), intent(in)                                :: time
     real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
     real(defReal)                                            :: t_trans
-    !real(defReal), save                                     :: factor
     real(defReal)                                            :: factor
     integer(shortInt)                                        :: k
-    !integer(shortInt), save                                 :: thread_idx
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
-    !!$omp threadprivate(factor, thread_idx)
-
-    ! TODO: Have considered parallellising here but negligible compared to transport FET overhead.
-    ! In general, for evaluation vs computation of FET coeff. so keep it as it is now.
-    ! Uncomment when dealing with many evaluation points and high order FET to test if parallelisation
-    ! helps.
 
     t_trans = self % transDomain(time)
-    !mean_p = ZERO
-    !STD_p = ZERO
     mean = ZERO
     STD = ZERO
 
-    !!$omp parallel do
-    do k = 1, self % maxFetOrder + 1
-      !thread_idx = ompGetThreadNum() + 1
-      factor = fet_coeff_arr(k) * self % orthonormalisation(k - 1)
-      call self % evaluatePolynomial(k - 1, factor, t_trans)
-      !mean_p(thread_idx) = mean_p(thread_idx) + factor
-      !STD_p(thread_idx) = STD_p(thread_idx) + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
-      mean = mean + factor
-      STD = STD + (fet_coeff_std_arr(k)**TWO) * self % orthonormalisation(k - 1)
-    end do
-    !!$omp end parallel do
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisation(k)
 
-    !mean = sum(mean_p)
-    !STD = sum(STD_p)
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = t_trans
+
+      else
+        p_next = ((2.0_defReal * real(k) - 1.0_defReal) * t_trans * p_curr - (real(k) - 1.0_defReal) * p_prev) / real(k)
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisation(k)
+    end do
 
     STD = SQRT(STD)
 
