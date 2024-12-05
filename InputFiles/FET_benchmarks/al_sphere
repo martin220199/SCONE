@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000; //100000 low fidelity, 1000000 high fidelity
-timeSteps   1000; //1000 for high fidelity
+pop      20000; //20000 low fidelity, 2000000 high fidelity
+timeSteps   10;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-09;
-buffer 1000000; //100000 low fidelity, 1000000 high fidelity
-cycles 10; // 5 low fidelity, 10 high fidelity
+timeIncrement 1.E-07;
+buffer 20000; //20000 low fidelity, 2000000 high fidelity
+cycles 5; // 5 low fidelity, 10 high fidelity
 combing 1;
 
 outputFormat asciiJSON;
