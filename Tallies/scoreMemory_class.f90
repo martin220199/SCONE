@@ -107,6 +107,7 @@ module scoreMemory_class
     procedure :: transDomain
     procedure :: weighted
     procedure :: orthonormalisation
+    procedure :: orthonormalisation_standard
     procedure :: getFETResult
 
     ! Private procedures
@@ -470,6 +471,15 @@ contains
 
   end function orthonormalisation
 
+  function orthonormalisation_standard(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = (TWO * k + ONE) / TWO
+
+  end function orthonormalisation_standard
+
   !!
   !! Load mean result and Standard deviation into provided arguments
   !! Load from bin indicated by idx
@@ -586,7 +596,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisation(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisation_standard(k)
     end do
 
     STD = SQRT(STD)
