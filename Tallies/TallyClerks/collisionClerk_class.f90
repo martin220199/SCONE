@@ -227,7 +227,6 @@ contains
     do i = 1, self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
       call mem % scoreFET(scoreVal, p % time)
-      !call mem % score(scoreVal, adrr + i)
     end do
 
   end subroutine reportInColl

@@ -15,7 +15,6 @@ module scoreMemory_class
   !! Size of the 2nd Dimension of bins
   integer(shortInt), parameter :: DIM2 = 2
 
-
   !!
   !! scoreMemory is a class that stores space for scores from tallies.
   !! It is separate from tallyClerks and individual responses to allow:
@@ -89,7 +88,9 @@ module scoreMemory_class
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder
       real(defReal)                              :: deltaT, minT
-      real(defReal), dimension(:), allocatable   :: FET_evalPoints         
+      real(defReal), dimension(:), allocatable   :: FET_evalPoints  
+      procedure(scoreFET_signature), pointer     :: scoreFET => null()
+      procedure(getFETResult_signature), pointer :: getFETResult => null()
   contains
     ! Interface procedures
     procedure :: init
@@ -103,12 +104,6 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: setNumBatchesPerTimeStep
-    procedure :: scoreFET
-    procedure :: transDomain
-    procedure :: weighted
-    procedure :: orthonormalisation
-    procedure :: orthonormalisation_standard
-    procedure :: getFETResult
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -120,6 +115,14 @@ module scoreMemory_class
     procedure, private :: getResult_withSTD
     procedure, private :: getResult_withoutSTD
 
+    ! Private Legendre Procedures
+    procedure, private :: scoreFET_Legendre
+    procedure, private :: transDomain_Legendre
+    procedure, private :: weight_Legendre
+    procedure, private :: orthonormalisationTransformed_Legendre
+    procedure, private :: orthonormalisationStandard_Legendre
+    procedure, private :: getFETResult_Legendre
+
   end type scoreMemory
 
 contains
@@ -128,16 +131,29 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints)
+  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag)
     class(scoreMemory),intent(inout)       :: self
     integer(longInt),intent(in)            :: N
     integer(shortInt),intent(in)           :: id
     integer(shortInt),optional,intent(in)  :: maxFetOrder, batchSize
     real(defReal), optional, intent(in)    :: minT, maxT
     integer(shortInt), optional,intent(in) :: FET_evalPoints
+    integer(shortInt), optional,intent(in) :: basisFlag
     integer(shortInt)                      :: i
     real(defReal)                          :: offset, deltaEval
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
+
+    select case(basisFlag)
+      case(0)
+        self % scoreFET => scoreFET_Legendre
+        self % getFETResult => getFETResult_Legendre
+      case(1)
+        self % scoreFET => scoreFET_Legendre
+        self % getFETResult => getFETResult_Legendre
+      case default
+        call fatalError(Here, 'Need to define the basis function')
+    end select
+
 
     self % maxFetOrder = maxFetOrder
     self % deltaT = maxT - minT
@@ -382,15 +398,6 @@ contains
 
   end function getBatchSize
 
-  !!
-  !! Set number of batches used per time step in ScoreMemory
-  !!
-  !! Args:
-  !!   batchN
-  !!
-  !! Errors:
-  !!   None
-  !!
   subroutine setNumBatchesPerTimeStep(self, batchN) 
     class(scoreMemory), intent(inout) :: self
     integer(shortInt), intent(in)     :: batchN
@@ -399,23 +406,27 @@ contains
 
   end subroutine setNumBatchesPerTimeStep
 
-  subroutine scoreFET(self, score, t)
+  subroutine scoreFET_signature(self, score, t)
     class(scoreMemory), intent(inout) :: self
-    real(defReal), intent(in)         :: score
-    real(defReal), intent(in)         :: t
+    real(defReal), intent(in)         :: score, t
+  end subroutine scoreFET_signature
+
+  subroutine scoreFET_Legendre(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
     real(defReal)                     :: t_trans, phi = ONE
-    real(defReal)                  :: p_k, p_prev, p_curr, p_next
-    character(100),parameter :: Here = 'scoreFET (scoreMemory_class.f90)'
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'scoreFET_Legendre (scoreMemory_class.f90)'
 
     thread_idx = ompGetThreadNum() + 1
 
     !time transform
-    t_trans = self % transDomain(t)
+    t_trans = self % transDomain_Legendre(t)
 
     !basis weight
-    call self % weighted(t_trans, phi)
+    call self % weight_Legendre(t_trans, phi)
 
     do k = 0, self % maxFetOrder
 
@@ -442,43 +453,96 @@ contains
               self % parallelBins(k+1, thread_idx) + score * phi * p_k
     end do
 
-  end subroutine scoreFET
+  end subroutine scoreFET_Legendre
 
-  function transDomain(self, t) result(t_trans)
-    class(scoreMemory), intent(in) :: self
-    real(defReal), intent(in)      :: t
-    real(defReal)                  :: t_trans
+  function transDomain_Legendre(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
 
     t_trans = TWO * ((t - self % minT) / self % deltaT) - ONE
 
-  end function transDomain
+  end function transDomain_Legendre
 
-  subroutine weighted(self, t_trans, phi) 
+  subroutine weight_Legendre(self, t_trans, phi) 
     class(scoreMemory), intent(in) :: self
-    real(defReal), intent(in)  :: t_trans
+    real(defReal), intent(in)      :: t_trans
     real(defReal), intent(inout)   :: phi
 
     phi = ONE
 
-  end subroutine weighted
+  end subroutine weight_Legendre
 
-  function orthonormalisation(self, k) result(km)
+  function orthonormalisationTransformed_Legendre(self, k) result(km)
     class(scoreMemory), intent(in) :: self
     integer(shortInt), intent(in)  :: k
     real(defReal)                  :: km
 
     km = (TWO * k + ONE) / self % deltaT
 
-  end function orthonormalisation
+  end function orthonormalisationTransformed_Legendre
 
-  function orthonormalisation_standard(self, k) result(km)
+  function orthonormalisationStandard_Legendre(self, k) result(km)
     class(scoreMemory), intent(in) :: self
     integer(shortInt), intent(in)  :: k
     real(defReal)                  :: km
 
     km = (TWO * k + ONE) / TWO
 
-  end function orthonormalisation_standard
+  end function orthonormalisationStandard_Legendre
+
+  subroutine getFETResult_signature(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr
+  end subroutine getFETResult_signature
+
+  subroutine getFETResult_Legendre(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Legendre(time)
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Legendre(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = t_trans
+
+      else
+        p_next = ((2.0_defReal * real(k) - 1.0_defReal) * t_trans * p_curr - (real(k) - 1.0_defReal) * p_prev) / real(k)
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Legendre(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Legendre
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -552,56 +616,6 @@ contains
     mean = self % bins(idx, CSUM) / N
 
   end subroutine getResult_withoutSTD
-
-  !!
-  !! Load mean result provided argument
-  !! Load from bin indicated by idx
-  !! Returns 0 if index is invalid
-  !!
-  subroutine getFETResult(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
-    class(scoreMemory), intent(in)                           :: self
-    real(defReal), intent(out)                               :: mean
-    real(defReal),intent(out)                                :: STD
-    real(defReal), intent(in)                                :: time
-    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
-    real(defReal)                                            :: t_trans
-    real(defReal)                                            :: factor
-    integer(shortInt)                                        :: k
-    real(defReal)                  :: p_k, p_prev, p_curr, p_next
-    character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
-
-    t_trans = self % transDomain(time)
-    mean = ZERO
-    STD = ZERO
-
-    do k = 0, self % maxFetOrder
-      factor = fet_coeff_arr(k + 1) * self % orthonormalisation(k)
-
-      ! Handle base cases
-      if (k == 0) then
-        p_k = 1.0_defReal
-        
-      else if (k == 1) then
-        p_k = t_trans
-
-        p_prev = 1.0_defReal
-        p_curr = t_trans
-
-      else
-        p_next = ((2.0_defReal * real(k) - 1.0_defReal) * t_trans * p_curr - (real(k) - 1.0_defReal) * p_prev) / real(k)
-        p_prev = p_curr
-        p_curr = p_next
-        p_k = p_curr
-
-      end if
-
-      mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisation_standard(k)
-    end do
-
-    STD = SQRT(STD)
-
-  end subroutine getFETResult
 
   !!
   !! Obtain value of a score in a bin

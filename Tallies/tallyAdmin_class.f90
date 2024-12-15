@@ -173,7 +173,8 @@ contains
     integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
     real(defReal)                               :: minT, maxT
-    integer(shortInt)                           :: FET_evalPoints
+    integer(shortInt)                           :: FET_evalPoints, basisFlag
+    character(10)                               :: basis
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
     ! Clean itself
@@ -214,6 +215,22 @@ contains
 
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+  
+    !Read Basis Function
+    call dict % get(basis,'basis')
+
+    select case(basis)
+
+      case('Legendre')
+        basisFlag = 0
+
+      case('Chebyshev1')
+        basisFlag = 1
+      
+      case default
+        call fatalError(Here, 'Need to define the basis function')
+
+    end select
 
     !Read max FET order
     call dict % get(maxFetOrder,'maxFetOrder')
@@ -227,7 +244,7 @@ contains
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
     call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
-                          minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints)
+                          minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag)
 
     ! Assign memory locations to the clerks
     memLoc = 1
