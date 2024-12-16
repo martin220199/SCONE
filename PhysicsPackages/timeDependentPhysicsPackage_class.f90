@@ -136,7 +136,7 @@ contains
     class(timeDependentPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)           :: tally
     integer(shortInt), intent(in)                     :: N_timeBins, N_cycles
-    integer(shortInt)                                 :: i, t, n, nParticles, nDelayedParticles, nPrecuCount
+    integer(shortInt)                                 :: i, t, n, nParticles, nParticlesInit, nDelayedParticles, nPrecuCount
     type(particle), save                              :: p, p_d
     type(particleDungeon), save                       :: buffer
     type(collisionOperator), save                     :: collOp
@@ -162,21 +162,21 @@ contains
     !$omp end parallel
 
     ! Number of particles in each batch
-    nParticles = self % pop
+    nParticlesInit = self % pop
 
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
     do i = 1, N_cycles
-      print *, '----- cycle ', i
+      print *, 'cycle ----', i
 
       call tally % reportCycleStart(self % currentTime(i))
 
       do t = 1, N_timeBins
 
         if (t == 1) then
-          call self % fixedSource % generate(self % currentTime(i), nParticles, self % pRNG)
+          call self % fixedSource % generate(self % currentTime(i), nParticlesInit, self % pRNG)
         end if
 
         nParticles = self % currentTime(i) % popSize()

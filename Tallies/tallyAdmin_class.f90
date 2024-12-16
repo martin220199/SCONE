@@ -226,7 +226,13 @@ contains
 
       case('Chebyshev1')
         basisFlag = 1
-      
+
+      case('Chebyshev2')
+        basisFlag = 2
+
+      case('Laguerre')
+        basisFlag = 3
+
       case default
         call fatalError(Here, 'Need to define the basis function')
 

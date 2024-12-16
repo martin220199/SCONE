@@ -123,6 +123,21 @@ module scoreMemory_class
     procedure, private :: orthonormalisationStandard_Legendre
     procedure, private :: getFETResult_Legendre
 
+    ! Private Chebyshev1 Procedures
+    procedure, private :: scoreFET_Chebyshev1
+    procedure, private :: transDomain_Chebyshev1
+    procedure, private :: weight_Chebyshev1
+    procedure, private :: orthonormalisationTransformed_Chebyshev1
+    procedure, private :: orthonormalisationStandard_Chebyshev1
+    procedure, private :: getFETResult_Chebyshev1
+
+    ! Private Chebyshev2 Procedures
+    procedure, private :: scoreFET_Chebyshev2
+    procedure, private :: transDomain_Chebyshev2
+    procedure, private :: weight_Chebyshev2
+    procedure, private :: orthonormalisationTransformed_Chebyshev2
+    procedure, private :: orthonormalisationStandard_Chebyshev2
+    procedure, private :: getFETResult_Chebyshev2
   end type scoreMemory
 
 contains
@@ -148,12 +163,17 @@ contains
         self % scoreFET => scoreFET_Legendre
         self % getFETResult => getFETResult_Legendre
       case(1)
-        self % scoreFET => scoreFET_Legendre
-        self % getFETResult => getFETResult_Legendre
+        self % scoreFET => scoreFET_Chebyshev1
+        self % getFETResult => getFETResult_Chebyshev1
+      case(2)
+        self % scoreFET => scoreFET_Chebyshev2
+        self % getFETResult => getFETResult_Chebyshev2
+      !case(3)
+      !  self % scoreFET => scoreFET_Laguerre
+      !  self % getFETResult => getFETResult_Laguerre
       case default
         call fatalError(Here, 'Need to define the basis function')
     end select
-
 
     self % maxFetOrder = maxFetOrder
     self % deltaT = maxT - minT
@@ -406,6 +426,8 @@ contains
 
   end subroutine setNumBatchesPerTimeStep
 
+  ! FET LEGENDRE FUNCTIONS
+
   subroutine scoreFET_signature(self, score, t)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score, t
@@ -509,7 +531,7 @@ contains
     real(defReal)                                            :: factor
     integer(shortInt)                                        :: k
     real(defReal)                  :: p_k, p_prev, p_curr, p_next
-    character(100),parameter :: Here = 'getFETResult (scoreMemory_class.f90)'
+    character(100),parameter :: Here = 'getFETResult_Legendre (scoreMemory_class.f90)'
 
     t_trans = self % transDomain_Legendre(time)
     mean = ZERO
@@ -543,6 +565,267 @@ contains
     STD = SQRT(STD)
 
   end subroutine getFETResult_Legendre
+
+  ! FET CHEBYSHEV1 FUNCTIONS
+
+  subroutine scoreFET_Chebyshev1(self, score, t)
+    class(scoreMemory),intent(inout) :: self
+    real(defReal), intent(in)        :: score, t
+    integer(shortInt)                :: k
+    integer(shortInt)                :: thread_idx
+    real(defReal)                    :: t_trans, phi = ONE
+    real(defReal)                    :: p_k, p_prev, p_curr, p_next
+    character(100),parameter         :: Here = 'scoreFET_Chebyshev1 (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Chebyshev1(t)
+
+    !basis weight
+    call self % weight_Chebyshev1(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = t_trans
+        
+      else
+        p_next = 2.0_defReal * t_trans * p_curr - p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Chebyshev1
+
+  function transDomain_Chebyshev1(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = TWO * ((t - self % minT) / self % deltaT) - ONE
+
+  end function transDomain_Chebyshev1
+
+  subroutine weight_Chebyshev1(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+
+    phi = ONE / sqrt(ONE - t_trans**TWO)
+
+  end subroutine weight_Chebyshev1
+
+  function orthonormalisationTransformed_Chebyshev1(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    if (k == 0) then
+      km = TWO / (PI * self % deltaT)
+    else
+      km = TWO * TWO / (PI * self % deltaT)
+    end if
+
+  end function orthonormalisationTransformed_Chebyshev1
+
+  function orthonormalisationStandard_Chebyshev1(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    if (k == 0) then
+      km = ONE / PI
+    else
+      km = TWO / PI
+    end if
+
+  end function orthonormalisationStandard_Chebyshev1
+
+  subroutine getFETResult_Chebyshev1(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                                            :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult_Chebyshev1 (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Chebyshev1(time)
+    mean = ZERO
+    STD = ZERO
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Chebyshev1(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = t_trans
+
+      else
+        p_next = 2.0_defReal * t_trans * p_curr - p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Chebyshev1(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Chebyshev1
+
+  ! FET CHEBYSHEV2 FUNCTIONS
+
+  subroutine scoreFET_Chebyshev2(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
+    integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'scoreFET_Chebyshev2 (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Chebyshev2(t)
+
+    !basis weight
+    call self % weight_Chebyshev2(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = TWO * t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = TWO * t_trans
+        
+      else
+        p_next = 2.0_defReal * t_trans * p_curr - p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Chebyshev2
+
+  function transDomain_Chebyshev2(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = TWO * ((t - self % minT) / self % deltaT) - ONE
+
+  end function transDomain_Chebyshev2
+
+  subroutine weight_Chebyshev2(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+
+    phi = sqrt(ONE - t_trans**TWO)
+
+  end subroutine weight_Chebyshev2
+
+  function orthonormalisationTransformed_Chebyshev2(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = TWO * TWO / (PI * self % deltaT)
+
+  end function orthonormalisationTransformed_Chebyshev2
+
+  function orthonormalisationStandard_Chebyshev2(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = TWO / PI
+
+  end function orthonormalisationStandard_Chebyshev2
+
+  subroutine getFETResult_Chebyshev2(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult_Chebyshev1 (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Chebyshev2(time)
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Chebyshev2(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = TWO * t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = TWO * t_trans
+
+      else
+        p_next = 2.0_defReal * t_trans * p_curr - p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Chebyshev2(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Chebyshev2
 
   !!
   !! Load mean result and Standard deviation into provided arguments
