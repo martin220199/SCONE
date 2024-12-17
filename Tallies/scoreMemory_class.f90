@@ -87,7 +87,7 @@ module scoreMemory_class
       integer(shortInt)                          :: cycles = 0    !! Cycles counter
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder
-      real(defReal)                              :: deltaT, minT
+      real(defReal)                              :: deltaT, minT, maxT
       real(defReal), dimension(:), allocatable   :: FET_evalPoints  
       procedure(scoreFET_signature), pointer     :: scoreFET => null()
       procedure(getFETResult_signature), pointer :: getFETResult => null()
@@ -138,6 +138,14 @@ module scoreMemory_class
     procedure, private :: orthonormalisationTransformed_Chebyshev2
     procedure, private :: orthonormalisationStandard_Chebyshev2
     procedure, private :: getFETResult_Chebyshev2
+
+    ! Private Laguerre Procedures
+    procedure, private :: scoreFET_Laguerre
+    procedure, private :: transDomain_Laguerre
+    procedure, private :: weight_Laguerre
+    procedure, private :: orthonormalisationTransformed_Laguerre
+    procedure, private :: orthonormalisationStandard_Laguerre
+    procedure, private :: getFETResult_Laguerre
   end type scoreMemory
 
 contains
@@ -168,9 +176,9 @@ contains
       case(2)
         self % scoreFET => scoreFET_Chebyshev2
         self % getFETResult => getFETResult_Chebyshev2
-      !case(3)
-      !  self % scoreFET => scoreFET_Laguerre
-      !  self % getFETResult => getFETResult_Laguerre
+      case(3)
+        self % scoreFET => scoreFET_Laguerre
+        self % getFETResult => getFETResult_Laguerre
       case default
         call fatalError(Here, 'Need to define the basis function')
     end select
@@ -178,6 +186,7 @@ contains
     self % maxFetOrder = maxFetOrder
     self % deltaT = maxT - minT
     self % minT = minT
+    self % maxT = maxT
 
     allocate(self % FET_evalPoints(FET_evalPoints))
     deltaEval = (maxT - minT) / real(FET_evalPoints)
@@ -826,6 +835,134 @@ contains
     STD = SQRT(STD)
 
   end subroutine getFETResult_Chebyshev2
+
+  ! FET LAGUERRE FUNCTIONS
+
+  subroutine scoreFET_Laguerre(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
+    integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'scoreFET_Laguerre (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Laguerre(t)
+
+    !basis weight
+    call self % weight_Laguerre(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = ONE - t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = ONE - t_trans
+        
+      else
+        p_next = ((TWO * real(k) + ONE - t_trans) * p_curr - real(k) * p_prev) / (real(k) + ONE)
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Laguerre
+
+  function transDomain_Laguerre(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = -log(ONE - t / self % maxT)
+
+  end function transDomain_Laguerre
+
+  subroutine weight_Laguerre(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+
+    phi = ONE / self % maxT
+
+  end subroutine weight_Laguerre
+
+  function orthonormalisationTransformed_Laguerre(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = ONE
+
+  end function orthonormalisationTransformed_Laguerre
+
+  function orthonormalisationStandard_Laguerre(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = ONE
+
+  end function orthonormalisationStandard_Laguerre
+
+  subroutine getFETResult_Laguerre(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult_Laguerre (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Laguerre(time)
+    print *, '....', t_trans, time, ONE-time/self%maxT
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Laguerre(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = ONE - t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = ONE - t_trans
+
+      else
+        p_next = ((TWO * real(k) + ONE - t_trans) * p_curr - real(k) * p_prev) / (real(k) + ONE)
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Laguerre(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Laguerre
 
   !!
   !! Load mean result and Standard deviation into provided arguments
