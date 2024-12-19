@@ -257,6 +257,7 @@ contains
     integer(longInt)                            :: i
     integer(shortInt),dimension(:),allocatable  :: resArrayShape
     real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal), dimension(:), allocatable    :: fet_coeff_arr_b, fet_coeff_std_arr_b 
     character(nameLen)                          :: name
 
     ! Begin block
@@ -278,6 +279,21 @@ contains
     end do
     call outFile % endArray()
 
+    if (mem % basis == 5) then
+      allocate(fet_coeff_arr_b(mem % maxFetOrder))
+      allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
+      ! Start array
+      name ='FET_coeff_b'
+      call outFile % startArray(name, [1, mem % maxFetOrder + 1])
+      do i = 1, mem % maxFetOrder + 1
+        call mem % getResult_Fourier_b(val, std, i)
+        fet_coeff_arr_b(i) = val
+        fet_coeff_std_arr_b(i) = std
+        call outFile % addResult(val, std)
+      end do
+      call outFile % endArray()
+    end if
+
     ! Start array
     name ='evalPts'
     call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
@@ -290,10 +306,18 @@ contains
     name ='Res'
     call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
 
-    do i = 1, size(mem % FET_evalPoints)
-      call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
-      call outFile % addResult(val, std)
-    end do
+    if (mem % basis == 5) then
+      do i = 1, size(mem % FET_evalPoints)
+        call mem % getFETResult_Fourier(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_arr_b, &
+                                        fet_coeff_std_arr, fet_coeff_std_arr_b)
+        call outFile % addResult(val, std)
+      end do
+    else
+      do i = 1, size(mem % FET_evalPoints)
+        call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
+        call outFile % addResult(val, std)
+      end do
+    end if
 
     call outFile % endArray()
 

@@ -78,16 +78,16 @@ module scoreMemory_class
   !!
   type, public :: scoreMemory
       !private
-      real(defReal),dimension(:,:),allocatable   :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
-      real(defReal),dimension(:,:),allocatable   :: parallelBins  !! Space for scoring for different threads
+      real(defReal),dimension(:,:),allocatable   :: bins, bins_b          !! Space for storing cumul data (2nd dim size is always 2!)
+      real(defReal),dimension(:,:),allocatable   :: parallelBins, parallelBins_b  !! Space for scoring for different threads
       integer(longInt)                           :: N = 0         !! Size of memory (number of bins)
       integer(shortInt)                          :: nThreads = 0  !! Number of threads used for parallelBins
       integer(shortInt)                          :: id            !! Id of the tally
       integer(shortInt)                          :: batchN = 0    !! Number of Batches
       integer(shortInt)                          :: cycles = 0    !! Cycles counter
       integer(shortInt)                          :: batchSize = 1 !! Batch interval size (in cycles)
-      integer(shortInt)                          :: maxFetOrder
-      real(defReal)                              :: deltaT, minT, maxT
+      integer(shortInt)                          :: maxFetOrder, basis
+      real(defReal)                              :: deltaT, minT, maxT, a, b
       real(defReal), dimension(:), allocatable   :: FET_evalPoints  
       procedure(scoreFET_signature), pointer     :: scoreFET => null()
       procedure(getFETResult_signature), pointer :: getFETResult => null()
@@ -104,6 +104,10 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: setNumBatchesPerTimeStep
+
+    ! Public procedures required for Fourier FET
+    procedure :: getResult_Fourier_b
+    procedure :: getFETResult_Fourier
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -146,6 +150,32 @@ module scoreMemory_class
     procedure, private :: orthonormalisationTransformed_Laguerre
     procedure, private :: orthonormalisationStandard_Laguerre
     procedure, private :: getFETResult_Laguerre
+
+    ! Private Hermite Procedures
+    procedure, private :: scoreFET_Hermite
+    procedure, private :: transDomain_Hermite
+    procedure, private :: weight_Hermite
+    procedure, private :: orthonormalisationTransformed_Hermite
+    procedure, private :: orthonormalisationStandard_Hermite
+    procedure, private :: getFETResult_Hermite
+
+    ! Private Fourier Procedures
+    procedure, private :: scoreFET_Fourier
+    procedure, private :: transDomain_Fourier
+    procedure, private :: weight_Fourier
+    procedure, private :: orthonormalisationTransformed_Fourier
+    procedure, private :: orthonormalisationStandard_Fourier
+    procedure, private :: orthonormalisationTransformed_b_Fourier
+    procedure, private :: orthonormalisationStandard_b_Fourier
+
+    ! Private Jacobi Procedures
+    procedure, private :: scoreFET_Jacobi
+    procedure, private :: transDomain_Jacobi
+    procedure, private :: weight_Jacobi
+    procedure, private :: orthonormalisationTransformed_Jacobi
+    procedure, private :: orthonormalisationStandard_Jacobi
+    procedure, private :: getFETResult_Jacobi
+
   end type scoreMemory
 
 contains
@@ -154,7 +184,7 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag)
+  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag, a, b)
     class(scoreMemory),intent(inout)       :: self
     integer(longInt),intent(in)            :: N
     integer(shortInt),intent(in)           :: id
@@ -162,10 +192,14 @@ contains
     real(defReal), optional, intent(in)    :: minT, maxT
     integer(shortInt), optional,intent(in) :: FET_evalPoints
     integer(shortInt), optional,intent(in) :: basisFlag
+    real(defReal), optional,intent(in)     :: a, b
     integer(shortInt)                      :: i
     real(defReal)                          :: offset, deltaEval
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
+    self % nThreads = ompGetMaxThreads()
+
+    self % basis = basisFlag
     select case(basisFlag)
       case(0)
         self % scoreFET => scoreFET_Legendre
@@ -179,6 +213,20 @@ contains
       case(3)
         self % scoreFET => scoreFET_Laguerre
         self % getFETResult => getFETResult_Laguerre
+      case(4)
+        self % scoreFET => scoreFET_Hermite
+        self % getFETResult => getFETResult_Hermite
+      case(5)
+        self % scoreFET => scoreFET_Fourier
+        allocate( self % parallelBins_b(maxFetOrder + 1, self % nThreads))
+        self % parallelBins_b = ZERO
+        allocate( self % bins_b(maxFetOrder + 1, DIM2))
+        self % bins_b = ZERO
+      case(6)
+        self % scoreFET => scoreFET_Jacobi
+        self % getFETResult => getFETResult_Jacobi
+        self % a = a
+        self % b = b
       case default
         call fatalError(Here, 'Need to define the basis function')
     end select
@@ -199,8 +247,6 @@ contains
     ! Allocate space and zero all bins
     allocate( self % bins(maxFetOrder + 1, DIM2))
     self % bins = ZERO
-
-    self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
     allocate( self % parallelBins(maxFetOrder + 1, self % nThreads))
@@ -364,6 +410,17 @@ contains
         ! Increment cumulative sums 
         self % bins(k,CSUM)  = self % bins(k, CSUM) + res
         self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
+
+        if (self % basis == 5) then
+          res = sum(self % parallelBins_b(k,:))
+
+          ! Zero all score bins
+          self % parallelBins_b(k,:) = ZERO
+
+          ! Increment cumulative sums 
+          self % bins_b(k,CSUM)  = self % bins_b(k, CSUM) + res
+          self % bins_b(k,CSUM2) = self % bins_b(k, CSUM2) + res * res
+        end if
 
       end do
       !$omp end parallel do
@@ -931,7 +988,7 @@ contains
     character(100),parameter :: Here = 'getFETResult_Laguerre (scoreMemory_class.f90)'
 
     t_trans = self % transDomain_Laguerre(time)
-    print *, '....', t_trans, time, ONE-time/self%maxT
+
     mean = ZERO
     STD = ZERO
 
@@ -963,6 +1020,441 @@ contains
     STD = SQRT(STD)
 
   end subroutine getFETResult_Laguerre
+
+  ! FET HERMITE FUNCTIONS
+
+  subroutine scoreFET_Hermite(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
+    integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'scoreFET_Hermite (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Hermite(t)
+
+    !basis weight
+    call self % weight_Hermite(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = TWO * t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = TWO * t_trans
+        
+      else
+        p_next = TWO * t_trans * p_curr - TWO * real(k) * p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Hermite
+
+  function transDomain_Hermite(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = log(t / (self % maxT - t))
+
+  end function transDomain_Hermite
+
+  subroutine weight_Hermite(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+    real(defReal)                  :: t
+
+    t = exp(t_trans) * self % maxT / (ONE + exp(t_trans))
+    phi = exp(-t_trans**TWO) * self % maxT / (t*(self % maxT - t))
+
+  end subroutine weight_Hermite
+
+  function orthonormalisationTransformed_Hermite(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = one / (SQRT(PI) * (TWO**k) * gamma(real(k) + ONE))
+
+  end function orthonormalisationTransformed_Hermite
+
+  function orthonormalisationStandard_Hermite(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = one / (SQRT(PI) * (TWO**k) * gamma(real(k) + ONE))
+
+  end function orthonormalisationStandard_Hermite
+
+  subroutine getFETResult_Hermite(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult_Hermite (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Hermite(time)
+
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Hermite(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = 1.0_defReal
+        
+      else if (k == 1) then
+        p_k = TWO * t_trans
+
+        p_prev = 1.0_defReal
+        p_curr = TWO * t_trans
+
+      else
+        p_next = TWO * t_trans * p_curr - TWO * real(k) * p_prev
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Hermite(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Hermite
+
+  ! FET FOURIER FUNCTIONS
+
+  subroutine scoreFET_Fourier(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
+    integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'scoreFET_Fourier (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Fourier(t)
+
+    !basis weight
+    call self % weight_Fourier(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      p_k = cos(k * t_trans)
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+
+      p_k = sin(k * t_trans)
+      ! Add the score
+      self % parallelBins_b(k+1, thread_idx) = &
+              self % parallelBins_b(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Fourier
+
+  function transDomain_Fourier(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = TWO_PI*(t / self % maxT) - PI
+
+  end function transDomain_Fourier
+
+  subroutine weight_Fourier(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+    real(defReal)                  :: t
+
+    phi = ONE
+
+  end subroutine weight_Fourier
+
+  function orthonormalisationTransformed_Fourier(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    if (k == 0) then
+      km = ONE / self % maxT
+    else
+      km = TWO / self % maxT
+    end if
+
+  end function orthonormalisationTransformed_Fourier
+
+  function orthonormalisationStandard_Fourier(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    if (k == 0) then
+      km = ONE / TWO_PI
+    else
+      km = ONE / PI
+    end if
+
+  end function orthonormalisationStandard_Fourier
+
+  function orthonormalisationTransformed_b_Fourier(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+    character(100),parameter :: Here = 'orthonormalisationTransformed_b_Fourier (scoreMemory_class.f90)'
+
+    if (k == 0) then
+      call fatalError(Here, 'k0 not defined for sine basis')
+    else
+      km = TWO / self % maxT
+    end if
+
+  end function orthonormalisationTransformed_b_Fourier
+
+  function orthonormalisationStandard_b_Fourier(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+    character(100),parameter :: Here = 'orthonormalisationStandard_b_Fourier (scoreMemory_class.f90)'
+
+    if (k == 0) then
+      call fatalError(Here, 'k0 not defined for sine basis')
+    else
+      km = ONE / PI
+    end if
+
+  end function orthonormalisationStandard_b_Fourier
+
+  subroutine getFETResult_Fourier(self, mean, STD, time, fet_coeff_arr, fet_coeff_arr_b, fet_coeff_std_arr, fet_coeff_std_arr_b)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr_b, fet_coeff_std_arr_b
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    character(100),parameter :: Here = 'getFETResult_Fourier (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Fourier(time)
+
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Fourier(k)
+      p_k = cos(k * t_trans)
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Fourier(k)
+
+      if (k > 0) then
+        factor = fet_coeff_arr_b(k + 1) * self % orthonormalisationTransformed_b_Fourier(k)
+        p_k = sin(k * t_trans)
+        mean = mean + factor * p_k
+        STD = STD + (fet_coeff_std_arr_b(k + 1)**TWO) * self % orthonormalisationStandard_b_Fourier(k)
+      end if
+
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Fourier
+
+  ! FET JACOBI FUNCTIONS
+
+  subroutine scoreFET_Jacobi(self, score, t)
+    class(scoreMemory),intent(inout)  :: self
+    real(defReal), intent(in)         :: score, t
+    integer(shortInt)                 :: k
+    integer(shortInt)                 :: thread_idx
+    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal)                     :: p_k, p_prev, p_curr, p_next
+    real(defReal)                     :: an, bn, cn, dn
+    character(100),parameter :: Here = 'scoreFET_Jacobi (scoreMemory_class.f90)'
+
+    thread_idx = ompGetThreadNum() + 1
+
+    !time transform
+    t_trans = self % transDomain_Jacobi(t) 
+
+    !basis weight
+    call self % weight_Jacobi(t_trans, phi)
+
+    do k = 0, self % maxFetOrder
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = ONE
+        
+      else if (k == 1) then
+        p_k = HALF * (self % a + self % b + TWO)*t_trans + HALF*(self%a-self%b)
+        p_prev = ONE
+        p_curr = HALF * (self % a + self % b + TWO)*t_trans + HALF*(self%a-self%b)
+
+      else
+        an = TWO * real(k) * (real(k) + self % a + self % b) * (TWO*real(k) - TWO + self % a + self % b)
+        bn = (TWO*real(k) - ONE + self % a + self % b) * &
+             ((TWO*real(k) - TWO + self % a + self % b)*(TWO*real(k) + self % a + self % b)*t_trans + self % a**TWO - self % b**TWO)
+        cn = TWO * (real(k) - ONE + self % a) * (real(k) - ONE + self % b) * (TWO * real(k) + self % a + self % b)
+
+        p_next = (bn * p_curr - cn * p_prev) / an
+
+        !p_next = ( (TWO*real(k)-ONE)*((TWO*real(k)-TWO)*TWO*real(k)*t_trans)*p_curr &
+        !          - TWO*(real(k)-ONE)*(real(k)-ONE)*(TWO*real(k))*p_prev  ) / (TWO*real(k)*real(k)*(TWO*real(k)-TWO))
+
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      ! Add the score
+      self % parallelBins(k+1, thread_idx) = &
+              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    end do
+
+  end subroutine scoreFET_Jacobi
+
+  function transDomain_Jacobi(self, t) result(t_trans)
+    class(scoreMemory),intent(in) :: self
+    real(defReal), intent(in)     :: t
+    real(defReal)                 :: t_trans
+
+    t_trans = TWO * ((t - self % minT) / self % deltaT) - ONE
+
+  end function transDomain_Jacobi
+
+  subroutine weight_Jacobi(self, t_trans, phi) 
+    class(scoreMemory), intent(in) :: self
+    real(defReal), intent(in)      :: t_trans
+    real(defReal), intent(inout)   :: phi
+
+    phi = ((ONE-t_trans)**self%a)*((ONE+t_trans)**self%b)
+
+  end subroutine weight_Jacobi
+
+  function orthonormalisationTransformed_Jacobi(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km
+
+    km = self % orthonormalisationStandard_Jacobi(k) * TWO / self % deltaT
+
+  end function orthonormalisationTransformed_Jacobi
+
+  function orthonormalisationStandard_Jacobi(self, k) result(km)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt), intent(in)  :: k
+    real(defReal)                  :: km, num, denom
+    character(100),parameter :: Here = 'orthonormalisationStandard_Jacobi (scoreMemory_class.f90)'
+
+    if ((k == 0) .and. (k + self % a + self % b <= -1)) then
+
+      if ((self % a == -0.5) .and. (self % b == -0.5)) then
+        km = ONE / PI
+        return
+      else
+        call fatalError(Here, 'Undefined Gamma! Choose other a,b for Jacobian')
+      end if
+
+    else
+      num = (TWO**(self % a + self % b + ONE)) * gamma(k + self % a + ONE) * gamma(k + self % b + ONE)
+      denom = (TWO * k + self % a + self % b + ONE) * gamma(k + ONE) * gamma(k + self % a + self % b + ONE)
+    end if
+
+    km = denom / num
+
+  end function orthonormalisationStandard_Jacobi
+
+  subroutine getFETResult_Jacobi(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
+    class(scoreMemory), intent(in)                           :: self
+    real(defReal), intent(out)                               :: mean
+    real(defReal), intent(out)                               :: STD
+    real(defReal), intent(in)                                :: time
+    real(defReal), dimension(self % maxFetOrder), intent(in) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal)                                            :: t_trans
+    real(defReal)                                            :: factor
+    integer(shortInt)                                        :: k
+    real(defReal)                  :: p_k, p_prev, p_curr, p_next
+    real(defReal)                     :: an, bn, cn, dn
+    character(100),parameter :: Here = 'getFETResult_Jacobi (scoreMemory_class.f90)'
+
+    t_trans = self % transDomain_Jacobi(time)
+
+    mean = ZERO
+    STD = ZERO
+
+    do k = 0, self % maxFetOrder
+      factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Jacobi(k)
+
+      ! Handle base cases
+      if (k == 0) then
+        p_k = ONE
+        
+      else if (k == 1) then
+        p_k = HALF * (self % a + self % b + TWO)*t_trans + HALF*(self%a-self%b)
+        p_prev = ONE
+        p_curr = HALF * (self % a + self % b + TWO)*t_trans + HALF*(self%a-self%b)
+
+      else
+        an = TWO * real(k) * (real(k) + self % a + self % b) * (TWO*real(k) - TWO + self % a + self % b)
+        bn = (TWO*real(k) - ONE + self % a + self % b) * &
+             ((TWO*real(k) - TWO + self % a + self % b)*(TWO*real(k) + self % a + self % b)*t_trans + self % a**TWO - self % b**TWO)
+        cn = TWO * (real(k) - ONE + self % a) * (real(k) - ONE + self % b) * (TWO * real(k) + self % a + self % b)
+
+        p_next = (bn * p_curr - cn * p_prev) / an
+
+        !p_next = ( (TWO*real(k)-ONE)*((TWO*real(k)-TWO)*TWO*real(k)*t_trans)*p_curr &
+        !          - TWO*(real(k)-ONE)*(real(k)-ONE)*(TWO*real(k))*p_prev  ) / (TWO*real(k)*real(k)*(TWO*real(k)-TWO))
+
+        p_prev = p_curr
+        p_curr = p_next
+        p_k = p_curr
+
+      end if
+
+      mean = mean + factor * p_k
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Jacobi(k)
+    end do
+
+    STD = SQRT(STD)
+
+  end subroutine getFETResult_Jacobi
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -1006,6 +1498,44 @@ contains
     STD = sqrt(STD)
 
   end subroutine getResult_withSTD
+
+  elemental subroutine getResult_Fourier_b(self, mean, STD, idx, samples)
+    class(scoreMemory), intent(in)         :: self
+    real(defReal), intent(out)             :: mean
+    real(defReal),intent(out)              :: STD
+    integer(longInt), intent(in)           :: idx
+    integer(shortInt), intent(in),optional :: samples
+    integer(shortInt)                      :: N
+    real(defReal)                          :: inv_N, inv_Nm1
+
+    !! Verify index. Return 0 if not present
+    if( idx - 1 < 0_longInt .or. idx - 1 > self % maxFetOrder) then
+      mean = ZERO
+      STD = ZERO
+      return
+    end if
+
+    ! Check if # of samples is provided
+    if( present(samples)) then
+      N = samples
+    else
+      N = self % batchN
+    end if
+
+    ! Calculate mean
+    mean = self % bins_b(idx, CSUM) / N
+
+    ! Calculate STD
+    inv_N   = ONE / N
+    if( N /= 1) then
+      inv_Nm1 = ONE / (N - 1)
+    else
+      inv_Nm1 = ONE
+    end if
+    STD = self % bins_b(idx, CSUM2) *inv_N * inv_Nm1 - mean * mean * inv_Nm1
+    STD = sqrt(STD)
+
+  end subroutine getResult_Fourier_b
 
   !!
   !! Load mean result provided argument
