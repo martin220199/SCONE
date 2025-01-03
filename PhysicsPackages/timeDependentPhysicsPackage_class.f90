@@ -169,7 +169,6 @@ contains
     call timerStart(self % timerMain)
 
     do i = 1, N_cycles
-      print *, 'cycle ----', i
 
       call tally % reportCycleStart(self % currentTime(i))
 

@@ -1,13 +1,13 @@
 type timeDependentPhysicsPackage;
 
-pop      200000; //20000 low fidelity, 2000000 high fidelity
-timeSteps   100;
+pop      100000; //100000 low fidelity, 1000000 high fidelity
+timeSteps   1;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-8;
-buffer 200000; //20000 low fidelity, 2000000 high fidelity
-cycles 5; // 5 low fidelity, 10 high fidelity
-combing 0;
+timeIncrement 1.E-06;
+buffer 100000; //100000 low fidelity, 1000000 high fidelity
+cycles 5; // 5 low fidelity, 50 high fidelity
+combing 1;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -19,22 +19,23 @@ source {
   type pointSource;
   r (0.0 0.0 0.0);
   particle neutron;
-  E 1e-3;
+  E 1.0E-6;
 }
 
+
 tally  {
-    basis Chebyshev1;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
-    a -0.5;
-    b -0.5;
-    maxFetOrder 10; //50
-    maxT 1E-06;
-    evalpoints 1000;
-  
-    flux_time { type collisionClerk;
-      response (flux); flux {type fluxResponse;}
-      handleVirtual 1;
-    }
-    }
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a -0.5;
+  b -0.5;
+  maxFetOrder 5;
+  maxT 1.E-06;
+  evalpoints 1000;
+
+  flux_time { type collisionClerk;
+    response (flux); flux {type fluxResponse;}
+    handleVirtual 1;
+  }
+  }
 
 geometry {
     type geometryStd;
@@ -71,7 +72,8 @@ nuclearData {
     m1 {
       temp 12345;
       composition {
-        13027.03   0.05803;}
-    }
+        1001.03    0.06639;
+        8016.03   0.03347;}
+}
 }
 }
