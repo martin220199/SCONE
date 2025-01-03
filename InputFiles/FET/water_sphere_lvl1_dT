@@ -1,13 +1,13 @@
 type timeDependentPhysicsPackage;
 
 pop      100000; //100000 low fidelity, 1000000 high fidelity
-timeSteps   1;
+timeSteps   1000;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-06;
+timeIncrement 1.E-09; //1.E-06
 buffer 100000; //100000 low fidelity, 1000000 high fidelity
 cycles 5; // 5 low fidelity, 50 high fidelity
-combing 1;
+combing 0;
 
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEstd;}}
@@ -24,10 +24,10 @@ source {
 
 
 tally  {
-  basis Chebyshev1;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a -0.5;
   b -0.5;
-  maxFetOrder 1000;
+  maxFetOrder 0;
   maxT 1.E-06;
   evalpoints 1000;
 
