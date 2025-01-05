@@ -23,10 +23,6 @@ source {
 }
 
 tally  {
-  //maxFetOrder 50; //50
-  //maxT 1E-06;
-  //evalpoints 100;
-
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     map { type timeMap; grid lin; min 0.0; max 1E-06; N 1000;} //1000 for high-fidelity
     response (flux); flux {type fluxResponse;}

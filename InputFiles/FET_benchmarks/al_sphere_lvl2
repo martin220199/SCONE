@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      100000; //100000 low fidelity, 1000000 high fidelity
-timeSteps   1;
+pop      1000000; //100000 low fidelity, 1000000 high fidelity
+timeSteps   10;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-06;
-buffer 100000; //100000 low fidelity, 1000000 high fidelity
-cycles 5; // 5 low fidelity, 50 high fidelity
+buffer 1000000; //100000 low fidelity, 1000000 high fidelity
+cycles 20; // 5 low fidelity, 20 high fidelity
 combing 1;
 
 outputFormat asciiJSON;
@@ -19,13 +19,12 @@ source {
   type pointSource;
   r (0.0 0.0 0.0);
   particle neutron;
-  E 1.0E-6;
+  E 14.1;
 }
 
 tally  {
-
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    map { type timeMap; grid lin; min 0.0; max 1.E-06; N 1000;} //1000 for high-fidelity
+    map { type timeMap; grid lin; min 0.0; max 1.E-05; N 1000;} //1000 for high-fidelity
     response (flux); flux {type fluxResponse;}
     handleVirtual 1;
   }
@@ -33,7 +32,7 @@ tally  {
 
 geometry {
     type geometryStd;
-    boundary (1 1 1 1 1 1);
+    boundary (0 0 0 0 0 0);
     graph {type shrunk;}
 
     surfaces
@@ -66,8 +65,7 @@ nuclearData {
     m1 {
       temp 12345;
       composition {
-        1001.03    0.06639;
-        8016.03   0.03347;}
+        13027.03   0.05803;}
 }
 }
 }
