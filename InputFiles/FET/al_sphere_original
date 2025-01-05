@@ -23,7 +23,7 @@ source {
 }
 
 tally  {
-  maxFetOrder 1000; //50
+  maxFetOrder 1; //50
   maxT 1E-06;
   evalpoints 1000;
 
