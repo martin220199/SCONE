@@ -37,7 +37,7 @@ geometry {
 
     surfaces
     {
-      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (50.0 50.0 50.0); }
+      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
     }
 
     cells
