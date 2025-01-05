@@ -4,7 +4,7 @@ pop      100000; //100000 low fidelity, 1000000 high fidelity
 timeSteps   10;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.E-06;
+timeIncrement 1.E-07;
 buffer 100000; //100000 low fidelity, 1000000 high fidelity
 cycles 5; // 5 low fidelity, 20 high fidelity
 combing 1;
@@ -27,7 +27,7 @@ tally  {
   a -0.5;
   b -0.5;
   maxFetOrder 1000;
-  maxT 1.E-05;
+  maxT 1.E-06;
   evalpoints 1000;
 
   flux_time { type collisionClerk;
@@ -43,7 +43,7 @@ geometry {
 
     surfaces
     {
-      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (50.0 50.0 50.0); }
+      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (10.0 10.0 10.0); }
     }
 
     cells
