@@ -1,0 +1,73 @@
+type timeDependentPhysicsPackage;
+
+pop      10000; //100000 low fidelity, 1000000 high fidelity
+timeSteps   1;
+XSdata   ce;
+dataType ce;
+timeIncrement 1.E-06;
+buffer 10000; //100000 low fidelity, 1000000 high fidelity
+cycles 5; // 5 low fidelity, 50 high fidelity
+combing 1;
+
+outputFormat asciiJSON;
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator { type transportOperatorDT; //currently will only support this
+                  }
+
+source {
+  type pointSource;
+  r (0.0 0.0 0.0);
+  particle neutron;
+  E 1.0E-6;
+}
+
+tally  {
+
+  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+    map { type timeMap; grid lin; min 0.0; max 1.E-06; N 1000;} //1000 for high-fidelity
+    response (flux); flux {type fluxResponse;}
+    handleVirtual 1;
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (50.0 50.0 50.0); }
+    }
+
+    cells
+    {
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type rootUniverse;
+	  border 1;
+	  fill m1;
+      }
+    }
+}
+
+nuclearData {
+  handles {
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  materials {
+
+    m1 {
+      temp 12345;
+      composition {
+        1001.03    0.06639;
+        8016.03   0.03347;}
+}
+}
+}
