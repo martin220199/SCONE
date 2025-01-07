@@ -203,22 +203,22 @@ contains
     end if
 
     ! Get current particle state
-    !state = p
+    state = p
 
     ! Check if within filter
-    !if(allocated( self % filter)) then
-    !  if(self % filter % isFail(state)) return
-    !end if
+    if(allocated( self % filter)) then
+      if(self % filter % isFail(state)) return
+    end if
 
     ! Find bin index
-    !if(allocated(self % map)) then
-    !  binIdx = self % map % map(state)
-    !else
-    !  binIdx = 1
-    !end if
+    if(allocated(self % map)) then
+      binIdx = self % map % map(state)
+    else
+      binIdx = 1
+    end if
 
     ! Return if invalid bin index
-    !if (binIdx == 0) return
+    if (binIdx == 0) return
 
     ! Calculate bin address
     !adrr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
