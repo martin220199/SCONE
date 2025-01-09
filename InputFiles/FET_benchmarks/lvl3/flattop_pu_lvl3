@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      100000; //     low fidelity: 10000    high fidelity: 100000
+pop      10000; //     low fidelity: 10000    high fidelity: 100000
 timeSteps   1; //
 XSdata   ce;
 dataType ce;
-timeIncrement 400E-09;
-cycles 10; //         low fidelity: 3        high fidelity: 10
-buffer 1000000;  //    low fidelity:  100000     high fidelity: 1000000
+timeIncrement 5.1E-09;
+cycles 3; //         low fidelity: 3        high fidelity: 30
+buffer 100000;  //    low fidelity:  100000     high fidelity: 1000000
 combing 0; //toggle on or off
 
 
@@ -26,7 +26,7 @@ source {
 tally  {
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     map { type multiMap; maps (map1 map2);
-    map1 { type timeMap; grid lin; min 0.0; max 400E-09; N 1000;} // high-fidelity: 1000
+    map1 { type timeMap; grid lin; min 0.0; max 5.1E-09; N 1000;} // high-fidelity: 1000
     map2 { type cellMap; cells (1); } 
     }
     response (flux); flux {type fluxResponse;}
