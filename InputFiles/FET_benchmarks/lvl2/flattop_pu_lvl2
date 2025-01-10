@@ -26,7 +26,7 @@ source {
 tally  {
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     map { type multiMap; maps (map1 map2);
-    map1 { type timeMap; grid lin; min 0.0; max 100.0E-09; N 1000;} // high-fidelity: 1000
+    map1 { type timeMap; grid lin; min 0.0; max 100.0E-09; N 76;} // high-fidelity: 1000
     map2 { type cellMap; cells (1); } 
     }
     response (flux); flux {type fluxResponse;}
