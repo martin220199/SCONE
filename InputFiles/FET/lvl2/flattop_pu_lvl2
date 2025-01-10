@@ -4,7 +4,7 @@ pop      10000; //     low fidelity: 10000    high fidelity: 100000
 timeSteps   1; //
 XSdata   ce;
 dataType ce;
-timeIncrement 100.0E-09;
+timeIncrement 100.0E-09; //100.0E-09
 cycles 3; //         low fidelity: 3        high fidelity: 10
 buffer 100000;  //    low fidelity:  100000     high fidelity: 1000000
 combing 0; //toggle on or off
@@ -26,9 +26,9 @@ source {
 tally  {
 
   basis Jacobi;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
-  a 0;
-  b -0.5;
-  maxFetOrder 70;
+  a 1;
+  b 1;
+  maxFetOrder 96; //40, 32, 82, 56,15
   maxT 100.0E-09;
   evalpoints 1000;
 

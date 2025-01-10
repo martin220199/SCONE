@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      10000; //high fidelity 100000
+pop      10000; //high fidelity 100000  //low fidelity 10000
 timeSteps   100; //500
 XSdata   ce;
 dataType ce;
-timeIncrement 10.0E-06; //10.0E-04
-cycles 3; //high fidelity 10
-buffer 100000; //high fidelity 1000000
+timeIncrement 1.0E-06; //1.0E-04
+cycles 3; //high fidelity 10  //low fidelity 3
+buffer 100000; //high fidelity 1000000 //low fidelity 100000
 combing 0; //toggle on or off
 //precursors 0; //toggle on or off
 // need to implement number of batches!! and compute statistics thereof, look at fixed source
@@ -28,10 +28,10 @@ source {
 
 tally  {
   basis Jacobi;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
-  a -0.5;
+  a 0;
   b -0.5;
-  maxFetOrder 90;
-  maxT 10.0E-04;
+  maxFetOrder 9;
+  maxT 1.0E-04;
   evalpoints 1000;
 
   flux_time { type collisionClerk;
