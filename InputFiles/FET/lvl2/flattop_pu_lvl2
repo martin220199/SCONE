@@ -25,10 +25,10 @@ source {
 
 tally  {
 
-  basis Jacobi;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
-  a 1;
+  basis Chebyshev2;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a 0;
   b -0.5;
-  maxFetOrder 4; //40, 32, 82, 56,15
+  maxFetOrder 60; //27, 38, 56, 60
   maxT 100.0E-09;
   evalpoints 1000;
 
