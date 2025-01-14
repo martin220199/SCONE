@@ -7,7 +7,9 @@ add_subdirectory(TallyResponses)
 add_sources( ./tallyCodes.f90
              ./tallyResult_class.f90
              ./tallyAdmin_class.f90
-             ./scoreMemory_class.f90)
+             ./scoreMemory_class.f90
+             ./tallyAdminFET_class.f90
+             ./scoreMemoryFET_class.f90)
              
 add_unit_tests(./Tests/scoreMemory_test.f90)
                      
