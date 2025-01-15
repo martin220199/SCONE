@@ -676,7 +676,7 @@ contains
     ! Initialise tally Admin for kinetic
     tempDict => self % dict % getDictPtr('tally')
     allocate(self % tally)
-    call self % tally % init(tempDict)
+    call self % tally % init(tempDict, .true.)
 
     ! Initialise kinetic geometry
     tempDict => self % dict % getDictPtr('kineticGeometry')
@@ -941,24 +941,28 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do t = 1, N_timeBins
+    do i = 1, N_cycles
 
-      ! Handle kinetic geometry
-      if (allocated(self % kineticGeomTimeSteps)) then
-        if (ANY(self % kineticGeomTimeSteps == t)) then
-          call self % geom % kill()
-          call killGeom()
-          kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
-          kineticGeomIdx = kineticGeomLocs(1)
-          geomName = 'kineticGeom'
-          call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
-          self % geomIdx = gr_geomIdx(geomName)
-          self % geom    => gr_geomPtr(self % geomIdx)
-          p % geomIdx = self % geomIdx
+      print *, '-- cycle', i
+
+      call tally % reportCycleStart(self % currentTime(i))
+
+      do t = 1, N_timeBins
+
+        ! Handle kinetic geometry
+        if (allocated(self % kineticGeomTimeSteps)) then
+          if (ANY(self % kineticGeomTimeSteps == t)) then
+            call self % geom % kill()
+            call killGeom()
+            kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
+            kineticGeomIdx = kineticGeomLocs(1)
+            geomName = 'kineticGeom'
+            call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
+            self % geomIdx = gr_geomIdx(geomName)
+            self % geom    => gr_geomPtr(self % geomIdx)
+            p % geomIdx = self % geomIdx
+          end if
         end if
-      end if
-
-      do i = 1, N_cycles
 
         if ((t == 1) .and. (self % useCombing .eqv. .true.)) call self % currentTime(i) % combing(self % bufferSize, pRNG)
         nParticles = self % currentTime(i) % popSize()
@@ -970,8 +974,6 @@ contains
             nPrecuCount = self % precursorDungeons(i) % popSize() + 1
           end if
         end if
-
-        call tally % reportCycleStart(self % currentTime(i))
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -1202,7 +1204,6 @@ contains
 
         ! Update RNG
         call self % pRNG % stride(nParticles + 1)
-        call tally % reportCycleEnd(self % currentTime(i))
         call self % currentTime(i) % cleanPop()
 
         ! Neutron population control
@@ -1212,31 +1213,23 @@ contains
           call self % nextTime(i) % combing(self % bufferSize, pRNG)
         end if
 
+        self % tempTime  => self % nextTime
+        self % nextTime  => self % currentTime
+        self % currentTime => self % tempTime
+
+        ! Calculate times
+        call timerStop(self % timerMain)
+        elapsed_T = timerTime(self % timerMain)
+
+        ! Predict time to end
+        end_T = real(N_timeBins,defReal) * elapsed_T / t
+        T_toEnd = max(ZERO, end_T - elapsed_T)
+
       end do
+      call tally % reportCycleEnd(self % currentTime(i))
 
-      self % tempTime  => self % nextTime
-      self % nextTime  => self % currentTime
-      self % currentTime => self % tempTime
-
-      ! Calculate times
-      call timerStop(self % timerMain)
-      elapsed_T = timerTime(self % timerMain)
-
-      ! Predict time to end
-      end_T = real(N_timeBins,defReal) * elapsed_T / t
-      T_toEnd = max(ZERO, end_T - elapsed_T)
-
-      ! Display progress
-      call printFishLineR(t)
-      print *
-      print *, 'Time step: ', numToChar(t), ' of ', numToChar(N_timeBins)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
-
-      call tally % setNumBatchesPerTimeStep(N_cycles)
     end do
+    call tally % setNumBatchesPerTimeStep(N_cycles)
 
   end subroutine cyclesKinetic
 

@@ -226,7 +226,7 @@ contains
     ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
-      call mem % score(scoreVal, adrr + i)
+      call mem % score(scoreVal, adrr + i, p%time)
 
     end do
 
@@ -255,39 +255,110 @@ contains
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
-    integer(shortInt)                          :: i
+    integer(longInt)                           :: i
     integer(shortInt),dimension(:),allocatable :: resArrayShape
+    real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal), dimension(:), allocatable    :: fet_coeff_arr_b, fet_coeff_std_arr_b 
     character(nameLen)                         :: name
 
-    ! Begin block
-    call outFile % startBlock(self % getName())
+    if (mem % useFET .eqv. .false.) then
+      ! Begin block
+      call outFile % startBlock(self % getName())
 
-    ! If collision clerk has map print map information
-    if( allocated(self % map)) then
-      call self % map % print(outFile)
-    end if
+      ! If collision clerk has map print map information
+      if( allocated(self % map)) then
+        call self % map % print(outFile)
+      end if
 
-    ! Write results.
-    ! Get shape of result array
-    if(allocated(self % map)) then
-      resArrayShape = [size(self % response), self % map % binArrayShape()]
+      ! Write results.
+      ! Get shape of result array
+      if(allocated(self % map)) then
+        resArrayShape = [size(self % response), self % map % binArrayShape()]
+      else
+        resArrayShape = [size(self % response)]
+      end if
+
+      ! Start array
+      name ='Res'
+      call outFile % startArray(name, resArrayShape)
+
+      ! Print results to the file
+      do i=1,product(resArrayShape)
+        call mem % getResult(val, std, self % getMemAddress() - 1 + i)
+        call outFile % addResult(val, std)
+      end do
+
+      call outFile % endArray()
+
+      call outFile % endBlock()
+
     else
-      resArrayShape = [size(self % response)]
+
+      ! Begin block
+      call outFile % startBlock(self % getName())
+
+      ! If collision clerk has map print map information
+      if( allocated(self % map)) then
+        call self % map % print(outFile)
+      end if
+
+      ! Start array
+      name ='FET_coeff'
+      call outFile % startArray(name, [1, mem % maxFetOrder + 1])
+      do i = 1, mem % maxFetOrder + 1
+        call mem % getResult(val, std, i)
+        print *, val
+        fet_coeff_arr(i) = val
+        fet_coeff_std_arr(i) = std
+        call outFile % addResult(val, std)
+      end do
+      call outFile % endArray()
+
+      if (mem % basis == 5) then
+        allocate(fet_coeff_arr_b(mem % maxFetOrder))
+        allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
+        ! Start array
+        name ='FET_coeff_b'
+        call outFile % startArray(name, [1, mem % maxFetOrder + 1])
+        do i = 1, mem % maxFetOrder + 1
+          call mem % getResult_Fourier_b(val, std, i)
+          fet_coeff_arr_b(i) = val
+          fet_coeff_std_arr_b(i) = std
+          call outFile % addResult(val, std)
+        end do
+        call outFile % endArray()
+      end if
+
+      ! Start array
+      name ='evalPts'
+      call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
+      do i = 1, size(mem % FET_evalPoints)
+        call outFile % addValue(mem % FET_evalPoints(i))
+      end do
+      call outFile % endArray()
+
+      ! Start array
+      name ='Res'
+      call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
+
+      if (mem % basis == 5) then
+        do i = 1, size(mem % FET_evalPoints)
+          call mem % getFETResult_Fourier(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_arr_b, &
+                                          fet_coeff_std_arr, fet_coeff_std_arr_b)
+          call outFile % addResult(val, std)
+        end do
+      else
+        do i = 1, size(mem % FET_evalPoints)
+          call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
+          call outFile % addResult(val, std)
+        end do
+      end if
+
+      call outFile % endArray()
+
+      call outFile % endBlock()
+
     end if
-
-    ! Start array
-    name ='Res'
-    call outFile % startArray(name, resArrayShape)
-
-    ! Print results to the file
-    do i=1,product(resArrayShape)
-      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
-      call outFile % addResult(val, std)
-    end do
-
-    call outFile % endArray()
-
-    call outFile % endBlock()
 
   end subroutine print
 

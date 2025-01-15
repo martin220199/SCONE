@@ -1,14 +1,14 @@
 type criticalKineticPhysicsPackage;
 
-pop      30000; //30000
+pop      3000; //30000
 timeSteps   20; 
 XSdata   ce;
 dataType ce;
-timeIncrement 1.0e-3;
+timeIncrement 1.0e-5;
 cycles 5; //100
-buffer 100000;
-active   200; //500
-inactive 200; //200
+buffer 30000;
+active   20; //200
+inactive 20; //200
 combing 1;
 
 decorrelationCycles 10; //50
@@ -29,22 +29,18 @@ transportOperatorKinetic { type transportOperatorKineticDT;
 
 
 tally  {
+
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a -0.5;
+  b 1;
+  maxFetOrder 1;
+  maxT 20.0e-5;
+  evalpoints 1000;
+
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-    map { type timeMap; grid lin; min 0.0; max 20.0e-3; N 20;} 
+    //map { type timeMap; grid lin; min 0.0; max 20.0e-3; N 20;} 
     response (flux); flux {type fluxResponse;}
     }
-
-  //flux_space { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
-
-  //  map { type multiMap; maps (map1 map2 map3);
-  //    map1 { type timeMap; grid lin; min 0.0; max 20.0e-3; N 20;}
-  //    map2 { type spaceMap;  axis y;  grid lin; min -7.56; max 7.56; N 80;} 
-  //    map3 { type spaceMap;  axis x;  grid lin;  min -7.56; max 7.56; N 80;}
-
-  //  }
-
-   // response (flux); flux {type fluxResponse;}
-   // }
   }
 
 

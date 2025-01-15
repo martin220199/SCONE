@@ -12,6 +12,7 @@ module tallyAdmin_class
   use tallyClerkSlot_class,   only : tallyClerkSlot
   use tallyResult_class,      only : tallyResult, tallyResultEmpty
   use scoreMemory_class,      only : scoreMemory
+  use scoreMemoryFET_class,   only : scoreMemoryFET
   use outputFile_class,       only : outputFile
 
   ! Nuclear Data Interface
@@ -117,7 +118,9 @@ module tallyAdmin_class
     type(dynIntArray)  :: displayList
 
     ! Score memory
-    type(scoreMemory)  :: mem
+    type(scoreMemory)   :: mem
+
+    logical(defBool) :: flag
   contains
 
     ! Build procedures
@@ -168,12 +171,16 @@ contains
   !! Errors:
   !!   fatalError if there are mistakes in definition
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict,flag)
     class(tallyAdmin), intent(inout)            :: self
     class(dictionary), intent(in)               :: dict
+    logical(defBool), intent(in), optional      :: flag
     character(nameLen),dimension(:),allocatable :: names
-    integer(shortInt)                           :: i, j, cyclesPerBatch
+    integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
+    real(defReal)                               :: minT, maxT, a, b
+    integer(shortInt)                           :: FET_evalPoints, basisFlag = -1
+    character(10)                               :: basis
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
     ! Clean itself
@@ -215,10 +222,67 @@ contains
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
 
+    ! Init FET
+    if (present(flag)) then
+      self % flag = flag
+
+      !Read Basis Function
+      call dict % get(basis,'basis')
+
+      select case(basis)
+
+        case('Legendre')
+          basisFlag = 0
+
+        case('Chebyshev1')
+          basisFlag = 1
+
+        case('Chebyshev2')
+          basisFlag = 2
+
+        case('Laguerre')
+          basisFlag = 3
+
+        case('Hermite')
+          basisFlag = 4
+
+        case('Fourier')
+          basisFlag = 5
+
+        case('Jacobi')
+          basisFlag = 6
+          call dict % get(a,'a')
+          call dict % get(b,'b')
+
+        case default
+          call fatalError(Here, 'Need to define the basis function')
+
+      end select
+
+      !Read max FET order
+      call dict % get(maxFetOrder,'maxFetOrder')
+
+      !Read min/max times for time domain transform, and evalTimes
+      call dict % get(maxT,'maxT')
+      call dict % getOrDefault(minT,'minT', ZERO)
+      call dict % get(FET_evalPoints, 'evalpoints')
+    end if
+
     ! Initialise score memory
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+
+    if (basisFlag == 6) then
+      call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, maxFetOrder = maxFetOrder, &
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, a = a, b = b)
+
+    else if (basisFlag == 0 .or. basisFlag == 1 .or. basisFlag == 2 .or. &
+             basisFlag == 3 .or. basisFlag == 4 .or. basisFlag == 5) then
+      call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, maxFetOrder = maxFetOrder, &
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag)
+    else
+      call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+    end if
 
     ! Assign memory locations to the clerks
     memLoc = 1
