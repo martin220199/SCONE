@@ -1,29 +1,29 @@
 type criticalKineticPhysicsPackage;
 
 pop      10000; // high-fidelity: 50000  //low fidelity 10000
-timeSteps   5;
+timeSteps   100; //5
 XSdata   ce;
 dataType ce;
-timeIncrement 20.0e-6;
+timeIncrement 1.0e-6; // 20
 cycles 5;// high-fidelity: 60 //low fidelity: 5
 buffer 10000; // high-fidelity: 50000 //low fidelity 10000
-active   20; //200
-inactive 20; //200
+active   200; //200
+inactive 200; //200
 
 combing 1;
 precursors 1;
-useForcedPrecursorDecay 1;
+useForcedPrecursorDecay 0;
 criticalWgtNorm 1;
-kineticGeometry{enable 1; timeSteps (2 3 4); }
+kineticGeometry{enable 1; timeSteps (40 60 80); } //2 3 4
 decorrelationCycles 50;
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
 
 transportOperatorCritical { type transportOperatorDT;
                   }
 
-collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
+collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
 
 transportOperatorKinetic { type transportOperatorKineticDT;
 }
@@ -33,7 +33,7 @@ tally  {
   basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 0;
   b 0;
-  maxFetOrder 10;
+  maxFetOrder 100;
   maxT 100.0E-06;
   evalpoints 1000;
 
