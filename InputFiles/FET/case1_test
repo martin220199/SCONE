@@ -11,19 +11,19 @@ active   200;
 inactive 200;
 
 combing 1;
-precursors 0;
-useForcedPrecursorDecay 0;
+precursors 1;
+useForcedPrecursorDecay 1;
 criticalWgtNorm 1;
 kineticGeometry{enable 1; timeSteps (1); }
 decorrelationCycles 50;
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0; couplingRatio 0.1;}}
+collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
 
 transportOperatorCritical { type transportOperatorDT;
                   }
 
-collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 0;}}
+collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
 
 transportOperatorKinetic { type transportOperatorKineticDT;
 }
