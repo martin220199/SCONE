@@ -5,7 +5,7 @@ timeSteps   5;
 XSdata   ce;
 dataType ce;
 timeIncrement 20.0e-6;
-cycles 10;// high-fidelity: 60  //low fidelity 10
+cycles 20;// high-fidelity: 60  //low fidelity 10
 buffer 10000; // high-fidelity: 50000  //low fidelity: 10000
 active   200;
 inactive 200;
@@ -14,7 +14,7 @@ combing 1;
 precursors 1;
 useForcedPrecursorDecay 1;
 criticalWgtNorm 1;
-kineticGeometry{enable 1; timeSteps (1); }
+kineticGeometry{enable 1; timeSteps (2); }
 decorrelationCycles 50;
 
 outputFormat asciiJSON;
