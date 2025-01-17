@@ -120,9 +120,11 @@ module criticalKineticPhysicsPackage_class
 
     ! Calculation components kinetic
     type(particleDungeon), pointer, dimension(:) :: currentTime       => null()
-    type(particleDungeon), pointer, dimension(:) :: nextTime          => null()
-    type(particleDungeon), pointer, dimension(:) :: tempTime          => null()
     type(particleDungeon), pointer, dimension(:) :: precursorDungeons => null() 
+
+    type(particleDungeon), pointer :: currentTimeCycle       => null()
+    type(particleDungeon), pointer :: nextTimeCycle          => null()
+    type(particleDungeon), pointer :: tempTimeCycle          => null()
 
     ! Kinetic geometry
     class(dictionary), pointer, dimension(:)     :: kineticGeomDict  => null()
@@ -696,11 +698,11 @@ contains
 
     ! Size particle dungeon
     allocate(self % currentTime(self % N_cycles))
-    allocate(self % nextTime(self % N_cycles))
+    !allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
       call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      !call self % nextTime(i) % init(5*self % bufferSize)
     end do
 
     ! Size precursor dungeon
@@ -710,6 +712,11 @@ contains
         call self % precursorDungeons(i) % init(3*self % bufferSize)
       end do
     end if
+
+    allocate(self % currentTimeCycle)
+    allocate(self % nextTimeCycle)
+    call self % currentTimeCycle % init(3*self % bufferSize)
+    call self % nextTimeCycle % init(3*self % bufferSize)
 
     call self % printSettingsKinetic()
 
@@ -906,7 +913,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)             :: tally
     integer(shortInt), intent(in)                       :: N_timeBins, N_cycles
     integer(shortInt)                                   :: i, t, n
-    integer(shortInt)                                   :: nParticles, nDelayedParticles, nPrecuCount
+    integer(shortInt)                                   :: nParticles, nDelayedParticles, nParticlesInit, nPrecuCount
     type(particle), save                                :: p, p_d
     type(particleDungeon), save                         :: buffer
     type(collisionOperator), save                       :: collOpKinetic
@@ -935,7 +942,7 @@ contains
     !$omp end parallel
 
     ! Number of particles in each batch
-    nParticles = self % pop
+    nParticlesInit = self % pop
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -964,8 +971,12 @@ contains
           end if
         end if
 
-        if ((t == 1) .and. (self % useCombing .eqv. .true.)) call self % currentTime(i) % combing(self % bufferSize, pRNG)
-        nParticles = self % currentTime(i) % popSize()
+        if (t == 1) then
+          if (self % useCombing .eqv. .true.) call self % currentTime(i) % combing(self % bufferSize, pRNG)
+          nParticles = self % currentTime(i) % popSize()
+        else
+          nParticles = self % currentTimeCycle % popSize()    
+        end if
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
           if (t == 1) then
@@ -980,7 +991,11 @@ contains
           pRNG = self % pRNG
           p % pRNG => pRNG
           call p % pRNG % stride(n)
-          call self % currentTime(i) % copy(p, n)
+          if (t == 1) then
+            call self % currentTime(i) % copy(p, n)
+          else
+            call self % currentTimeCycle % copy(p, n)
+          end if
           p % timeMax = t * timeIncrement
 
           bufferLoop: do
@@ -998,10 +1013,11 @@ contains
             ! Transport particle untill its death
             history: do
               if(p % isDead) exit history
+
               call transOpKinetic % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then
-                call self % nextTime(i) % detain(p)
+                call self % nextTimeCycle % detain(p)
                 exit history
               endif
               if (self % usePrecursors) then
@@ -1059,7 +1075,7 @@ contains
                     call transOpKinetic % transport(p, tally, buffer, buffer)
                     if(p % isDead) exit historyDelayed
                     if(p % fate == AGED_FATE) then
-                      call self % nextTime(i) % detain(p)
+                      call self % nextTimeCycle % detain(p)
                       exit historyDelayed
                     endif
                     call collOpKinetic % collide(p, tally, self % precursorDungeons(i), buffer)
@@ -1132,7 +1148,7 @@ contains
                   call transOpKinetic % transport(p, tally, buffer, buffer)
                   if(p % isDead) exit historyDelayedImp
                   if(p % fate == AGED_FATE) then
-                    call self % nextTime(i) % detain(p)
+                    call self % nextTimeCycle % detain(p)
                     exit historyDelayedImp
                   endif
                   call collOpKinetic % collide(p, tally, self % precursorDungeons(i), buffer)
@@ -1194,7 +1210,7 @@ contains
               p % fate = no_FATE
 
               ! Add to current dungeon
-              call self % nextTime(i) % detain(p)
+              call self % nextTimeCycle % detain(p)
 
             end do genDelayedImpNext
             !$omp end parallel do
@@ -1204,18 +1220,18 @@ contains
 
         ! Update RNG
         call self % pRNG % stride(nParticles + 1)
-        call self % currentTime(i) % cleanPop()
+        call self % currentTimeCycle % cleanPop()
 
         ! Neutron population control
         if (self % useCombing) then
-          call self % nextTime(i) % combing(self % bufferSize, pRNG)
+          call self % nextTimeCycle % combing(self % bufferSize, pRNG)
         else if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
-          call self % nextTime(i) % combing(self % bufferSize, pRNG)
+          call self % nextTimeCycle % combing(self % bufferSize, pRNG)
         end if
 
-        self % tempTime  => self % nextTime
-        self % nextTime  => self % currentTime
-        self % currentTime => self % tempTime
+        self % tempTimeCycle  => self % nextTimeCycle
+        self % nextTimeCycle  => self % currentTimeCycle
+        self % currentTimeCycle => self % tempTimeCycle
 
         ! Calculate times
         call timerStop(self % timerMain)

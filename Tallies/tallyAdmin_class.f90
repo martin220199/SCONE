@@ -12,7 +12,6 @@ module tallyAdmin_class
   use tallyClerkSlot_class,   only : tallyClerkSlot
   use tallyResult_class,      only : tallyResult, tallyResultEmpty
   use scoreMemory_class,      only : scoreMemory
-  use scoreMemoryFET_class,   only : scoreMemoryFET
   use outputFile_class,       only : outputFile
 
   ! Nuclear Data Interface
