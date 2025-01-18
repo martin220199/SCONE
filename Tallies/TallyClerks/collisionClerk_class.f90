@@ -307,7 +307,6 @@ contains
       call outFile % startArray(name, [1, mem % maxFetOrder + 1])
       do i = 1, mem % maxFetOrder + 1
         call mem % getResult(val, std, i)
-        print *, val
         fet_coeff_arr(i) = val
         fet_coeff_std_arr(i) = std
         call outFile % addResult(val, std)

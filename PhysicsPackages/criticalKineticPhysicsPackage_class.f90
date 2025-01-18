@@ -933,7 +933,7 @@ contains
     call buffer % init(self % bufferSize)
 
     ! Initialise neutron
-    !p % geomIdx = self % geomIdx
+    p % geomIdx = self % geomIdx
     p % k_eff = ONE
 
     ! Create a collision + transport operator which can be made thread private
@@ -965,17 +965,19 @@ contains
             geomName = 'kineticGeom'
             call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
             self % geomIdx = gr_geomIdx(geomName)
+            !print *, geomName,self % geomIdx,  kineticGeomIdx, '-----1'
             self % geom    => gr_geomPtr(self % geomIdx)
             p % geomIdx = self % geomIdx
-          end if
-          if (ANY(self % kineticGeomTimeSteps == t)) then
+
+          else if (ANY(self % kineticGeomTimeSteps == t)) then
             call self % geom % kill()
             call killGeom()
             kineticGeomLocs = findloc(self % kineticGeomTimeSteps, t)
             kineticGeomIdx = kineticGeomLocs(1)
-            geomName = 'kineticGeom'
+            geomName = 'kineticGeom' 
             call new_geometry(self % kineticGeomDict(kineticGeomIdx), geomName)
             self % geomIdx = gr_geomIdx(geomName)
+            !print *, geomName,self % geomIdx,  kineticGeomIdx, '------2'
             self % geom    => gr_geomPtr(self % geomIdx)
             p % geomIdx = self % geomIdx
           end if
