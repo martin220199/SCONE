@@ -1,14 +1,14 @@
 type criticalKineticPhysicsPackage;
 
-pop      10000; // high-fidelity: 50000 //low fidelity: 10000
+pop      5000; // high-fidelity: 50000 //low fidelity: 5000
 timeSteps   5;
 XSdata   ce;
 dataType ce;
 timeIncrement 20.0e-6;
-cycles 20;// high-fidelity: 60  //low fidelity 10
-buffer 10000; // high-fidelity: 50000  //low fidelity: 10000
-active   200;
-inactive 200;
+cycles 15;// high-fidelity: 30  //low fidelity 15
+buffer 5000; // high-fidelity: 50000  //low fidelity: 5000
+active   200; //200
+inactive 200; //200
 
 combing 1;
 precursors 1;
@@ -33,13 +33,12 @@ tally  {
   basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 0;
   b 0;
-  maxFetOrder 100;
+  maxFetOrder 20;
   maxT 100.0E-06;
   evalpoints 1000;
 
   flux_time { type collisionClerk;
     response (flux); flux {type fluxResponse;}
-    //handleVirtual 1;
   }
 
   }
