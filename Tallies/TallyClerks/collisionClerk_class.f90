@@ -255,10 +255,10 @@ contains
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
-    integer(longInt)                           :: i
+    integer(longInt)                           :: i, j
     integer(shortInt),dimension(:),allocatable :: resArrayShape
-    real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
-    real(defReal), dimension(:), allocatable    :: fet_coeff_arr_b, fet_coeff_std_arr_b 
+    real(defReal), dimension(:,:), allocatable :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal), dimension(:,:), allocatable    :: fet_coeff_arr_b, fet_coeff_std_arr_b 
     character(nameLen)                         :: name
 
     if (mem % useFET .eqv. .false.) then
@@ -294,6 +294,11 @@ contains
 
     else
 
+      allocate(fet_coeff_arr(maxval(mem % maxFetOrder) + 1, size(mem % maxFetOrder)))
+      allocate(fet_coeff_std_arr(maxval(mem % maxFetOrder) + 1, size(mem % maxFetOrder)))
+      fet_coeff_arr = ZERO
+      fet_coeff_std_arr = ZERO
+
       ! Begin block
       call outFile % startBlock(self % getName())
 
@@ -304,26 +309,34 @@ contains
 
       ! Start array
       name ='FET_coeff'
-      call outFile % startArray(name, [1, mem % maxFetOrder + 1])
-      do i = 1, mem % maxFetOrder + 1
-        call mem % getResult(val, std, i)
-        fet_coeff_arr(i) = val
-        fet_coeff_std_arr(i) = std
-        call outFile % addResult(val, std)
+      call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 2])
+
+      do j = 1, size(mem % maxFetOrder)
+        do i = 1, mem % maxFetOrder(j) + 1
+          call mem % getResult_FET(mean = val, STD = std, idx = i, piecewise_idx = j)
+          fet_coeff_arr(i,j) = val
+          fet_coeff_std_arr(i,j) = std
+          call outFile % addResult(val, std)
+        end do
       end do
       call outFile % endArray()
 
       if (mem % basis == 5) then
-        allocate(fet_coeff_arr_b(mem % maxFetOrder))
-        allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
+        allocate(fet_coeff_arr_b(maxval(mem % maxFetOrder) + 1, size(mem % maxFetOrder)))
+        allocate(fet_coeff_std_arr_b(maxval(mem % maxFetOrder) + 1, size(mem % maxFetOrder)))
+        fet_coeff_arr_b = ZERO
+        fet_coeff_std_arr_b = ZERO
+
         ! Start array
         name ='FET_coeff_b'
-        call outFile % startArray(name, [1, mem % maxFetOrder + 1])
-        do i = 1, mem % maxFetOrder + 1
-          call mem % getResult_Fourier_b(val, std, i)
-          fet_coeff_arr_b(i) = val
-          fet_coeff_std_arr_b(i) = std
-          call outFile % addResult(val, std)
+        call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 2])
+        do j = 1, size(mem % maxFetOrder)
+          do i = 1, mem % maxFetOrder(j) + 1
+            call mem % getResult_Fourier_b(mean = val, STD = std, idx = i, piecewise_idx = j)
+            fet_coeff_arr_b(i,j) = val
+            fet_coeff_std_arr_b(i,j) = std
+            call outFile % addResult(val, std)
+          end do
         end do
         call outFile % endArray()
       end if

@@ -15,7 +15,7 @@ precursors 1;
 useForcedPrecursorDecay 1;
 criticalWgtNorm 1;
 kineticGeometry{enable 1; timeSteps (2 6); }
-decorrelationCycles 50;
+decorrelationCycles 50; //50
 
 outputFormat asciiJSON;
 collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
@@ -30,11 +30,19 @@ transportOperatorKinetic { type transportOperatorKineticDT;
 
 tally  {
 
-  basis Chebyshev2;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 0;
   b 0;
-  maxFetOrder 30;
-  maxT 100.0E-06;
+  maxFetOrder (1 6);
+  piecewise (20.0e-6);
+  maxT (20.0e-6 100.0E-06);
+  minT (0.0 20.0e-6);
+
+  //maxFetOrder (0 0);
+  //piecewise (1e-16);
+  //maxT (1e-16 100.0E-06);
+  //minT (0.0 1e-16);
+
   evalpoints 1000;
 
   flux_time { type collisionClerk;

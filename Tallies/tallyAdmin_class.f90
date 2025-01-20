@@ -175,9 +175,11 @@ contains
     class(dictionary), intent(in)               :: dict
     logical(defBool), intent(in), optional      :: flag
     character(nameLen),dimension(:),allocatable :: names
-    integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
+    integer(shortInt)                           :: i, j, cyclesPerBatch
+    integer(shortInt), dimension(:), allocatable :: maxFetOrder
+    real(defReal), dimension(:), allocatable    :: piecewise, minT, maxT
     integer(longInt)                            :: memSize, memLoc
-    real(defReal)                               :: minT, maxT, a, b
+    real(defReal)                               :: a, b
     integer(shortInt)                           :: FET_evalPoints, basisFlag = -1
     character(10)                               :: basis
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
@@ -239,11 +241,11 @@ contains
         case('Chebyshev2')
           basisFlag = 2
 
-        case('Laguerre')
-          basisFlag = 3
+        !case('Laguerre')
+        !  basisFlag = 3
 
-        case('Hermite')
-          basisFlag = 4
+        !case('Hermite')
+        !  basisFlag = 4
 
         case('Fourier')
           basisFlag = 5
@@ -260,10 +262,10 @@ contains
 
       !Read max FET order
       call dict % get(maxFetOrder,'maxFetOrder')
-
+      call dict % get(piecewise,'piecewise')
       !Read min/max times for time domain transform, and evalTimes
       call dict % get(maxT,'maxT')
-      call dict % getOrDefault(minT,'minT', ZERO)
+      call dict % get(minT,'minT')
       call dict % get(FET_evalPoints, 'evalpoints')
     end if
 
@@ -273,12 +275,14 @@ contains
 
     if (basisFlag == 6) then
       call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, maxFetOrder = maxFetOrder, &
-                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, a = a, b = b)
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, a = a, b = b, &
+                            piecewise = piecewise)
 
     else if (basisFlag == 0 .or. basisFlag == 1 .or. basisFlag == 2 .or. &
              basisFlag == 3 .or. basisFlag == 4 .or. basisFlag == 5) then
       call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, maxFetOrder = maxFetOrder, &
-                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag)
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, &
+                            piecewise = piecewise)
     else
       call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
     end if
