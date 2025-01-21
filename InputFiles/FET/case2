@@ -1,29 +1,29 @@
 type criticalKineticPhysicsPackage;
 
-pop      10000; // high-fidelity: 50000  //low fidelity 10000
-timeSteps   100; //5
+pop      10000; // high-fidelity: 50000 //low fidelity: 10000
+timeSteps   5;
 XSdata   ce;
 dataType ce;
-timeIncrement 1.0e-6; // 20
-cycles 5;// high-fidelity: 60 //low fidelity: 5
-buffer 10000; // high-fidelity: 50000 //low fidelity 10000
-active   200; //200
-inactive 200; //200
+timeIncrement 20.0e-6;
+cycles 5; // high-fidelity: 50  //low fidelity 5
+buffer 10000; // high-fidelity: 50000  //low fidelity: 10000
+active   200;
+inactive 200;
 
 combing 1;
 precursors 1;
-useForcedPrecursorDecay 0;
+useForcedPrecursorDecay 1;
 criticalWgtNorm 1;
-kineticGeometry{enable 1; timeSteps (40 60 80); } //2 3 4
+kineticGeometry{enable 1; timeSteps (2 3 4 6); }
 decorrelationCycles 50;
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
+collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
 
 transportOperatorCritical { type transportOperatorDT;
                   }
 
-collisionOperatorKinetic { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
+collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
 
 transportOperatorKinetic { type transportOperatorKineticDT;
 }
@@ -33,7 +33,8 @@ tally  {
   basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 0;
   b 0;
-  maxFetOrder 100;
+  maxFetOrder 1000;
+
   maxT 100.0E-06;
   evalpoints 1000;
 
@@ -41,24 +42,8 @@ tally  {
     response (flux); flux {type fluxResponse;}
     //handleVirtual 1;
   }
-  //flux_time { type collisionClerk;
 
-  //  map { type timeMap; grid lin; min 0.0; max 100.0e-6; N 1000;} //N1000 high fidelity
-  //  response (flux); flux {type fluxResponse;}
-
-    }
-
-  //flux_space { type collisionClerk; 
-  //  map { type multiMap; maps (map1 map2 map3);
-  //  map1 { type spaceMap;  axis y;  grid lin; min -21.42; max 21.42; N 34;} // map1 { type spaceMap;  axis y;  grid lin; min -13; max 13; N 50;}
-  //  map2 { type spaceMap;  axis x;  grid lin;  min -21.42; max 21.42; N 34;} //    map2 { type spaceMap;  axis x;  grid lin;  min -13; max 13; N 50;}
-  //  map3 { type timeMap; grid lin; min 0.0; max 50.0e-5; N 50;}
-  //  }
-  //  response (flux); flux {type fluxResponse;}
-  //  }
-
-
-  //}
+  }
 
   inactiveTally {
 
@@ -402,6 +387,84 @@ kineticGeom3 {
 
 }
 
+
+kineticGeom4 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (21.42 21.42 0.0);}
+  }
+
+  cells {
+   // in  {id 1; surfaces ( -1); filltype uni; universe 401;}
+   // out {id 2; surfaces (1); filltype outside; }
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.5600 0.600 0.0); fills (water clad water);} //Water, clad, water
+    pin22 {id 22; type pinUniverse;  radii (0.5600 0.600 0.0); fills (boron clad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (34 34 0);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31 31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31 31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31 31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31 31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 22 41 31 31 41 22 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 22 51 51 22 51 51 22 41 31 31 41 22 51 51 22 51 51 22 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 22 51 51 22 51 51 22 41 31 31 41 22 51 51 22 51 51 22 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31 31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 22 41 41 31 31 41 41 22 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 22 41 41 22 41 41 22 41 41 41 41 31 31 41 41 41 41 22 41 41 22 41 41 22 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31 31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31 31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 22 41 41 22 41 41 22 41 41 41 41 31 31 41 41 41 41 22 41 41 22 41 41 22 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 22 41 41 31 31 41 41 22 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31 31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 22 51 51 22 51 51 22 41 31 31 41 22 51 51 22 51 51 22 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 22 51 51 22 51 51 22 41 31 31 41 22 51 51 22 51 51 22 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31 31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 22 41 31 31 41 22 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31 31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31 31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31 31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31 31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31        
+        
+        ); }
+  }
+
+
+
+}
 
 viz {
   myVTK {
