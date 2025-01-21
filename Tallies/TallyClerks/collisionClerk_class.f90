@@ -309,7 +309,7 @@ contains
 
       ! Start array
       name ='FET_coeff'
-      call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 2])
+      call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 4])
 
       do j = 1, size(mem % maxFetOrder)
         do i = 1, mem % maxFetOrder(j) + 1
@@ -329,7 +329,7 @@ contains
 
         ! Start array
         name ='FET_coeff_b'
-        call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 2])
+        call outFile % startArray(name, [1, sum(mem % maxFetOrder) + 4])
         do j = 1, size(mem % maxFetOrder)
           do i = 1, mem % maxFetOrder(j) + 1
             call mem % getResult_Fourier_b(mean = val, STD = std, idx = i, piecewise_idx = j)

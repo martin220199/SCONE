@@ -1455,8 +1455,14 @@ contains
     real(defReal), intent(in)      :: t
     integer(shortInt)              :: piecewise_idx
 
-    if (t >= self % piecewise(1)) then 
+    if (t <= self % piecewise(1)) then
+      piecewise_idx = 1_shortInt
+    else if (t > self % piecewise(1) .and. t <= self % piecewise(2)) then 
       piecewise_idx = 2_shortInt
+    else if (t > self % piecewise(2) .and. t <= self % piecewise(3)) then 
+      piecewise_idx = 3_shortInt
+    else if (t > self % piecewise(3)) then 
+      piecewise_idx = 4_shortInt
     else
       piecewise_idx = 1_shortInt
     end if
