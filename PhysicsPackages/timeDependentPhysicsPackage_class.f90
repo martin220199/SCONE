@@ -390,9 +390,9 @@ contains
           if (nDelayedParticles > 0) then
 
             ! Precursor population control
-            if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
-            end if
+            !if (nDelayedParticles > self % pop) then
+            call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
+            !end if
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
@@ -779,9 +779,12 @@ contains
           if (nDelayedParticles > 0) then
 
             ! Precursor population control
-            if (nDelayedParticles > self % pop) then
-              call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
-            end if
+            !if (nDelayedParticles > self % pop) then
+            call self % precursorDungeons(i) % precursorCombing(self % pop, pRNG, t, timeIncrement)
+            !call self % precursorDungeons(i) % fitness_combing(self % pop, pRNG)
+            !call self % precursorDungeons(i) % precursor_fitness_combing(self % pop, pRNG, t, timeIncrement)
+            !end if
+            !call self % precursorDungeons(i) % combing(self % pop, pRNG)
 
             nDelayedParticles = self % precursorDungeons(i) % popSize()
 
@@ -1025,15 +1028,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % bufferSize)
-      call self % nextTime(i) % init(self % bufferSize)
+      call self % currentTime(i) % init(self % bufferSize * 5)
+      call self % nextTime(i) % init(self % bufferSize * 5)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(self % bufferSize)
+        call self % precursorDungeons(i) % init(self % bufferSize * 5)
       end do
     end if
 

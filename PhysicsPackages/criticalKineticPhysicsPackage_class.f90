@@ -1596,8 +1596,8 @@ contains
 
             ! Precursor population control
             !if (nDelayedParticles > self % bufferSize) then
-            call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
-            !call self % precursorDungeons(i) % fitness_combing(self % bufferSize, pRNG)
+            !call self % precursorDungeons(i) % precursorCombing(self % bufferSize, pRNG, t, timeIncrement)
+            call self % precursorDungeons(i) % fitness_combing(self % bufferSize, pRNG)
             !call self % precursorDungeons(i) % precursor_fitness_combing(self % bufferSize, pRNG, t, timeIncrement)
             !end if
 
