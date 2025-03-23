@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      1000000; //high fidelity 100000  //low fidelity 10000
+pop      10000; //high fidelity 100000  //low fidelity 10000
 timeSteps   1; //500
 XSdata   ce;
 dataType ce;
-timeIncrement 6.0E-07; //30.0
-cycles 20; //high fidelity 20  //low fidelity 3
-buffer 2000000; //high fidelity 1000000 //low fidelity 100000
+timeIncrement 1.0E-03; //30.0
+cycles 3; //high fidelity 20  //low fidelity 3
+buffer 20000; //high fidelity 200000 //low fidelity 20000
 combing 0; //toggle on or off
 //precursors 0; //toggle on or off
 // need to implement number of batches!! and compute statistics thereof, look at fixed source
@@ -29,7 +29,7 @@ source {
 tally  {
   flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
     map { type multiMap; maps (map1 map2);
-    map1 { type timeMap; grid lin; min 0.0; max 6.0E-07; N 1000;} // max 400E-09; N 500;} 
+    map1 { type timeMap; grid lin; min 0.0; max 1.0E-03; N 400;} // max 400E-09; N 500;} 
     map2 { type cellMap; cells (1); } 
     }
     response (flux); flux {type fluxResponse;}
