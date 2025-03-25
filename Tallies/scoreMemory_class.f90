@@ -584,17 +584,18 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET_Legendre (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Legendre(t)
 
     !basis weight
     call self % weight_Legendre(t_trans, phi)
+
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
@@ -718,11 +719,10 @@ contains
     real(defReal), intent(in)        :: score, t
     integer(shortInt)                :: k
     integer(shortInt)                :: thread_idx
-    real(defReal)                    :: t_trans, phi = ONE
+    real(defReal), save              :: t_trans, phi = ONE
     real(defReal)                    :: p_k, p_prev, p_curr, p_next
     character(100),parameter         :: Here = 'scoreFET_Chebyshev1 (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Chebyshev1(t)
@@ -730,6 +730,7 @@ contains
     !basis weight
     call self % weight_Chebyshev1(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
@@ -852,11 +853,10 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET_Chebyshev2 (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Chebyshev2(t)
@@ -864,6 +864,7 @@ contains
     !basis weight
     call self % weight_Chebyshev2(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
@@ -979,11 +980,10 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET_Laguerre (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Laguerre(t)
@@ -991,6 +991,7 @@ contains
     !basis weight
     call self % weight_Laguerre(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
@@ -1107,11 +1108,10 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET_Hermite (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Hermite(t)
@@ -1119,6 +1119,7 @@ contains
     !basis weight
     call self % weight_Hermite(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
@@ -1237,11 +1238,10 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     character(100),parameter :: Here = 'scoreFET_Fourier (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Fourier(t)
@@ -1249,6 +1249,7 @@ contains
     !basis weight
     call self % weight_Fourier(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       p_k = cos(k * t_trans)
@@ -1381,12 +1382,11 @@ contains
     real(defReal), intent(in)         :: score, t
     integer(shortInt)                 :: k
     integer(shortInt)                 :: thread_idx
-    real(defReal)                     :: t_trans, phi = ONE
+    real(defReal), save               :: t_trans, phi = ONE
     real(defReal)                     :: p_k, p_prev, p_curr, p_next
     real(defReal)                     :: an, bn, cn, dn
     character(100),parameter :: Here = 'scoreFET_Jacobi (scoreMemory_class.f90)'
-
-    thread_idx = ompGetThreadNum() + 1
+    !$omp threadprivate(t_trans, phi)
 
     !time transform
     t_trans = self % transDomain_Jacobi(t) 
@@ -1394,6 +1394,7 @@ contains
     !basis weight
     call self % weight_Jacobi(t_trans, phi)
 
+    thread_idx = ompGetThreadNum() + 1
     do k = 0, self % maxFetOrder
 
       ! Handle base cases
