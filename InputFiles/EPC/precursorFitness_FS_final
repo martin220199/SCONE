@@ -15,7 +15,7 @@ criticalWgtNorm 1;
 outputFormat asciiJSON;
 
 
-EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.1; nReproductions 4;}
+EPC {useEPC 1; fitnessHandling 1; responseType 1; responseDim cells; response 2; fittestFactor 0.3; nReproductions 4;}
 
 collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; branchless 0;}} //precursors 1;
 
