@@ -22,7 +22,6 @@ source {
   E 1.0E-6;
 }
 
-
 tally  {
   basis Laguerre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a -0.5;
@@ -44,23 +43,22 @@ geometry {
 
     surfaces
     {
-      sphereBound { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (50.0 50.0 50.0); }
+      sphereBound { type box; id 2; origin ( 0.0 0.0 0.0); halfwidth (50.0 50.0 50.0); }
+
+     sphereInner { type box; id 1; origin ( 0.0 0.0 0.0); halfwidth (1.0 1.0 1.0); }
     }
 
     cells
     {
+      cellOne { id 1; type simpleCell; surfaces (-1); filltype mat; material boron;} 
+      cellTwo { id 2; type simpleCell; surfaces (1 -2); filltype mat; material m1;}
     }
 
     universes
     {
 
-      root
-      {
-	  id 1;
-	  type rootUniverse;
-	  border 1;
-	  fill m1;
-      }
+      root{id 1; type rootUniverse; border 2; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2 );}
     }
 }
 
@@ -75,5 +73,15 @@ nuclearData {
         1001.03    0.06639;
         8016.03   0.03347;}
 }
+
+
+      boron {
+        temp 8765;
+        composition {
+           5010.03    9.0E-002;
+           5011.03    2.25E-002; //2.25e-2
+       }
+       }
+
 }
 }
