@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      100000; //100000 low fidelity, 1000000 high fidelity
+pop      1000000; //100000 low fidelity, 1000000 high fidelity
 timeSteps   1;
 XSdata   ce;
 dataType ce;
 timeIncrement 1.E-06;
-buffer 100000; //100000 low fidelity, 1000000 high fidelity
-cycles 5; // 5 low fidelity, 50 high fidelity
+buffer 1000000; //100000 low fidelity, 1000000 high fidelity
+cycles 50; // 5 low fidelity, 50 high fidelity
 combing 1;
 
 outputFormat asciiJSON;
@@ -73,8 +73,8 @@ nuclearData {
       boron {
         temp 8765;
         composition {
-           5010.03    9.0E-002;
-           5011.03    2.25E-002; //2.25e-2
+           5010.03    9.0E-001;
+           5011.03    2.25E-001; //2.25e-2
        }
        }
 
