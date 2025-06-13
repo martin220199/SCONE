@@ -26,7 +26,7 @@ tally  {
   basis Laguerre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a -0.5;
   b 1;
-  maxFetOrder 1000;
+  maxFetOrder 3000;
   maxT 1.E-06;
   evalpoints 1000;
 
@@ -78,8 +78,8 @@ nuclearData {
       boron {
         temp 8765;
         composition {
-           5010.03    9.0E-002;
-           5011.03    2.25E-002; //2.25e-2
+           5010.03    9.0E-001;
+           5011.03    2.25E-001; //2.25e-2
        }
        }
 
