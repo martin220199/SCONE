@@ -166,8 +166,11 @@ contains
     class(tallyAdmin), intent(inout)            :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
-    integer(shortInt)                           :: i, j, cyclesPerBatch
+    integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
+    real(defReal)                               :: minT, maxT, a, b
+    integer(shortInt)                           :: FET_evalPoints, basisFlag
+    character(10)                               :: basis
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
 
     ! Clean itself
@@ -209,10 +212,58 @@ contains
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
 
+    !Read Basis Function
+    call dict % get(basis,'basis')
+
+    select case(basis)
+
+      case('Legendre')
+        basisFlag = 0
+
+      case('Chebyshev1')
+        basisFlag = 1
+
+      case('Chebyshev2')
+        basisFlag = 2
+
+      case('Laguerre')
+        basisFlag = 3
+
+      case('Hermite')
+        basisFlag = 4
+
+      case('Fourier')
+        basisFlag = 5
+
+      case('Jacobi')
+        basisFlag = 6
+        call dict % get(a,'a')
+        call dict % get(b,'b')
+
+      case default
+        call fatalError(Here, 'Need to define the basis function')
+
+    end select
+
+    !Read max FET order
+    call dict % get(maxFetOrder,'maxFetOrder')
+
+    !Read min/max times for time domain transform, and evalTimes
+    call dict % get(maxT,'maxT')
+    call dict % getOrDefault(minT,'minT', ZERO)
+    call dict % get(FET_evalPoints, 'evalpoints')
+
     ! Initialise score memory
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+
+    if (basisFlag == 6) then
+      call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, a = a, b = b)
+    else
+      call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
+                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag)
+    end if
 
     ! Assign memory locations to the clerks
     memLoc = 1

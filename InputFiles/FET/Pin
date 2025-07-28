@@ -1,0 +1,123 @@
+type eigenPhysicsPackage; 
+
+pop      1000000;
+active   50;
+inactive 200;
+XSdata   ce; 
+dataType ce;
+outputFile nameHere ;
+
+// keff_0   1.14;
+
+collisionOperator { neutronCE {type neutronCEstd; } } 
+
+transportOperator { type transportOperatorDT;}          
+          
+inactiveTally {
+		clerkName {
+		   type shannonEntropyClerk;
+		    map {  type spaceMap;
+			   axis z;
+			   grid lin;
+			   min -200.0;
+			   max 200.0;
+			   N 25;
+				  }
+ 		   cycles 200;
+			 }  } 
+
+activeTally {
+  k_anal { type keffAnalogClerk;}
+  norm totalPow;
+  normVal 100.0; 
+  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}} 
+  flux { type collisionClerk; 
+    map { type spaceMap;  axis z;  grid lin;  min -200.0;  max 200.0;  N 50; }
+       response (flux); flux {type fluxResponse;}     } 
+} 
+
+
+
+geometry { 
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0); 
+  graph { type shrunk; }
+
+
+  surfaces { 
+    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (0.665 0.665 200.0);}  
+  }
+  
+  cells {   }
+  
+  universes { 
+    root  { id 15; type rootUniverse; border 1; fill u<10>; } 
+    
+    // Pin universes 
+    pin10 { id 10; type pinUniverse; radii (0.4025 0.4750 0.0 ); 
+                                     fills (UO2   clad   water);}    									 
+  }
+  
+} 
+
+viz {
+  bmp { 
+    type bmp; 
+    output pinVeryFresh; 
+    what material; 
+    centre (0.0 0.0 0.0); 
+    //width (25.0 25.0); 
+    axis z; 
+    res (500 500); 
+  }
+} 
+
+nuclearData {
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
+  } 
+
+  materials { 
+      
+    water { 
+
+      temp 600;
+      composition { 
+      1001.06    4.8132E-02;                                                  
+      8016.06    2.4066E-02;
+      5010.06    3.6487E-06;
+      5011.06    1.4686E-05; }
+      }
+        
+     clad { 
+       temp 600;
+       composition { 
+	   24050.06  2.93909E-006;
+	   24052.06  5.66774E-005;
+	   24053.06  6.42676E-006;
+	   24054.06  1.59976E-006;
+	   26054.06  7.73663E-006;
+	   26056.06  1.21339E-004;
+	   26057.06  2.80370E-006;
+	   26058.06  3.70300E-007;
+       40090.06  1.97105E-002;
+       40091.06  4.29838E-003;
+       40092.06  6.57017E-003;
+       40094.06  6.65828E-003;
+       40096.06  1.07268E-003;} 
+       }	   
+	  
+
+
+     UO2 {
+       temp 900; 
+       composition { 
+       92234.09  9.1361E-06;
+	   92235.09  9.3472E-04;
+	   92238.09  2.1523E-02;
+	    8016.09  4.4935E-02;	}   }
+
+}
+}
+
+
