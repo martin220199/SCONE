@@ -1,0 +1,245 @@
+type eigenPhysicsPackage; 
+
+pop      100000; // high-fidelity 1000000
+active   100; // high-fidelity 100
+inactive 300;
+XSdata   ce; 
+dataType ce;
+outputFormat asciiJSON;
+
+// keff_0   1.14;
+
+collisionOperator { neutronCE {type neutronCEstd; } } 
+
+transportOperator { type transportOperatorDT;}          
+          
+inactiveTally {
+
+  } 
+
+activeTally {
+
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a -0.5;
+  b 1;
+  maxFetOrder 800;
+  minT 0.0;
+  maxT 50.0;
+  evalpoints 1000;
+
+  flux { type collisionClerk;
+       response (flux); flux {type fluxResponse;}     } 
+} 
+
+
+
+geometry { 
+  type geometryStd;
+  boundary ( 1 1 1 1 1 1);
+  graph { type shrunk; }
+
+
+  surfaces { 
+    boundtotal  { id 102; type box; origin (0.0 0.0 25.0); halfwidth (0.665 0.665 25.0);} 
+    bound1 { id 1; type box; origin (0.0 0.0 2.5); halfwidth (0.665 0.665 2.5);} 
+    bound2 { id 2; type box; origin (0.0 0.0 7.5); halfwidth (0.665 0.665 2.5);}
+    bound3 { id 3; type box; origin (0.0 0.0 12.5); halfwidth (0.665 0.665 2.5);}
+    bound4 { id 4; type box; origin (0.0 0.0 17.5); halfwidth (0.665 0.665 2.5);}
+    bound5 { id 5; type box; origin (0.0 0.0 22.5); halfwidth (0.665 0.665 2.5);}
+    bound6 { id 6; type box; origin (0.0 0.0 27.5); halfwidth (0.665 0.665 2.5);}
+    bound7 { id 7; type box; origin (0.0 0.0 32.5); halfwidth (0.665 0.665 2.5);}
+    bound8 { id 8; type box; origin (0.0 0.0 37.5); halfwidth (0.665 0.665 2.5);}
+    bound9 { id 9; type box; origin (0.0 0.0 42.5); halfwidth (0.665 0.665 2.5);}
+    bound10 { id 10; type box; origin (0.0 0.0 47.5); halfwidth (0.665 0.665 2.5);}
+
+    fuel { id 100; type zTruncCylinder; origin (0.0 0.0 25.0); halfwidth 25.0; radius 0.4025;} 
+    clad { id 101; type zTruncCylinder; origin (0.0 0.0 25.0); halfwidth 25.0; radius 0.4750;} 
+  }
+  
+  cells { 
+
+    fuelcell { id 1; type simpleCell; surfaces (-102 -100); filltype mat; material UO2;}
+    cladcell { id 2; type simpleCell; surfaces (-102 100 -101); filltype mat; material clad;}
+    z1 { id 3; type simpleCell; surfaces (-102 101 -1); filltype mat; material water1;}
+    z2 { id 4; type simpleCell; surfaces (-102 101 -2); filltype mat; material water2;}
+    z3 { id 5; type simpleCell; surfaces (-102 101 -3); filltype mat; material water3;}
+    z4 { id 6; type simpleCell; surfaces (-102 101 -4); filltype mat; material water4;}
+    z5 { id 7; type simpleCell; surfaces (-102 101 -5); filltype mat; material water5;}
+    z6 { id 8; type simpleCell; surfaces (-102 101 -6); filltype mat; material water6;}
+    z7 { id 9; type simpleCell; surfaces (-102 101 -7); filltype mat; material water7;}
+    z8 { id 10; type simpleCell; surfaces (-102 101 -8); filltype mat; material water8;}
+    z9 { id 11; type simpleCell; surfaces (-102 101 -9); filltype mat; material water9;}
+    z10 { id 12; type simpleCell; surfaces (-102 101 -10); filltype mat; material water10;}
+    }
+  
+  universes { 
+    root  { id 15; type rootUniverse; border 102; fill u<3>; } 
+    celluni { id 3; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10 11 12);}
+    
+    // Pin universes 
+    //pin10 { id 10; type pinUniverse; radii (0.4025 0.4750 0.0 );  // 0.4025 0.4750 0.0
+     //                                fills (UO2   clad   water);}    									 
+  }
+  
+} 
+
+viz {
+  bmp { 
+    type bmp; 
+    output pinVeryFresh; 
+    what material; 
+    centre (0.0 0.0 0.0); 
+    //width (25.0 25.0); 
+    axis z; 
+    res (500 500); 
+  }
+} 
+
+nuclearData {
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+
+  materials { 
+      
+    //water { 
+    //  temp 600;
+    //  composition { 
+    //  1001.06    4.8132E-02;                                                  
+    //  8016.06    2.4066E-02;
+    //  5010.06    3.6487E-06;
+    //  5011.06    1.4686E-05; }
+    //  }
+
+water1 {
+  temp 600;
+  composition {
+    1001.06    4.8132E-02;
+    8016.06    2.4066E-02;
+   // 5010.06    3.6487E-06;
+   // 5011.06    1.4686E-05;
+  }
+}
+
+water2 {
+  temp 600;
+  composition {
+    1001.06    4.7554E-02;
+    8016.06    2.3777E-02;
+   // 5010.06    3.5995E-06;
+   // 5011.06    1.4498E-05;
+  }
+}
+
+water3 {
+  temp 600;
+  composition {
+    1001.06    4.6976E-02;
+    8016.06    2.3487E-02;
+   // 5010.06    3.5507E-06;
+   // 5011.06    1.4310E-05;
+  }
+}
+
+water4 {
+  temp 600;
+  composition {
+    1001.06    4.6398E-02;
+    8016.06    2.3198E-02;
+    //5010.06    3.5018E-06;
+    //5011.06    1.4122E-05;
+  }
+}
+
+water5 {
+  temp 600;
+  composition {
+    1001.06    4.5820E-02;
+    8016.06    2.2909E-02;
+    //5010.06    3.4530E-06;
+    //5011.06    1.3934E-05;
+  }
+}
+
+water6 {
+  temp 600;
+  composition {
+    1001.06    4.5242E-02;
+    8016.06    2.2619E-02;
+    //5010.06    3.4042E-06;
+    //5011.06    1.3746E-05;
+  }
+}
+
+water7 {
+  temp 600;
+  composition {
+    1001.06    4.4663E-02;
+    8016.06    2.2330E-02;
+    //5010.06    3.3554E-06;
+   // 5011.06    1.3558E-05;
+  }
+}
+
+water8 {
+  temp 600;
+  composition {
+    1001.06    4.4085E-02;
+    8016.06    2.2041E-02;
+    //5010.06    3.3066E-06;
+    //5011.06    1.3370E-05;
+  }
+}
+
+water9 {
+  temp 600;
+  composition {
+    1001.06    4.3507E-02;
+    8016.06    2.1751E-02;
+    //5010.06    3.2578E-06;
+    //5011.06    1.3182E-05;
+  }
+}
+
+water10 {
+  temp 600;
+  composition {
+    1001.06    4.2929E-02;
+    8016.06    2.1462E-02;
+    //5010.06    3.2090E-06;
+    //5011.06    1.2994E-05;
+  }
+}
+
+     clad { 
+       temp 600;
+       composition { 
+	   24050.06  2.93909E-006;
+	   24052.06  5.66774E-005;
+	   24053.06  6.42676E-006;
+	   24054.06  1.59976E-006;
+	   26054.06  7.73663E-006;
+	   26056.06  1.21339E-004;
+	   26057.06  2.80370E-006;
+	   26058.06  3.70300E-007;
+       40090.06  1.97105E-002;
+       40091.06  4.29838E-003;
+       40092.06  6.57017E-003;
+       40094.06  6.65828E-003;
+       40096.06  1.07268E-003;} 
+       }	   
+	  
+
+
+     UO2 {
+       temp 900; 
+       composition { 
+       92234.09  9.1361E-06;
+	   92235.09   9.3472E-04;  //9.3472E-04
+	   92238.09  2.1523E-02;
+	    8016.09  4.4935E-02;	}   }
+
+}
+}
+
+

@@ -88,6 +88,7 @@ module scoreMemory_class
       integer(shortInt)                        :: cycles = 0    !! Cycles counter
       integer(shortInt)                        :: batchSize = 1 !! Batch interval size (in cycles)
       integer(shortInt)                          :: maxFetOrder, basis
+      integer(shortInt)                          :: FETmode = 0
       real(defReal)                              :: deltaT, minT, maxT, a, b
       real(defReal), dimension(:), allocatable   :: FET_evalPoints  
       procedure(scoreFET_signature), pointer     :: scoreFET => null()
@@ -104,6 +105,7 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: getResult_Inactive
 
     ! Public procedures required for Fourier FET
     procedure :: getResult_Fourier_b
@@ -198,59 +200,71 @@ contains
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % nThreads = ompGetMaxThreads()
+    
+    if (present(maxFetOrder)) then
+      self % FETmode = 1
+      self % basis = basisFlag
+      select case(basisFlag)
+        case(0)
+          self % scoreFET => scoreFET_Legendre
+          self % getFETResult => getFETResult_Legendre
+        case(1)
+          self % scoreFET => scoreFET_Chebyshev1
+          self % getFETResult => getFETResult_Chebyshev1
+        case(2)
+          self % scoreFET => scoreFET_Chebyshev2
+          self % getFETResult => getFETResult_Chebyshev2
+        case(3)
+          self % scoreFET => scoreFET_Laguerre
+          self % getFETResult => getFETResult_Laguerre
+        case(4)
+          self % scoreFET => scoreFET_Hermite
+          self % getFETResult => getFETResult_Hermite
+        case(5)
+          self % scoreFET => scoreFET_Fourier
+          allocate( self % parallelBins_b(maxFetOrder + 1, self % nThreads))
+          self % parallelBins_b = ZERO
+          allocate( self % bins_b(maxFetOrder + 1, DIM2))
+          self % bins_b = ZERO
+        case(6)
+          self % scoreFET => scoreFET_Jacobi
+          self % getFETResult => getFETResult_Jacobi
+          self % a = a
+          self % b = b
+        case default
+          call fatalError(Here, 'Need to define the basis function')
+      end select
 
-    self % basis = basisFlag
-    select case(basisFlag)
-      case(0)
-        self % scoreFET => scoreFET_Legendre
-        self % getFETResult => getFETResult_Legendre
-      case(1)
-        self % scoreFET => scoreFET_Chebyshev1
-        self % getFETResult => getFETResult_Chebyshev1
-      case(2)
-        self % scoreFET => scoreFET_Chebyshev2
-        self % getFETResult => getFETResult_Chebyshev2
-      case(3)
-        self % scoreFET => scoreFET_Laguerre
-        self % getFETResult => getFETResult_Laguerre
-      case(4)
-        self % scoreFET => scoreFET_Hermite
-        self % getFETResult => getFETResult_Hermite
-      case(5)
-        self % scoreFET => scoreFET_Fourier
-        allocate( self % parallelBins_b(maxFetOrder + 1, self % nThreads))
-        self % parallelBins_b = ZERO
-        allocate( self % bins_b(maxFetOrder + 1, DIM2))
-        self % bins_b = ZERO
-      case(6)
-        self % scoreFET => scoreFET_Jacobi
-        self % getFETResult => getFETResult_Jacobi
-        self % a = a
-        self % b = b
-      case default
-        call fatalError(Here, 'Need to define the basis function')
-    end select
+      self % maxFetOrder = maxFetOrder
+      self % deltaT = maxT - minT
+      self % minT = minT
+      self % maxT = maxT
 
-    self % maxFetOrder = maxFetOrder
-    self % deltaT = maxT - minT
-    self % minT = minT
-    self % maxT = maxT
+      allocate(self % FET_evalPoints(FET_evalPoints))
+      deltaEval = (maxT - minT) / real(FET_evalPoints)
+      offset = minT + deltaEval / TWO
+      do i = 1, FET_evalPoints
+        self % FET_evalPoints(i) = offset
+        offset = offset + deltaEval
+      end do
 
-    allocate(self % FET_evalPoints(FET_evalPoints))
-    deltaEval = (maxT - minT) / real(FET_evalPoints)
-    offset = minT + deltaEval / TWO
-    do i = 1, FET_evalPoints
-      self % FET_evalPoints(i) = offset
-      offset = offset + deltaEval
-    end do
+      ! Allocate space and zero all bins
+      allocate( self % bins(maxFetOrder + 1, DIM2))
+      self % bins = ZERO
 
-    ! Allocate space and zero all bins
-    allocate( self % bins(maxFetOrder + 1, DIM2))
-    self % bins = ZERO
-
-    ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(maxFetOrder + 1, self % nThreads))
-    self % parallelBins = ZERO
+      ! Note the array padding to avoid false sharing
+      allocate( self % parallelBins(maxFetOrder + 1, self % nThreads))
+      self % parallelBins = ZERO
+      
+    else
+      ! Allocate space and zero all bins
+      allocate( self % bins(N, DIM2))
+      self % bins = ZERO
+    
+      allocate( self % parallelBins(N + array_pad, self % nThreads))
+      self % parallelBins = ZERO
+    
+    end if
 
     ! Save size of memory
     self % N = N
@@ -388,44 +402,69 @@ contains
     class(scoreMemory), intent(inout) :: self
     real(defReal),intent(in)          :: normFactor
     integer(shortInt)                 :: k
+    integer(longInt)                  :: i
     real(defReal), save               :: res
     !$omp threadprivate(res)
+  
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
-      
-      !$omp parallel do
-      do k = 1, self % maxFetOrder + 1
-        
-        ! Normalise scores
-        !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
-        res = sum(self % parallelBins(k,:))
-        
-        ! Zero all score bins
-        self % parallelBins(k,:) = ZERO
-       
-        ! Increment cumulative sums 
-        self % bins(k,CSUM)  = self % bins(k, CSUM) + res
-        self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
+    
+      if (self % FETmode == 1) then
 
-        if (self % basis == 5) then
-          res = sum(self % parallelBins_b(k,:))
-
+        !$omp parallel do
+        do k = 1, self % maxFetOrder + 1
+        
+          ! Normalise scores
+          !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
+          res = sum(self % parallelBins(k,:))
+        
           ! Zero all score bins
-          self % parallelBins_b(k,:) = ZERO
-
+          self % parallelBins(k,:) = ZERO
+       
           ! Increment cumulative sums 
-          self % bins_b(k,CSUM)  = self % bins_b(k, CSUM) + res
-          self % bins_b(k,CSUM2) = self % bins_b(k, CSUM2) + res * res
-        end if
+          self % bins(k,CSUM)  = self % bins(k, CSUM) + res
+          self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
 
-      end do
-      !$omp end parallel do
+          if (self % basis == 5) then
+            res = sum(self % parallelBins_b(k,:))
 
-      ! Increment batch counter
-      !self % batchN = self % batchN + 1
+            ! Zero all score bins
+            self % parallelBins_b(k,:) = ZERO
+
+            ! Increment cumulative sums 
+            self % bins_b(k,CSUM)  = self % bins_b(k, CSUM) + res
+            self % bins_b(k,CSUM2) = self % bins_b(k, CSUM2) + res * res
+          end if
+
+        end do
+        !$omp end parallel do
+        self % batchN = self % batchN + 1
+
+      else
+
+        !$omp parallel do
+        do i = 1, self % N
+        
+          ! Normalise scores
+          self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
+          res = sum(self % parallelBins(i,:))
+        
+          ! Zero all score bins
+          self % parallelBins(i,:) = ZERO
+       
+          ! Increment cumulative sums 
+          self % bins(i,CSUM)  = self % bins(i,CSUM) + res
+          self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
+
+        end do
+        !$omp end parallel do
+        
+        self % batchN = self % batchN + 1
+      
+      end if
 
     end if
 
@@ -618,7 +657,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Legendre(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Legendre(k)
     end do
 
     STD = SQRT(STD)
@@ -1560,6 +1599,54 @@ contains
     mean = self % bins(idx, CSUM) / N
 
   end subroutine getResult_withoutSTD
+  
+  
+  
+    !!
+  !! Load mean result and Standard deviation into provided arguments
+  !! Load from bin indicated by idx
+  !! Returns 0 if index is invalid
+  !!
+  elemental subroutine getResult_Inactive(self, mean, STD, idx, samples)
+    class(scoreMemory), intent(in)         :: self
+    real(defReal), intent(out)             :: mean
+    real(defReal),intent(out)              :: STD
+    integer(longInt), intent(in)           :: idx
+    integer(shortInt), intent(in),optional :: samples
+    integer(shortInt)                      :: N
+    real(defReal)                          :: inv_N, inv_Nm1
+
+    !! Verify index. Return 0 if not present
+    if( idx < 0_longInt .or. idx > self % N) then
+      mean = ZERO
+      STD = ZERO
+      return
+    end if
+
+    ! Check if # of samples is provided
+    if( present(samples)) then
+      N = samples
+    else
+      N = self % batchN
+    end if
+
+    ! Calculate mean
+    mean = self % bins(idx, CSUM) / N
+
+    ! Calculate STD
+    inv_N   = ONE / N
+    if( N /= 1) then
+      inv_Nm1 = ONE / (N - 1)
+    else
+      inv_Nm1 = ONE
+    end if
+    STD = self % bins(idx, CSUM2) *inv_N * inv_Nm1 - mean * mean * inv_Nm1
+    STD = sqrt(STD)
+
+  end subroutine getResult_Inactive
+
+
+
 
   !!
   !! Obtain value of a score in a bin

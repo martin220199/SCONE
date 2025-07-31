@@ -247,8 +247,8 @@ contains
     real(defReal)                              :: val, std
     integer(longInt)                          :: i
     integer(shortInt),dimension(:),allocatable :: resArrayShape
-    real(defReal), dimension(mem % maxFetOrder) :: fet_coeff_arr, fet_coeff_std_arr 
-    real(defReal), dimension(:), allocatable    :: fet_coeff_arr_b, fet_coeff_std_arr_b 
+    real(defReal), dimension(mem % maxFetOrder + 1) :: fet_coeff_arr, fet_coeff_std_arr 
+    real(defReal), dimension(mem % maxFetOrder + 1) :: fet_coeff_arr_b, fet_coeff_std_arr_b 
     character(nameLen)                          :: name
 
     ! Begin block
@@ -271,8 +271,8 @@ contains
     call outFile % endArray()
 
     if (mem % basis == 5) then
-      allocate(fet_coeff_arr_b(mem % maxFetOrder))
-      allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
+      !allocate(fet_coeff_arr_b(mem % maxFetOrder))
+      !allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
       ! Start array
       name ='FET_coeff_b'
       call outFile % startArray(name, [1, mem % maxFetOrder + 1])

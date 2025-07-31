@@ -178,7 +178,7 @@ contains
     type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: k, STD
 
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult_Inactive(k, STD, self % getMemAddress())
 
     ! Print estimates to a console
     print '(A,F8.5,A,F8.5)', 'k-eff (analog): ',  k, ' +/- ', STD
@@ -198,7 +198,7 @@ contains
     character(nameLen)                 :: name
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult_Inactive(k, STD, self % getMemAddress())
 
     ! Print to output file
     call outFile % startBlock(self % getName() )
@@ -221,7 +221,7 @@ contains
     real(defReal)                                   :: k, STD
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult_Inactive(k, STD, self % getMemAddress())
 
     allocate(res, source = keffResult([k, STD]))
 

@@ -278,7 +278,7 @@ contains
     logical(defBool)                     :: isIt
     real(defReal)                        :: k, STD
 
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
+    call mem % getResult_Inactive(k, STD, self % getMemAddress() + K_EFF)
 
     isIt = (STD < self % targetSTD)
 
@@ -295,7 +295,7 @@ contains
     real(defReal)                         :: k, STD
 
     ! Get current k-eff estimate
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF )
+    call mem % getResult_Inactive(k, STD, self % getMemAddress() + K_EFF )
 
     ! Print to console
     print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD
@@ -319,23 +319,23 @@ contains
     addr = self % getMemAddress()
 
     name = 'IMP_PROD'
-    call mem % getResult(val, STD, addr + IMP_PROD)
+    call mem % getResult_Inactive(val, STD, addr + IMP_PROD)
     call outFile % printResult(val, STD, name)
 
     name = 'IMP_ABS'
-    call mem % getResult(val, STD, addr + IMP_ABS)
+    call mem % getResult_Inactive(val, STD, addr + IMP_ABS)
     call outFile % printResult(val, STD, name)
 
     name = 'SCATTER_PROD'
-    call mem % getResult(val, STD, addr + SCATTER_PROD)
+    call mem % getResult_Inactive(val, STD, addr + SCATTER_PROD)
     call outFile % printResult(val, STD, name)
 
     name = 'ANA_LEAK'
-    call mem % getResult(val, STD, addr + ANA_LEAK)
+    call mem % getResult_Inactive(val, STD, addr + ANA_LEAK)
     call outFile % printResult(val, STD, name)
 
     name = 'K_EFF'
-    call mem % getResult(val, STD, addr + K_EFF)
+    call mem % getResult_Inactive(val, STD, addr + K_EFF)
     call outFile % printResult(val, STD, name)
 
     call outFile % endBlock()
@@ -356,7 +356,7 @@ contains
     real(defReal)                                     :: k, STD
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
+    call mem % getResult_Inactive(k, STD, self % getMemAddress() + K_EFF)
 
     allocate(res, source = keffResult([k, STD]))
 
