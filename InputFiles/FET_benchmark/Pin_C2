@@ -1,8 +1,8 @@
 type eigenPhysicsPackage;
 
-pop      1000000; //high-fidelity 1000000  //low-fidelity 20000
-active   3;
-inactive 200;
+pop      100000; //high-fidelity 1000000  //low-fidelity 20000
+active   100; //100 high-fid
+inactive 300;
 XSdata   ce; 
 dataType ce;
 outputFormat asciiJSON;
@@ -33,7 +33,7 @@ activeTally {
   //normVal 100.0; 
   //totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}} 
   flux { type collisionClerk; 
-    map { type spaceMap;  axis z;  grid lin;  min -200.0;  max 200.0;  N 1000; } //high fidelity 1000
+    map { type spaceMap;  axis z;  grid lin;  min 0.0;  max 400.0;  N 300; } //high fidelity 1000
        response (flux); flux {type fluxResponse;}     } 
 } 
 
@@ -46,7 +46,7 @@ geometry {
 
 
   surfaces { 
-    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (0.665 0.665 200.0);}  
+    squareBound  { id 1; type box; origin (0.0 0.0 200.0); halfwidth (0.665 0.665 200.0);}  
   }
   
   cells {   }
@@ -114,7 +114,7 @@ nuclearData {
        temp 600; 
        composition { 
        92234.09  9.1361E-06;
-	   92235.09  2.9080E-04;  //9.3472E-04
+	   92235.09  9.3472E-04; //2.9080E-04;  //9.3472E-04
 	   92238.09  2.1523E-02;
 	    8016.09  4.4935E-02;	}   }
 
