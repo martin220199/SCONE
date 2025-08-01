@@ -705,7 +705,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Legendre(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Legendre(k)
     end do
 
     STD = SQRT(STD)
@@ -839,7 +839,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Chebyshev1(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Chebyshev1(k)
     end do
 
     STD = SQRT(STD)
@@ -966,7 +966,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Chebyshev2(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Chebyshev2(k)
     end do
 
     STD = SQRT(STD)
@@ -1094,7 +1094,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Laguerre(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Laguerre(k)
     end do
 
     STD = SQRT(STD)
@@ -1224,7 +1224,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Hermite(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Hermite(k)
     end do
 
     STD = SQRT(STD)
@@ -1360,13 +1360,13 @@ contains
       factor = fet_coeff_arr(k + 1) * self % orthonormalisationTransformed_Fourier(k)
       p_k = cos(k * t_trans)
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Fourier(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Fourier(k)
 
       if (k > 0) then
         factor = fet_coeff_arr_b(k + 1) * self % orthonormalisationTransformed_b_Fourier(k)
         p_k = sin(k * t_trans)
         mean = mean + factor * p_k
-        STD = STD + (fet_coeff_std_arr_b(k + 1)**TWO) * self % orthonormalisationStandard_b_Fourier(k)
+        STD = STD + (fet_coeff_std_arr_b(k + 1)**TWO) * self % orthonormalisationTransformed_b_Fourier(k)
       end if
 
     end do
@@ -1529,7 +1529,7 @@ contains
       end if
 
       mean = mean + factor * p_k
-      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationStandard_Jacobi(k)
+      STD = STD + (fet_coeff_std_arr(k + 1)**TWO) * self % orthonormalisationTransformed_Jacobi(k)
     end do
 
     STD = SQRT(STD)
