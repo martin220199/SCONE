@@ -1409,29 +1409,56 @@ contains
 
   end function orthonormalisationTransformed_Jacobi
 
-  function orthonormalisationStandard_Jacobi(self, k) result(km)
-    class(scoreMemory), intent(in) :: self
-    integer(shortInt), intent(in)  :: k
-    real(defReal)                  :: km, num, denom
-    character(100),parameter :: Here = 'orthonormalisationStandard_Jacobi (scoreMemory_class.f90)'
+function orthonormalisationStandard_Jacobi(self, k) result(km)
+  use iso_c_binding, only: c_double
+  class(scoreMemory), intent(in) :: self
+  integer(shortInt),  intent(in)  :: k
+  real(defReal)                   :: km
+  character(100), parameter       :: Here = &
+       'orthonormalisationStandard_Jacobi (scoreMemory_class.f90)'
 
-    if ((k == 0) .and. (k + self % a + self % b <= -1)) then
+  ! Inline C binding for log-gamma
+  interface
+    function lgamma_c(x) bind(C, name="lgamma")
+      import :: c_double
+      real(c_double), value :: x
+      real(c_double)        :: lgamma_c
+    end function
+  end interface
 
-      if ((self % a == -0.5) .and. (self % b == -0.5)) then
-        km = ONE / PI
-        return
-      else
-        call fatalError(Here, 'Undefined Gamma! Choose other a,b for Jacobian')
-      end if
+  ! Double-precision temporaries with unique names
+  real(c_double) :: alpha_d, beta_d, sum_ab_d
+  real(c_double) :: log_num, log_den
 
+  ! Special k=0 case
+  if ((k == 0) .and. (k + self%a + self%b <= -1)) then
+    if (self%a == -0.5_defReal .and. self%b == -0.5_defReal) then
+      km = ONE / PI
+      return
     else
-      num = (TWO**(self % a + self % b + ONE)) * gamma(k + self % a + ONE) * gamma(k + self % b + ONE)
-      denom = (TWO * k + self % a + self % b + ONE) * gamma(k + ONE) * gamma(k + self % a + self % b + ONE)
+      call fatalError(Here, 'Undefined Gamma! Choose other a,b for Jacobian')
     end if
+  end if
 
-    km = denom / num
+  ! Promote parameters to double precision
+  alpha_d  = real(self%a, c_double)
+  beta_d   = real(self%b, c_double)
+  sum_ab_d = alpha_d + beta_d + 1.0_c_double
 
-  end function orthonormalisationStandard_Jacobi
+  ! log_num = (a+b+1)*log(2) + lgamma(k+a+1) + lgamma(k+b+1)
+  log_num = sum_ab_d * log(2.0_c_double) &
+            + lgamma_c(real(k, c_double) + alpha_d + 1.0_c_double) &
+            + lgamma_c(real(k, c_double) + beta_d  + 1.0_c_double)
+
+  ! log_den = log(2*k + a+b+1) + lgamma(k+1) + lgamma(k+a+b+1)
+  log_den = log(2.0_c_double*real(k, c_double) + sum_ab_d) &
+            + lgamma_c(real(k, c_double) + 1.0_c_double) &
+            + lgamma_c(real(k, c_double) + sum_ab_d)
+
+  ! Final result cast back to defReal
+  km = real(exp(log_den - log_num), kind=defReal)
+
+end function orthonormalisationStandard_Jacobi
 
   subroutine getFETResult_Jacobi(self, mean, STD, time, fet_coeff_arr, fet_coeff_std_arr)
     class(scoreMemory), intent(in)                           :: self
