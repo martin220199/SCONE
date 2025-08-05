@@ -1417,7 +1417,6 @@ function orthonormalisationStandard_Jacobi(self, k) result(km)
   character(100), parameter       :: Here = &
        'orthonormalisationStandard_Jacobi (scoreMemory_class.f90)'
 
-  ! Inline C binding for log-gamma
   interface
     function lgamma_c(x) bind(C, name="lgamma")
       import :: c_double
@@ -1426,11 +1425,9 @@ function orthonormalisationStandard_Jacobi(self, k) result(km)
     end function
   end interface
 
-  ! Double-precision temporaries with unique names
   real(c_double) :: alpha_d, beta_d, sum_ab_d
   real(c_double) :: log_num, log_den
 
-  ! Special k=0 case
   if ((k == 0) .and. (k + self%a + self%b <= -1)) then
     if (self%a == -0.5_defReal .and. self%b == -0.5_defReal) then
       km = ONE / PI
@@ -1440,22 +1437,18 @@ function orthonormalisationStandard_Jacobi(self, k) result(km)
     end if
   end if
 
-  ! Promote parameters to double precision
   alpha_d  = real(self%a, c_double)
   beta_d   = real(self%b, c_double)
   sum_ab_d = alpha_d + beta_d + 1.0_c_double
 
-  ! log_num = (a+b+1)*log(2) + lgamma(k+a+1) + lgamma(k+b+1)
   log_num = sum_ab_d * log(2.0_c_double) &
             + lgamma_c(real(k, c_double) + alpha_d + 1.0_c_double) &
             + lgamma_c(real(k, c_double) + beta_d  + 1.0_c_double)
 
-  ! log_den = log(2*k + a+b+1) + lgamma(k+1) + lgamma(k+a+b+1)
   log_den = log(2.0_c_double*real(k, c_double) + sum_ab_d) &
             + lgamma_c(real(k, c_double) + 1.0_c_double) &
             + lgamma_c(real(k, c_double) + sum_ab_d)
 
-  ! Final result cast back to defReal
   km = real(exp(log_den - log_num), kind=defReal)
 
 end function orthonormalisationStandard_Jacobi
