@@ -18,10 +18,10 @@ inactiveTally {
 
 
 activeTally {
-  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  basis Chebyshev1;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a -0.5;
   b 1;
-  maxFetOrder 80;
+  maxFetOrder 1000;
   minT 0.0;
   maxT 400.0;
   evalpoints 1000;
