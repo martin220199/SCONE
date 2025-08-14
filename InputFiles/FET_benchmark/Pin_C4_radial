@@ -1,7 +1,7 @@
 type eigenPhysicsPackage;
 
-pop      1000000; //high-fidelity 1000000  //low-fidelity 20000
-active   500; //100 high-fid
+pop      100000; //high-fidelity 1000000  //low-fidelity 100000
+active   500; //500 high-fid & low
 inactive 300;
 XSdata   ce; 
 dataType ce;
@@ -18,7 +18,7 @@ inactiveTally {
 activeTally {
   
   flux { type collisionClerk; //CEfilter { type energyFilter; Emin 19.99999999999999999999; Emax 20.0; }
-    map { type cylindricalMap;  origin (0.0 0.0); rGrid equivolume; Rmin 0.0; Rmax 0.665; rN 100; axGrid lin; axMin 0.0; axMax 400.0; axN 1; azimuthalN 1;} //high fidelity 1000
+    map { type cylindricalMap;  origin (0.0 0.0); rGrid equivolume; Rmin 0.0; Rmax 0.665; rN 3; axGrid lin; axMin 0.0; axMax 400.0; axN 1; azimuthalN 1;} //high fidelity rN 50
        response (flux); flux {type fluxResponse;}     } 
 } 
 
