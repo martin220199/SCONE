@@ -1,0 +1,130 @@
+type eigenPhysicsPackage;
+
+pop      100000; //high-fidelity 1000000  //low-fidelity 20000
+active   100; //100 high-fid
+inactive 300;
+XSdata   ce; 
+dataType ce;
+outputFormat asciiJSON;
+
+// keff_0   1.14;
+
+collisionOperator { neutronCE {type neutronCEstd; } } 
+
+transportOperator { type transportOperatorDT;}          
+          
+inactiveTally {
+      } 
+
+activeTally {
+  basis Fourier;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a -0.5;
+  b 1;
+  maxFetOrder 400;
+  minT 0.0;
+  maxT 102.0;
+  evalpoints 1000;
+
+  flux { type collisionClerk;
+       response (flux); flux {type fluxResponse;}     } 
+} 
+
+
+
+geometry { 
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph { type shrunk; }
+
+
+  surfaces { 
+    squareBound  { id 1; type box; origin (0.0 0.0 51.0); halfwidth (0.445 0.445 51.0);}  
+  }
+  
+  cells {   }
+  
+  universes { 
+    root  { id 15; type rootUniverse; border 1; fill u<10>; } 
+    
+    // Pin universes 
+    pin10 { id 10; type pinUniverse; radii (0.2975 0.348 0.404 0.0 );  // 0.4025 0.4750 0.0
+                                     fills (MOX sodium clad sodium);}    									 
+  }
+  
+} 
+
+viz {
+  bmp { 
+    type bmp; 
+    output pinVeryFresh; 
+    what material; 
+    centre (0.0 0.0 0.0); 
+    //width (25.0 25.0); 
+    axis z; 
+    res (500 500); 
+  }
+} 
+
+nuclearData {
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+
+  materials { 
+  
+
+    sodium { 
+
+      temp 600;
+      composition { 
+      11023.06  2.220E-02;}
+      }
+      
+      
+        
+     clad { 
+       temp 600;
+       composition { 
+    26056.06  7.30E-02;
+    26054.06  4.70E-04;
+    26057.06  1.70E-03;
+    26058.06  2.20E-04;
+    24052.06  7.40E-03;
+    24053.06  8.40E-04;
+    24050.06  3.40E-04;
+    24054.06  2.00E-04;
+    28058.06  5.00E-04;
+    28060.06  2.00E-04;
+       } 
+       }	   
+	  
+
+
+     MOX {
+       temp 600; 
+       composition { 
+
+    // Uranium
+    92238.09  2.22E-02;
+    92235.09  2.50E-04;
+    92234.09  2.50E-06;
+
+    // TRU
+    94239.09  3.30E-03;
+    94240.09  1.50E-03;
+    94241.09  7.20E-04;
+    94242.09  4.80E-04;
+
+    // Zr
+    40090.09  2.60E-03;
+    40091.09  6.00E-04;
+    40092.09  9.20E-04;
+    40094.09  9.30E-04;
+    40096.09  1.50E-04;
+      
+      	}   }
+
+}
+}
+
+
