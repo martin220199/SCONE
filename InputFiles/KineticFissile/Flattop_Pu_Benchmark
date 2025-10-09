@@ -5,19 +5,16 @@ timeSteps   500; //500
 XSdata   ce;
 dataType ce;
 timeIncrement 8.E-10; //8.E-10
-cycles 100; //100
+cycles 50; //100
 buffer 300000;
-combing 0; //toggle on or off
+combing 1; //toggle on or off
 //precursors 0; //toggle on or off
 // need to implement number of batches!! and compute statistics thereof, look at fixed source
 
-precursors 1;
-useForcedPrecursorDecay 1;
-
 outputFormat asciiJSON;
-collisionOperator { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
+collisionOperator { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20;}}
 
-transportOperator { type transportOperatorKineticDT; //currently will only support this
+transportOperator { type transportOperatorDT; //currently will only support this
                   }
 
 source {
@@ -78,7 +75,7 @@ nuclearData {
         94239.03 0.036697000;
         94240.03 0.001870000; 
         94241.03 0.000116390;
-        31000.03 0.001475500;
+        31067.03 0.001475500;
         }
 
     }
