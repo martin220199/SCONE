@@ -14,7 +14,7 @@ combing 1; //toggle on or off
 outputFormat asciiJSON;
 collisionOperator { neutronCE {type neutronCEkineticstd; minEnergy 1.0e-11; maxEnergy 20;}}
 
-transportOperator { type transportOperatorDT; //currently will only support this
+transportOperator { type transportOperatorKineticDT; //currently will only support this
                   }
 
 source {
