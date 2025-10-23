@@ -29,10 +29,12 @@ transportOperatorKinetic { type transportOperatorKineticDT;
 
 
 tally  {
-  flux_time { type collisionClerk;
-    map { type timeMap; grid lin; min 0.0; max 20.0e-6; N 20;} 
-    response (flux); flux {type fluxResponse;}
-    }
+
+  MGxss { type mgXsClerk;
+      energyMap {type energyMap; grid lin; min 1.0e-11; max 20.0; N 3; }
+      spaceMap { type multiMap; maps (map1); map1 {type timeMap; grid lin; min 0.0; max 20.0e-6; N 20;}}
+     }
+
   }
 
 
