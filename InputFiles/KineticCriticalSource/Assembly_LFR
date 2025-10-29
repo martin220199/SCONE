@@ -6,8 +6,8 @@ XSdata   ce;
 dataType ce;
 timeIncrement 1.0e-6;
 cycles 5;
-buffer 100000;
-active   200;
+buffer 20000;
+active   100;
 inactive 200; 
 combing 1;
 
@@ -17,7 +17,7 @@ precursors 1;
 kineticGeometry{enable 1; timeSteps (8); }
 
 outputFormat asciiJSON;
-collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.0001;}} 
+collisionOperatorCritical { neutronCE {type neutronCEstd; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}} 
 
 transportOperatorCritical { type transportOperatorDT;
                   }
