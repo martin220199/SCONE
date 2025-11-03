@@ -1,12 +1,12 @@
 type criticalKineticPhysicsPackage;
 
-pop      20000;
+pop      200; //20000
 timeSteps   20; 
 XSdata   ce;
 dataType ce;
 timeIncrement 1.0e-6;
 cycles 5;
-buffer 100000;
+buffer 10000; //100000
 active   200;
 inactive 200; 
 combing 1;
@@ -33,6 +33,7 @@ tally  {
   MGxss { type mgXsClerk;
       energyMap {type energyMap; grid predef; name ecco33; }
       spaceMap { type multiMap; maps (map1 map2); map1 {type homogMatMap; grid predef; bins (bin1 bin2 bin3 bin4); bin1 (IF); bin2 (OF); bin3 (DA); bin4 (CR);} map2 {type timeMap; grid lin; min 0.0; max 20.0e-6; N 20;}}
+
      }
 
   }
