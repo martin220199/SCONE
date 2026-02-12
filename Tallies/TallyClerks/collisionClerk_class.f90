@@ -194,6 +194,9 @@ contains
     real(defReal)                           :: scoreVal, flx
     character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
 
+
+    !print *, '----- reportInColl???'
+
     ! Calculate flux sample based on physical or virtual collision
     if (self % virtual) then
       flx = ONE / xsData % getMajorantXS(p)
@@ -210,6 +213,8 @@ contains
       if(self % filter % isFail(state)) return
     end if
 
+    !print *, 'test1111', self % width, p % time, state % time
+
     ! Find bin index
     if(allocated(self % map)) then
       binIdx = self % map % map(state)
@@ -217,15 +222,20 @@ contains
       binIdx = 1
     end if
 
+    !print *, 'binIdx', binIdx
     ! Return if invalid bin index
     if (binIdx == 0) return
+
 
     ! Calculate bin address
     adrr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
 
+    !print *, 'test2222', adrr, self % width
+
     ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w * flx
+      !print *, 'score_val', scoreVal
       call mem % score(scoreVal, adrr + i)
 
     end do

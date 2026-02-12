@@ -196,6 +196,8 @@ contains
     select case(energy)
       case('ce')
         self % particleType = P_NEUTRON_CE
+      case('mg')
+        self % particleType = P_NEUTRON_MG
       case default
         call fatalError(Here,"dataType must be 'mg' or 'ce'.")
     end select
@@ -699,8 +701,8 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      call self % currentTime(i) % init(50*self % bufferSize)
+      call self % nextTime(i) % init(50*self % bufferSize)
     end do
 
     ! Size precursor dungeon
@@ -962,6 +964,7 @@ contains
 
         if ((t == 1) .and. (self % useCombing .eqv. .true.)) call self % currentTime(i) % combing(self % bufferSize, pRNG)
         nParticles = self % currentTime(i) % popSize()
+        print *, nParticles, i, t
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
           if (t == 1) then
@@ -975,6 +978,7 @@ contains
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
+          !print *, 'ok simulate', p % time, p % fate
           pRNG = self % pRNG
           p % pRNG => pRNG
           call p % pRNG % stride(n)
@@ -996,6 +1000,7 @@ contains
             ! Transport particle untill its death
             history: do
               if(p % isDead) exit history
+              !print *, 'TRANSPOOOOORTTTT ------'
               call transOpKinetic % transport(p, tally, buffer, buffer)
               if(p % isDead) exit history
               if(p % fate == AGED_FATE) then

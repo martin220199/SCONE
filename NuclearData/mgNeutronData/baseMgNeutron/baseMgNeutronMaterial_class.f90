@@ -32,8 +32,9 @@ module baseMgNeutronMaterial_class
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
   integer(shortInt), parameter, public :: IESCATTER_XS  = 2
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
-  integer(shortInt), parameter, public :: FISSION_XS    = 4
-  integer(shortInt), parameter, public :: NU_FISSION    = 5
+  integer(shortInt), parameter, public :: VELOCITY      = 4
+  integer(shortInt), parameter, public :: FISSION_XS    = 5
+  integer(shortInt), parameter, public :: NU_FISSION    = 6
 
   !!
   !! Basic type of MG material data
@@ -81,6 +82,8 @@ module baseMgNeutronMaterial_class
     ! Local procedures
     procedure :: init
     procedure :: nGroups
+    procedure :: getVelPtr
+    procedure :: getVel
 
   end type baseMgNeutronMaterial
 
@@ -125,7 +128,7 @@ contains
     xss % elasticScatter   = ZERO
     xss % inelasticScatter = self % data(IESCATTER_XS, G)
     xss % capture          = self % data(CAPTURE_XS, G)
-
+    xss % velocity         = self % data(VELOCITY, G)
     if(self % isFissile()) then
       xss % fission        = self % data(FISSION_XS, G)
       xss % nuFission      = self % data(NU_FISSION, G)
@@ -135,6 +138,24 @@ contains
     end if
 
   end subroutine getMacroXSs_byG
+
+
+  function getVel(self, G, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getVel (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if (G < 1 .or. self % nGroups() < G) then
+      call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                           ' Data has only: ' // numToChar(self % nGroups()))
+      xs = ZERO ! Avoid warning
+    end if
+    xs = self % data(VELOCITY, G)
+
+  end function getVel 
 
   !!
   !! Return Total XSs for energy group G
@@ -187,7 +208,6 @@ contains
     type(dictDeck)                              :: deck
     character(100), parameter :: Here = 'init (baseMgNeutronMaterial_class.f90)'
 
-
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
@@ -221,9 +241,9 @@ contains
 
     ! Allocate space for data
     if(self % isFissile()) then
-      N = 5
+      N = 6
     else
-      N = 3
+      N = 4
     end if
 
     allocate(self % data(N, nG))
@@ -269,6 +289,15 @@ contains
         self % data(TOTAL_XS, i) = self % data(TOTAL_XS, i) + self % data(FISSION_XS, i)
       end if
     end do
+
+    ! Load cross sections
+    call dict % get(temp, 'velocity')
+    if(size(temp) /= nG) then
+      call fatalError(Here,'Capture XSs have wong size. Must be: ' &
+                          // numToChar(nG)//' is '//numToChar(size(temp)))
+    end if
+    self % data(VELOCITY,:) = temp
+
   end subroutine init
 
   !!
@@ -291,6 +320,15 @@ contains
     end if
 
   end function nGroups
+
+
+  function getVelPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: xs
+
+    xs => self % data(VELOCITY, :)
+
+  end function getVelPtr
 
   !!
   !! Cast materialHandle pointer to baseMgNeutronMaterial type pointer

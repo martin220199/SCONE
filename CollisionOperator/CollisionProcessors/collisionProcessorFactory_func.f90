@@ -13,6 +13,7 @@ module collisionProcessorFactory_func
   use neutronMGstd_class,        only  : neutronMGstd
   use neutronCEkineticstd_class, only  : neutronCEkineticstd
   use neutronCEkineticimp_class, only  : neutronCEkineticimp
+  use neutronMGkineticstd_class, only  : neutronMGkineticstd
 
   implicit none
   private
@@ -27,6 +28,7 @@ module collisionProcessorFactory_func
                                                                                 'neutronCEimp        ',&
                                                                                 'neutronMGstd        ',&
                                                                                 'neutronCEkineticstd ',&
+                                                                                'neutronMGkineticstd ',&
                                                                                 'neutronCEkineticimp ']
 
 contains
@@ -60,6 +62,9 @@ contains
 
       case('neutronCEkineticstd')
         allocate(neutronCEkineticstd :: new)
+
+      case('neutronMGkineticstd')
+        allocate(neutronMGkineticstd :: new)
 
       case('neutronCEkineticimp')
         allocate(neutronCEkineticimp :: new)

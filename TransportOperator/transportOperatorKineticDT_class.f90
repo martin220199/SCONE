@@ -11,6 +11,8 @@ module transportOperatorKineticDT_class
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
 
+  use mgNeutronMaterial_inter,       only : mgNeutronMaterial, mgNeutronMaterial_CptrCast
+
   ! Superclass
   use transportOperator_inter,    only : transportOperator
 
@@ -24,6 +26,8 @@ module transportOperatorKineticDT_class
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  use neutronXsPackages_class,       only : neutronMacroXSs
+
   implicit none
   private
 
@@ -31,6 +35,7 @@ module transportOperatorKineticDT_class
   !! Transport operator that moves a particle with delta tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorKineticDT
+  class(mgNeutronMaterial), pointer, public :: mat    => null()
   contains
     procedure :: transit => deltaTracking
   end type transportOperatorKineticDT
@@ -43,11 +48,20 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
+    type(neutronMacroXSs)                :: macroXSs
     real(defReal)                             :: majorant_inv, sigmaT, distance
     character(100), parameter :: Here = 'deltaTracking (transportOperatorKineticDT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
+
+    self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial(1))
+    if(.not.associated(self % mat)) then 
+      print *, p % matIdx(), p % time
+      call fatalError(Here, "Failed to get MG Neutron Material")
+    end if
+    call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
+    !macroXSs % velocity
 
     ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
@@ -55,8 +69,9 @@ contains
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
-      if (p % time + distance / p % getSpeed() > p % timeMax) then
-        distance = distance * (p % timeMax - p % time)/(distance / p % getSpeed())
+
+      if (p % time + distance / macroXSs % velocity > p % timeMax) then
+        distance = distance * (p % timeMax - p % time)/(distance / macroXSs % velocity)
         p % fate = AGED_FATE
         p % time = p % timeMax
         call self % geom % teleport(p % coords, distance)
@@ -67,7 +82,7 @@ contains
       call self % geom % teleport(p % coords, distance)
 
       ! Update time
-      p % time = p % time + distance / p % getSpeed()
+      p % time = p % time + distance / macroXSs % velocity
 
       ! If particle has leaked, exit
       if (p % matIdx() == OUTSIDE_FILL) then

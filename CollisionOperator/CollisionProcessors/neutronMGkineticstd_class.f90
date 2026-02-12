@@ -1,4 +1,4 @@
-module neutronMGstd_class
+module neutronMGkineticstd_class
 
   use numPrecision
   use endfConstants
@@ -25,8 +25,6 @@ module neutronMGstd_class
   ! Cross section packages
   use neutronXsPackages_class,       only : neutronMacroXSs
 
-  ! Tallies
-  use tallyCodes
 
   ! Nuclear Data
   !use nuclearData_inter,              only : nuclearData
@@ -50,14 +48,16 @@ module neutronMGstd_class
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   type            neutronMGstd;
+  !!   type            neutronMGkineticstd;
   !!   }
   !!
-  type, public, extends(collisionProcessor) :: neutronMGstd
+  type, public, extends(collisionProcessor) :: neutronMGkineticstd
     private
     class(mgNeutronDatabase), pointer, public :: xsData => null()
     class(mgNeutronMaterial), pointer, public :: mat    => null()
-    real(defReal)    :: couplingRatio
+
+    ! Precursors
+    logical(defBool) :: usePrecursors
   contains
     ! Initialisation procedure
     procedure :: init
@@ -70,7 +70,7 @@ module neutronMGstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
-  end type neutronMGstd
+  end type neutronMGkineticstd
 
 contains
 
@@ -78,13 +78,14 @@ contains
   !! Initialise from dictionary
   !!
   subroutine init(self, dict)
-    class(neutronMGstd), intent(inout) :: self
+    class(neutronMGkineticstd), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
-    character(100), parameter :: Here = 'init (neutronMGstd_class.f90)'
+    character(100), parameter :: Here = 'init (neutronMGkineticstd_class.f90)'
 
     ! Call superclass
     call init_super(self, dict)
-    call dict % getOrDefault(self % couplingRatio, 'couplingRatio', ONE)
+
+    call dict % getOrDefault(self % usePrecursors, 'precursors', .false.)
 
   end subroutine init
 
@@ -92,15 +93,14 @@ contains
   !! Samples collision without any implicit treatment
   !!
   subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMacroXSs)                :: macroXSs
     real(defReal)                        :: r
-    type(particleState)                  :: pTemp
-    character(100),parameter :: Here =' sampleCollision (neutronMGstd_class.f90)'
+    character(100),parameter :: Here =' sampleCollision (neutronMGkineticstd_class.f90)'
 
     ! Verify that particle is MG neutron
     if( .not. p % isMG .or. p % type /= P_NEUTRON) then
@@ -115,18 +115,6 @@ contains
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
 
-    ! Critical Source Kinetic Coupling
-    if ((p % criticalSource .eqv. .true.) .and. (p % pRNG % get() <= self % couplingRatio)) then
-      ! Handle Neutrons
-      pTemp = p
-      call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
-      !pTemp % wgt = pTemp % wgt / (p % getSpeed() * macroXSs % total)
-      pTemp % wgt = pTemp % wgt / (macroXSs % velocity * macroXSs % total)
-      pTemp % time = ZERO
-      pTemp % fate = NO_FATE
-      call nextCycle % detain(pTemp)
-    end if
-
     ! Select Main reaction channel
     call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
@@ -139,7 +127,7 @@ contains
   !! Preform implicit treatment
   !!
   subroutine implicit(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -151,9 +139,9 @@ contains
     integer(shortInt)                    :: G_out, n, i
     real(defReal)                        :: wgt, w0, rand1, mu, phi
     real(defReal)                        :: sig_tot, k_eff, sig_nufiss
-    character(100),parameter :: Here = 'implicit (neutronMGstd_class.f90)'
+    character(100),parameter :: Here = 'implicit (neutronMGkineticstd_class.f90)'
 
-    if (self % mat % isFissile().and. (p % criticalSource .eqv. .false.)) then
+    if ( self % mat % isFissile()) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
       w0    = p % preHistory % wgt ! Starting weight
@@ -192,9 +180,11 @@ contains
         pTemp % dir = dir
         pTemp % G   = G_out
         pTemp % wgt = wgt
+        pTemp % time = p % time
 
         call nextCycle % detain(pTemp)
       end do
+
     end if
 
   end subroutine implicit
@@ -203,7 +193,7 @@ contains
   !! Elastic Scattering
   !!
   subroutine elastic(self, p , collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -217,7 +207,7 @@ contains
   !! Preform scattering
   !!
   subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -226,7 +216,7 @@ contains
     integer(shortInt)                    :: G_out   ! Post-collision energy group
     real(defReal)                        :: phi     ! Azimuthal scatter angle
     real(defReal)                        :: w_mul   ! Weight multiplier
-    character(100),parameter :: Here = "inelastic (neutronMGstd_class.f90)"
+    character(100),parameter :: Here = "inelastic (neutronMGkineticstd_class.f90)"
 
     ! Assign MT number
     collDat % MT = macroIEscatter
@@ -252,7 +242,7 @@ contains
   !! Preform capture
   !!
   subroutine capture(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -266,7 +256,7 @@ contains
   !! Preform fission
   !!
   subroutine fission(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -280,7 +270,7 @@ contains
   !! Applay cutoffs or post-collision implicit treatment
   !!
   subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
-    class(neutronMGstd), intent(inout)   :: self
+    class(neutronMGkineticstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -290,4 +280,4 @@ contains
 
   end subroutine cutoffs
 
-end module neutronMGstd_class
+end module neutronMGkineticstd_class

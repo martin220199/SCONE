@@ -462,7 +462,7 @@ contains
       speed = lightSpeed
     else
       if (self % isMG) then
-        speed = 0.7294888_defReal
+        speed = 3.02310E+05_defReal !0.00000007294888_defReal
       else
         speed = sqrt(self % E * TWO/neutronMass) * lightSpeed
       end if

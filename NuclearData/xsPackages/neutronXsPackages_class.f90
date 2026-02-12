@@ -36,6 +36,7 @@ module neutronXsPackages_class
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
     real(defReal) :: promptNuFission  = ZERO
+    real(defReal) :: velocity  = ZERO
   contains
     procedure :: clean => clean_neutronMacroXSs
     procedure :: add   => add_neutronMacroXSs

@@ -11,6 +11,8 @@ module transportOperatorDT_class
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
 
+  use mgNeutronMaterial_inter,       only : mgNeutronMaterial, mgNeutronMaterial_CptrCast
+
   ! Superclass
   use transportOperator_inter,    only : transportOperator, init_super => init
 
@@ -25,6 +27,8 @@ module transportOperatorDT_class
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  use neutronXsPackages_class,       only : neutronMacroXSs
+
   implicit none
   private
 
@@ -32,6 +36,8 @@ module transportOperatorDT_class
   !! Transport operator that moves a particle with delta tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorDT
+
+  class(mgNeutronMaterial), pointer, public :: mat    => null()
   contains
     procedure :: transit => deltaTracking
     ! Override procedure
@@ -49,11 +55,18 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
+    type(neutronMacroXSs)                :: macroXSs
     real(defReal)                             :: majorant_inv, sigmaT, distance
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
+
+
+    self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
+    call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
+    !macroXSs % velocity
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
