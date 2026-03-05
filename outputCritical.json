@@ -1,0 +1,25 @@
+{
+  "seed":1082865309,
+  "pop":100000,
+  "Inactive_Cycles":100,
+  "Active_Cycles":300,
+  "Total_CPU_Time":1.12570E+03,
+  "Total_Transport_Time":3.51509E+01,
+  "inactive":{
+    "batchSize":1
+  },
+  "batchSize":1,
+  "keff":{
+    "IMP_PROD":[9.99855E+04,2.16671E+01],
+    "IMP_ABS":[9.77532E+04,1.61971E+01],
+    "SCATTER_PROD":[0.00000E+00,0.00000E+00],
+    "ANA_LEAK":[2.26876E+03,2.79067E+00],
+    "K_EFF":[9.99635E-01,1.30164E-04]
+  },
+  "active":{
+    "batchSize":1,
+    "k_eff":{
+      "k_analog":[9.99788E-01,2.44976E-04]
+    }
+  }
+}

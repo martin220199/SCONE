@@ -55,6 +55,7 @@ module neutronMGkineticstd_class
     private
     class(mgNeutronDatabase), pointer, public :: xsData => null()
     class(mgNeutronMaterial), pointer, public :: mat    => null()
+    class(mgNeutronMaterial), pointer, public :: mat2    => null()
 
     ! Precursors
     logical(defBool) :: usePrecursors
@@ -98,7 +99,7 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(neutronMacroXSs)                :: macroXSs
+    type(neutronMacroXSs)                :: macroXSs, macroXSs2
     real(defReal)                        :: r
     character(100),parameter :: Here =' sampleCollision (neutronMGkineticstd_class.f90)'
 
@@ -111,12 +112,33 @@ contains
     self % xsData => ndReg_getNeutronMG()
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
 
+    !call self % xsData % activateT(p)
+
     ! Get and verify material pointer
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
 
+
+
     ! Select Main reaction channel
     call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
+    !check material index, set macroXSS
+    if (p % matIdx() == 9999999) then !1
+      self % mat2 => mgNeutronMaterial_CptrCast(self % xsData % getMaterial(2))
+      call self % mat2 % getMacroXSsT(macroXSs2, p % G, p % pRNG, p)
+
+      if (p % time <= 1e-3) then
+        macroXSs % capture = macroXSs % capture * (1e-3 - p % time) / 1e-3 + macroXSs2 % capture * p % time / 1e-3
+        macroXSs % inelasticScatter=macroXSs%inelasticScatter*(1e-3-p%time)/1e-3+macroXSs2%inelasticScatter*p%time/1e-3
+      else
+        macroXSs % capture = macroXSs2 % capture
+        macroXSs % inelasticScatter = macroXSs2 % inelasticScatter
+      end if
+      macroXSs % total = macroXSs % elasticScatter + macroXSs % inelasticScatter + macroXSs % capture +  macroXSs % fission
+      !print *, 'tot', macroXSs % total, p % G
+
+    end if
+
     r = p % pRNG % get()
 
     collDat % MT = macroXSs % invert(r)
@@ -132,7 +154,7 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(neutronMacroXSs)                :: macroXSs
+    type(neutronMacroXSs)                :: macroXSs, macroXSs2
     type(fissionMG),pointer              :: fission
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
@@ -152,6 +174,19 @@ contains
 
       sig_tot    = macroXSs % total
       sig_nuFiss = macroXSs % nuFission
+
+      if (p % matIdx() == 9999999) then !1
+        call self % mat2 % getMacroXSsT(macroXSs2, p % G, p % pRNG, p)
+        if (p % time <= 1e-3) then
+          macroXSs % capture = macroXSs % capture * (1e-3 - p % time) / 1e-3 + macroXSs2 % capture * p % time / 1e-3
+          macroXSs % inelasticScatter=macroXSs%inelasticScatter*(1e-3-p%time)/1e-3+macroXSs2%inelasticScatter*p%time/1e-3
+        else
+          macroXSs % capture = macroXSs2 % capture
+          macroXSs % inelasticScatter = macroXSs2 % inelasticScatter
+        end if
+        macroXSs % total = macroXSs % elasticScatter + macroXSs % inelasticScatter + macroXSs % capture +  macroXSs % fission
+        sig_tot = macroXSs % total
+      end if
 
       ! Sample number of fission sites generated
       !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
@@ -212,29 +247,81 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    class(multiScatterMG),pointer        :: scatter
+    class(multiScatterMG),pointer        :: scatter, scatter2
     integer(shortInt)                    :: G_out   ! Post-collision energy group
     real(defReal)                        :: phi     ! Azimuthal scatter angle
     real(defReal)                        :: w_mul   ! Weight multiplier
+    real(defReal)                        :: rem, interScat, interP0
     character(100),parameter :: Here = "inelastic (neutronMGkineticstd_class.f90)"
 
     ! Assign MT number
     collDat % MT = macroIEscatter
 
-    ! Get Scatter object
-    scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
-    if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG neutron")
+    if (collDat % matIdx /= 999999) then !1
+      ! Get Scatter object
+      scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
+      if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG neutron")
 
-    ! Sample Mu and G_out
-    call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
+      ! Sample Mu and G_out
+      call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
 
-    ! Read scattering multiplicity
-    w_mul = scatter % production(p % G, G_out)
+      ! Read scattering multiplicity
+      w_mul = scatter % production(p % G, G_out)
 
-    ! Update neutron state
-    p % G = G_out
-    p % w = p % w * w_mul
-    call p % rotate(collDat % muL, phi)
+      ! Update neutron state
+      p % G = G_out
+      p % w = p % w * w_mul
+      call p % rotate(collDat % muL, phi)
+  
+    else 
+
+      ! Get Scatter object
+      scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
+      if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG neutron")
+
+      scatter2 => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, 2))
+      if(.not.associated(scatter2)) call fatalError(Here, "Failed to get scattering reaction object for MG neutron")
+
+
+      if (p % G < 0 .or. p % G > size(scatter % scatterXSs)) then
+        call fatalError(Here, 'Invalid incident group number: '//numToChar(p % G))
+      end if
+      if (p % G < 0 .or. p % G > size(scatter2 % scatterXSs)) then
+        call fatalError(Here, 'Invalid incident group number: '//numToChar(p % G))
+      end if
+
+
+      if (p % time <= 1e-3) then
+        ! Perform sampling
+        interScat = scatter % scatterXSs(p % G) * (1e-3 - p % time) / 1e-3 + scatter2 % scatterXSs(p % G) * p % time / 1e-3
+        rem = p % pRNG % get() * interScat
+
+        do G_out = 1,size(scatter2 % scatterXSs)
+          interP0 = scatter % P0(G_out, p % G) * (1e-3 - p % time) / 1e-3 + scatter2 % P0(G_out, p % G) * p % time / 1e-3
+          rem = rem - interP0
+          if(rem < ZERO) exit
+        end do
+      else 
+        ! Perform sampling
+        rem = p % pRNG % get() * scatter2 % scatterXSs(p % G)
+        do G_out = 1,size(scatter2 % scatterXSs)
+          rem = rem - scatter2 % P0(G_out, p % G)
+          if(rem < ZERO) exit
+        end do
+      end if
+
+      collDat % muL  = TWO * p % pRNG % get() - ONE
+      phi = TWO_PI * p % pRNG % get()
+
+      ! Read scattering multiplicity
+      w_mul = scatter % production(p % G, G_out)
+
+      ! Update neutron state
+      p % G = G_out
+      p % w = p % w * w_mul
+      call p % rotate(collDat % muL, phi)
+    end if
+
 
   end subroutine inelastic
 

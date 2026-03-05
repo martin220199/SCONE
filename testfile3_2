@@ -1,0 +1,15 @@
+// critical infinite region
+
+numberOfGroups 1; 
+
+capture (0.0141603);
+fission (0.010038000000000);
+nu      (2.48143); 
+chi     (1.0); 
+velocity    (2241669.954449267);
+ 
+scatteringMultiplicity ( 
+1.0); 
+
+//P0 (0.687444); 
+P0 (1.68); 

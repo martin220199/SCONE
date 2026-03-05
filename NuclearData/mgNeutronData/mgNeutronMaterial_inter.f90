@@ -50,7 +50,7 @@ module mgNeutronMaterial_inter
     procedure(getTotalXS), deferred         :: getTotalXS
     procedure                               :: isFissile
     procedure                               :: set
-
+    procedure(getMacroXSsT), deferred    :: getMacroXSsT
   end type mgNeutronMaterial
 
 
@@ -75,6 +75,16 @@ module mgNeutronMaterial_inter
       integer(shortInt), intent(in)        :: G
       class(RNG), intent(inout)            :: rand
     end subroutine getMacroXSs_byG
+
+    subroutine getMacroXSsT(self, xss, G, rand, p)
+      import :: mgNeutronMaterial, neutronMacroXSs, shortInt, RNG, particle
+      class(mgNeutronMaterial), intent(in) :: self
+      type(neutronMacroXSs), intent(out)   :: xss
+      integer(shortInt), intent(in)        :: G
+      class(RNG), intent(inout)            :: rand
+      class(particle), intent(in)          :: p
+
+    end subroutine getMacroXSsT
 
     !!
     !! Return Macroscopic Total XS for the material

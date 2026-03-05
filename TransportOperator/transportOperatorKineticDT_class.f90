@@ -53,6 +53,7 @@ contains
     character(100), parameter :: Here = 'deltaTracking (transportOperatorKineticDT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
+    !call self % xsData % activateT(p)
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial(1))
@@ -75,6 +76,9 @@ contains
         p % fate = AGED_FATE
         p % time = p % timeMax
         call self % geom % teleport(p % coords, distance)
+
+        !call self % xsData % activateT(p)
+        !majorant_inv = ONE / self % xsData % getMajorantXS(p)
         return
       endif
 
@@ -83,6 +87,9 @@ contains
 
       ! Update time
       p % time = p % time + distance / macroXSs % velocity
+
+      !call self % xsData % activateT(p)
+      !majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
       ! If particle has leaked, exit
       if (p % matIdx() == OUTSIDE_FILL) then

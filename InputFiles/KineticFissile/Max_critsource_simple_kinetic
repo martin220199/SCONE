@@ -1,0 +1,98 @@
+type timeDependentPhysicsPackage;
+
+pop      100000;
+timeSteps   150; 
+XSdata   mg; 
+dataType mg;
+timeIncrement 1.0e-4;
+cycles 5;
+buffer 50000;
+combing 1;
+
+precursors 0;
+//kineticGeometry{enable 1; timeSteps (50); }
+
+outputFormat asciiJSON;
+
+
+collisionOperator { neutronMG {type neutronMGkineticstd; precursors 0;}}
+
+transportOperator{ type transportOperatorKineticDT;
+}
+
+tally  {
+  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+    map { type timeMap; grid lin; min 0.0; max 1.5e-2; N 150;} 
+    response (flux); flux {type fluxResponse;}
+    }
+  }
+
+
+source {
+  type pointSource;
+  r (0.0 0.0 0.0);
+  //dir (0.0 0.0 0.0); no dir, isentropic
+  particle neutron;
+  E 1.0;
+}
+
+
+geometry { 
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type extended;}
+
+    surfaces
+    {
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth (10.0 10.0 10.0); }  
+    }
+
+
+    cells
+    {
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type rootUniverse; 
+	  border 1;
+          fill fuel2;
+	  }
+
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     mg { type baseMgNeutronDatabase; PN P0;} 
+  }
+  
+  
+materials { 
+
+    fuel {  
+      temp       273; 
+      composition {
+        //92235.03  0.037047; 
+      }   
+      xsFile ./testfile3;
+    }	 
+
+    fuel2 {  
+      temp       273; 
+      composition {
+        //92235.03  0.037047; 
+      }   
+      xsFile ./testfile3_2;
+    }
+} 
+  
+}
+  
+  
+  

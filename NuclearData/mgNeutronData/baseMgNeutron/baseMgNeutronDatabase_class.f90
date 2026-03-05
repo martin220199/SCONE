@@ -66,6 +66,7 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
+    procedure :: activateT
 
     ! Local interface
     procedure :: nGroups
@@ -108,8 +109,24 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
 
+    if (p % time > ZERO) then 
+      if (matIdx == 9999999) then !1
+
+
+      if (p % time <= 1e-3) then
+        xs = self % mats(1) % data(1, p % G) * (1e-3 - p % time) / 1e-3 + self % mats(2) % data(1, p % G) * p % time / 1e-3
+      else 
+        xs = self % mats(2) % data(1, p % G)
+      end if
+
+
+      else
+        xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+      end if
+    else
+      xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+    end if
   end function getTotalMatXS
 
   !!
@@ -329,6 +346,46 @@ contains
     end do
 
   end subroutine activate
+
+  !!
+  !! Activate this nuclearDatabase
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  subroutine activateT(self, p)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)                 :: p
+    integer(shortInt)                           :: g, i, idx
+    real(defReal)                               :: xs, xsTemp, xs1, xs2
+    integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    !print *, '-----',self % mats(2) % data(3,1)
+
+    ! Precalculate majorant xs for delta tracking
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,size(self % activeMats)
+        if (i == 9999999) then !1
+
+          if (p % time <= 1e-3) then
+            xs1 = self % mats(1) % data(TOTAL_XS, g)
+            xs2 = self % mats(2) % data(TOTAL_XS, g)
+            xsTemp = xs1 * (1e-3 - p % time) / 1e-3 + xs2 * p % time / 1e-3
+            xs = max(xs, xsTemp)
+          else
+            xs = max(xs, self % mats(2) % data(TOTAL_XS, g))
+          end if
+        
+        else
+          idx = self % activeMats(i)
+          xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
+        end if
+
+      end do
+      self % majorant(g) = xs
+    end do
+
+  end subroutine activateT
 
   !!
   !! Return number of energy groups in this database

@@ -1,0 +1,298 @@
+type criticalKineticPhysicsPackage;
+
+
+pop      100000; //20000
+timeSteps   100; 
+XSdata   mg; 
+dataType mg;
+timeIncrement 1.0e-4;
+cycles 5;
+buffer 10000;
+active   300;  //3000
+inactive 100; //1000
+combing 1;
+plot 0;
+
+criticalWgtNorm 1;
+decorrelationCycles 100; //50
+precursors 0;
+kineticGeometry{enable 1; timeSteps (1); } //30
+
+
+outputFormat asciiJSON;
+
+collisionOperatorCritical { neutronMG {type neutronMGstd; precursors 0; couplingRatio 0.01;}} 
+transportOperatorCritical { type transportOperatorDT;
+                  }
+collisionOperatorKinetic { neutronMG {type neutronMGkineticstd; precursors 0;}}
+
+transportOperatorKinetic { type transportOperatorKineticDT;
+}
+
+tally  {
+  flux_time { type collisionClerk; //collisionClerk_class, energyMap_class, scoreMemory_class
+    map { type timeMap; grid lin; min 0.0; max 1e-2; N 100;} 
+    response (flux); flux {type fluxResponse;}
+    }
+  }
+
+inactiveTally {
+              }
+activeTally  {
+                display (k_eff);
+                k_eff { type keffAnalogClerk;}
+        }
+
+
+geometry { 
+  type geometryStd; 
+  // ( -x, +x, -y, +y, -z, +z)
+  // boundary (0 0 0 0 1 1); 
+  boundary ( 1 1 1 1 1 1); 
+  graph {type extended;}
+
+  surfaces { 
+             Domain          { id 3; type box; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 32.13);}  	
+  }
+  
+  cells {  }
+  
+  universes { 
+      root { id 1000; type rootUniverse; border 3; fill u<100>; }  
+    
+    // Pin universes 
+    pin1 { id 1; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (UO2 UO2 UO2 UO2 UO2 water water water);}
+    pin6 { id 6; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (FC FC FC FC FC water water water);}
+    pin7 { id 7; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (CR CR CR CR CR water water water);}
+
+latUO2_rodded{
+      id 11; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 7 1 1 7 1 1 7 1 1 1 1 1 
+ 1 1 1 7 1 1 1 1 1 1 1 1 1 7 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 7 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 6 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 7 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 7 1 1 1 1 1 1 1 1 1 7 1 1 1 
+ 1 1 1 1 1 7 1 1 7 1 1 7 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+);
+}
+
+latCore
+{
+  id 100;
+  type latUniverse; 
+  // origin (0.0 0.0 0.0); 
+  origin (0.0 0.0 0.0); 
+  pitch (21.42 21.42 0.0);
+  shape (1 1 0); 
+  padMat water; 
+  map (
+11
+);
+}
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+kineticGeom1 { 
+  type geometryStd; 
+  // ( -x, +x, -y, +y, -z, +z)
+  // boundary (0 0 0 0 1 1); 
+  boundary ( 1 1 1 1 1 1); 
+  graph {type extended;}
+
+  surfaces { 
+             Domain          { id 3; type box; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 32.13);}  	
+  }
+  
+  cells {  }
+  
+  universes { 
+      root { id 1000; type rootUniverse; border 3; fill u<100>; }  
+    
+    // Pin universes 
+    pin1 { id 1; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (UO2 UO2 UO2 UO2 UO2 water water water);}
+    pin6 { id 6; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (FC FC FC FC FC water water water);}
+    // pin7 { id 7; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (CR2 CR2 CR2 CR2 CR2 water water water);}
+    pin7 { id 7; type pinUniverse; radii (0.241495 0.341526 0.418282 0.482991 0.5400 0.581378 0.62 0.0 ); rotation (22.5 0 0);  fills (CR2 CR2 CR2 CR2 CR2 water water water);}
+
+latUO2_rodded{
+      id 11; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 7 1 1 7 1 1 7 1 1 1 1 1 
+ 1 1 1 7 1 1 1 1 1 1 1 1 1 7 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 7 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 6 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 7 1 1 7 1 1 7 1 1 7 1 1 7 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 7 1 1 1 1 1 1 1 1 1 7 1 1 1 
+ 1 1 1 1 1 7 1 1 7 1 1 7 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+);
+}
+
+latCore
+{
+  id 100;
+  type latUniverse; 
+  // origin (0.0 0.0 0.0); 
+  origin (0.0 0.0 0.0); 
+  pitch (21.42 21.42 0.0);
+  shape (1 1 0); 
+  padMat water; 
+  map (
+11
+);
+}
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+viz {
+  bmp1 { type bmp; output C5G7_void_mat; what material; centre (0 0 0); axis z; res (1000 1000);  }
+  bmp2 { type bmp; centre (0 0 0); axis z; res (1000 1000); output C5G7_void_cells; what uniqueID; }
+}
+
+
+nuclearData {
+  handles { 
+    mg { type baseMgNeutronDatabase; PN P0;} 
+  } 
+  materials { 
+    numberOfGroups 7;
+
+    // Control rod
+    CR { 
+      temp 300;
+      xsFile ./XS_C5G7_TD/CR;
+      composition { } 
+   }
+
+    // Control rod
+    CR2 { 
+      temp 300;
+      xsFile ./XS_C5G7_TD/CR2;
+      composition { } 
+   }
+
+    rod { 
+      temp 300;
+      xsFile ./XS_C5G7_TD/GT;
+      composition { } 
+   }
+      
+    water { 
+      temp 300;
+      xsFile ./XS_C5G7_TD/moder;
+      composition { } 
+   }
+
+    mox43 { 
+       temp 300; 
+       xsFile ./XS_C5G7_TD/MOX43;
+       composition {  }
+   }
+	  
+    mox7 { 
+       temp 300; 
+       xsFile ./XS_C5G7_TD/MOX7;
+       composition { }
+    } 
+		
+    mox87 { 
+       temp 300; 
+       xsFile ./XS_C5G7_TD/MOX87;
+       composition { }
+    } 
+		
+    UO2 {
+       temp 300; 
+       xsFile ./XS_C5G7_TD/UO2;
+	composition { }
+    }
+
+    // Fission chamber
+    FC {
+       temp 300; 
+       xsFile ./XS_C5G7_TD/FC;
+	composition { }
+    }
+    
+    // Guide tube
+    GT {
+       temp 300; 
+       xsFile ./XS_C5G7_TD/GT;
+	composition { }
+    }
+
+    // void
+    mat_void {
+       temp 300; 
+       xsFile ./XS_C5G7_TD/mat_void;
+	composition { }
+    }
+
+
+	   
+}
+}
+
+

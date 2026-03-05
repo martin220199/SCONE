@@ -34,6 +34,7 @@ module nuclearDatabase_inter
   contains
     procedure(init), deferred          :: init
     procedure(activate), deferred      :: activate
+    procedure(activateT), deferred     :: activateT
     procedure(getTransMatXS), deferred :: getTransMatXS
     procedure(getTotalMatXS), deferred :: getTotalMatXS
     procedure(getMajorantXS), deferred :: getMajorantXS
@@ -80,6 +81,12 @@ module nuclearDatabase_inter
       class(nuclearDatabase), intent(inout)       :: self
       integer(shortInt), dimension(:), intent(in) :: activeMat
     end subroutine activate
+
+    subroutine activateT(self, p)
+      import :: nuclearDatabase, particle, shortInt
+      class(nuclearDatabase), intent(inout)       :: self
+      class(particle), intent(in)                 :: p
+    end subroutine activateT
 
     !!
     !! Return value of Material Transport XS for a particle

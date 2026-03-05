@@ -44,6 +44,7 @@ module testNeutronDatabase_class
     ! Superclass Interface
     procedure :: init
     procedure :: activate
+    procedure :: activateT
     procedure :: getTransMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
@@ -160,6 +161,18 @@ contains
     ! Do nothing
 
   end subroutine activate
+
+  !!
+  !! Activate this nuclearDatabase
+  !!
+  !! See nuclearDatabase_inter for details
+  !!
+  subroutine activateT(self, p)
+    class(testNeutronDatabase), intent(inout)   :: self
+    class(particle), intent(in)                 :: p
+    ! Do nothing
+
+  end subroutine activateT
 
   !!
   !! Return value of Material Transport XS for a particle

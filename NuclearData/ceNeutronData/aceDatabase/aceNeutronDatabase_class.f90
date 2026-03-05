@@ -2,6 +2,7 @@ module aceNeutronDatabase_class
 
   use numPrecision
   use endfConstants
+  use particle_class,        only : particle
   use universalVariables
   use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
@@ -88,6 +89,7 @@ module aceNeutronDatabase_class
     procedure :: init
     procedure :: init_urr
     procedure :: activate
+    procedure :: activateT
 
     ! ceNeutronDatabase Procedures
     procedure :: energyBounds
@@ -666,6 +668,12 @@ contains
     end if
 
   end subroutine activate
+
+
+  subroutine activateT(self, p)
+    class(aceNeutronDatabase), intent(inout)    :: self
+    class(particle), intent(in)                 :: p
+  end subroutine activateT
 
   !!
   !! Cast nuclearDatabase pointer to aceNeutronDatabase type pointer

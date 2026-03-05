@@ -18,6 +18,8 @@ module baseMgNeutronMaterial_class
   use multiScatterMG_class,    only : multiScatterMG
   use multiScatterP1MG_class,  only : multiScatterP1MG
 
+  use particle_class,    only : particle
+
   implicit none
   private
 
@@ -77,6 +79,7 @@ module baseMgNeutronMaterial_class
     ! Superclass procedures
     procedure :: kill
     procedure :: getMacroXSs_byG
+    procedure :: getMacroXSsT
     procedure :: getTotalXS
 
     ! Local procedures
@@ -138,6 +141,37 @@ contains
     end if
 
   end subroutine getMacroXSs_byG
+
+
+  subroutine getMacroXSsT(self, xss, G, rand,p)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    type(neutronMacroXSs), intent(out)       :: xss
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    class(particle), intent(in)          :: p
+    character(100), parameter :: Here = ' getMacroXSs (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if(G < 1 .or. self % nGroups() < G) then
+      call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                           ' Data has only: ' // numToChar(self % nGroups()))
+    end if
+
+    ! Get XSs
+    xss % total            = self % data(TOTAL_XS, G)
+    xss % elasticScatter   = ZERO
+    xss % inelasticScatter = self % data(IESCATTER_XS, G)
+    xss % capture          = self % data(CAPTURE_XS, G)
+    xss % velocity         = self % data(VELOCITY, G)
+    if(self % isFissile()) then
+      xss % fission        = self % data(FISSION_XS, G)
+      xss % nuFission      = self % data(NU_FISSION, G)
+    else
+      xss % fission        = ZERO
+      xss % nuFission      = ZERO
+    end if
+
+  end subroutine getMacroXSsT
 
 
   function getVel(self, G, rand) result(xs)
