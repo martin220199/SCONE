@@ -1,6 +1,6 @@
 type eigenPhysicsPackage; 
 
-pop      100000; // high-fidelity 1000000
+pop      1000000; // high-fidelity 1000000
 active   100; // high-fidelity 100
 inactive 300;
 XSdata   ce; 
@@ -18,10 +18,10 @@ inactiveTally {
 
 
 activeTally {
-  basis Jacobi;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 1;
   b 0;
-  maxFetOrder 150;
+  maxFetOrder 1000;
   minT 0.0;
   maxT 400.0;
   evalpoints 1000;
@@ -96,7 +96,7 @@ viz {
 
 nuclearData {
   handles { 
-    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+    ce {type aceNeutronDatabase; aceLibrary /mnt/c/Users/marti/Documents/NuclearDataSerpent/SerpentFormattedNuclearData/lib.xsfile;}
   } 
 
   materials { 
