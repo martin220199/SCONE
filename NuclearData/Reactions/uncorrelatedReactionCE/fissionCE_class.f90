@@ -385,7 +385,7 @@ contains
     real(defReal)                                          :: r
     integer(shortInt)                                      :: i, N
     real(defReal), dimension(size(self % delayed))         :: f_d_critical
-    real(defReal)                                          :: lambda_avg, ratio
+    real(defReal)                                          :: lambda_avg, rSel, sum_rat
     character(100),parameter :: Here = 'sampleDelayed (fissionCE_class.f90)'
   
     r = rand % get()
@@ -396,20 +396,22 @@ contains
     ! Sample Phi
     phi = TWO_PI * rand % get()
 
-    lambda_avg = ZERO
+
+    sum_rat = ZERO
     ! Loop over precursor groups
     precursors: do i=1,size(self % delayed)
-      ratio = self % delayed(i) % prob % at(E_in) / self % delayed(i) % lambda
-      lambda_avg = lambda_avg + ratio
-      f_d_critical(i) = ratio
+      f_d_critical(i) = self%delayed(i)%prob%at(E_in) / self%delayed(i)%lambda
+      sum_rat = sum_rat + f_d_critical(i)
     end do precursors
-    lambda_avg = ONE / lambda_avg
-    f_d_critical = f_d_critical * lambda_avg
+
+    f_d_critical = f_d_critical / sum_rat
+
+    rSel = rand%get()
 
     ! sample precursor family in critical state
     precursorsCritical: do i=1,size(self % delayed)
-      r = r - f_d_critical(i)
-      if( r < ZERO) then
+      rSel = rSel - f_d_critical(i)
+      if( rSel <= ZERO) then
         E_out = self % delayed(i) % eLaw % sample(E_in, rand)
         lambda = self % delayed(i) % lambda
         return

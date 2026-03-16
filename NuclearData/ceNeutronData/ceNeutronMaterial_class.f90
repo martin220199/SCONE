@@ -257,7 +257,9 @@ contains
     end do
 
     ! Print error message as the inversion failed
-    call fatalError(Here,'Nuclide sampling loop failed to terminate')
+    !call fatalError(Here,'Nuclide sampling loop failed to terminate')
+    nucIdx = self % nuclides(size(self % nuclides))
+    return
 
   end function sampleNuclide
 

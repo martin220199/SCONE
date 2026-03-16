@@ -67,6 +67,8 @@ contains
     ! Load MT number
     call dict % get(MT, 'MT')
 
+    print *, MT
+
     ! Build response
     call self % build(MT)
 
@@ -85,6 +87,8 @@ contains
     class(macroResponse), intent(inout) :: self
     integer(shortInt), intent(in)       :: MT
     character(100), parameter :: Here = 'build ( macroResponse_class.f90)'
+
+    print *, 'MT building', MT
 
     ! Check that MT number is valid
     select case(MT)

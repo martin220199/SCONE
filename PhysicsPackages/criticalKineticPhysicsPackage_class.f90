@@ -699,15 +699,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      call self % currentTime(i) % init(10*self % bufferSize)
+      call self % nextTime(i) % init(10*self % bufferSize)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(3*self % bufferSize)
+        call self % precursorDungeons(i) % init(10*self % bufferSize)
       end do
     end if
 
@@ -941,6 +941,11 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
+
+
+    !self % usePrecursors = .false. !DELETE
+
+
     do t = 1, N_timeBins
 
       ! Handle kinetic geometry
@@ -962,6 +967,7 @@ contains
 
         if ((t == 1) .and. (self % useCombing .eqv. .true.)) call self % currentTime(i) % combing(self % bufferSize, pRNG)
         nParticles = self % currentTime(i) % popSize()
+	!if ((t == 1) .and. (self % usePrecursors .eqv. .true.)) call self % precursorDungeons(i) % combing(self % bufferSize, pRNG)
 
         if ((self % usePrecursors .eqv. .true.) .and. (self % useForcedPrecursorDecay .eqv. .true.)) then
           if (t == 1) then
@@ -972,6 +978,8 @@ contains
         end if
 
         call tally % reportCycleStart(self % currentTime(i))
+
+	print *, '-------', nParticles, self % precursorDungeons(i) % popSize()
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, nParticles
@@ -1033,6 +1041,7 @@ contains
               call self % precursorDungeons(i) % copy(p, n)
 
               if ((p % time <= t*timeIncrement) .and. (p % time > (t-1)*timeIncrement)) then
+		print *, '----------- RELEASED DELAYED'
                 p % type = P_NEUTRON
                 pRNG = self % pRNG
                 p % pRNG => pRNG
@@ -1199,6 +1208,8 @@ contains
           end if
 
         end if
+
+	print *, 'next', self % nextTime(i) % popSize(), self % nextTime(i) % popWeight()
 
         ! Update RNG
         call self % pRNG % stride(nParticles + 1)

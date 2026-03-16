@@ -256,6 +256,7 @@ contains
       w0    = p % preHistory % wgt ! Starting weight
       k_eff = p % k_eff            ! k_eff for normalisation
 
+
       call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
       sig_tot    = microXSs % total
 

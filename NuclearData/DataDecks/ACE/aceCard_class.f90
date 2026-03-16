@@ -809,6 +809,7 @@ contains
     integer(shortInt)          :: N
 
     N = self % NXS(8)
+    print *, 'HEEEEEEEEEEEEEEEEEEEEREEEEEEEEEEEEEEEEEEEEEE', N
 
   end function precursorGroups
 

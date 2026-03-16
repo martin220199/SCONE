@@ -277,6 +277,8 @@ contains
       pTemp % wgt = pTemp % wgt * (ONE / macroXSs % total) * &
                         (macroXSs % nuFission - macroXSs % promptNuFission) * (ONE / lambda)
 
+      if(pTemp % wgt < ZERO) call fatalError(Here, "WHAT THE FUCK")
+
       ! Overwrite position, direction, energy and weight
       pTemp % r   = r
       pTemp % dir = dir

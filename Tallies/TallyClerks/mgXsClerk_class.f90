@@ -26,7 +26,7 @@ module mgXsClerk_class
   private
 
   !! Size of clerk memory
-  integer(shortInt), parameter  :: ARRAY_SCORE_SIZE   = 7 ,&  ! Size of data to store as 1D arrays
+  integer(shortInt), parameter  :: ARRAY_SCORE_SIZE   = 8 ,&  ! Size of data to store as 1D arrays
                                    MATRIX_SCORE_SMALL = 3 ,&  ! Size of data to store as 2D arrays when scoring up to P1
                                    MATRIX_SCORE_FULL  = 9     ! Size of data to store as 2D arrays when scoring up to P7
 
@@ -37,8 +37,9 @@ module mgXsClerk_class
                                    FISS_idx      = 4 ,&  ! Fission macroscopic reaction rate
                                    NUBAR_idx     = 5 ,&  ! NuBar
                                    CHI_idx       = 6 ,&  ! Fission neutron spectrum
-                                   SCATT_EV_idx  = 7     ! Analog: number of scattering events
-
+                                   CHI_d_idx     = 7 ,&
+                                   SCATT_EV_idx  = 8     ! Analog: number of scattering events
+  !!
   !!
   !! Multi-group macroscopic cross section calculation
   !!
@@ -416,21 +417,24 @@ contains
     type(scoreMemory), intent(inout)    :: mem
     integer(longInt)                    :: addr, binIdx, enIdx, matIdx
     integer(shortInt)                   :: N, i
+    type(particleState)                 :: state
 
     ! Loop over the whole neutron population
     N = end % popSize()
     do i = 1,N
 
+      state = end % get(i)
+
       ! Find bin indexes
       ! Energy
       if (allocated(self % energyMap)) then
-        enIdx = self % energyN + 1 - self % energyMap % map(end % get(i))
+        enIdx = self % energyN + 1 - self % energyMap % map(state)
       else
         enIdx = 1
       end if
       ! Space
       if (allocated(self % spaceMap)) then
-        matIdx = self % spaceMap % map(end % get(i))
+        matIdx = self % spaceMap % map(state)
       else
         matIdx = 1
       end if
@@ -442,8 +446,12 @@ contains
       binIdx = self % energyN * (matIdx - 1) + enIdx
       addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
-      ! Score energy group of fission neutron
-      call mem % score(ONE,  addr + CHI_idx)
+      ! Score energy group of fission neutrons
+      if (state % lambda < huge(defReal)) then
+        call mem % score(ONE,  addr + CHI_d_idx)
+      else
+        call mem % score(ONE,  addr + CHI_idx)
+      end if
 
     end do
 
@@ -469,7 +477,7 @@ contains
   !!   none
   !!
   pure subroutine processRes(self, mem, capt_res, fiss_res, transFL_res, transOS_res, &
-                             nu_res, chi_res, P0_res, P1_res, prod_res)
+                             nu_res, chi_res, chi_d_res, P0_res, P1_res, prod_res)
     class(mgXsClerk), intent(in)    :: self
     type(scoreMemory), intent(in)   :: mem
     real(defReal), dimension(:,:), allocatable, intent(out) :: capt_res
@@ -478,6 +486,7 @@ contains
     real(defReal), dimension(:,:), allocatable, intent(out) :: transOS_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: nu_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: chi_res
+    real(defReal), dimension(:,:), allocatable, intent(out) :: chi_d_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: P0_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: P1_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: prod_res
@@ -485,8 +494,8 @@ contains
     real(defReal), dimension(:), allocatable    :: tot, totStd, fluxG, fluxGstd
     integer(longInt)  :: addr
     integer(shortInt) :: N, M, i, j, k, g1, gEnd, idx
-    real(defReal)     :: capt, fiss, scatt, nu, chi, P0, P1, prod, sumChi, flux, scattProb, &
-                         captStd, fissStd, scattStd, nuStd, chiStd, P0std, P1std, prodStd,  &
+    real(defReal)     :: capt, fiss, scatt, nu, chi, chi_d, P0, P1, prod, sumChi, sumChi_d, flux, scattProb, &
+                         captStd, fissStd, scattStd, nuStd, chiStd, chi_d_Std, P0std, P1std, prodStd,  &
                          fluxStd, scattProbStd, scattXS, scattXSstd
 
     ! Get number of bins
@@ -495,12 +504,13 @@ contains
 
     ! Allocate arrays for MG xss
     allocate( capt_res(2,N*M), fiss_res(2,N*M), transFL_res(2,N*M), transOS_res(2,N*M), &
-              nu_res(2,N*M), chi_res(2,N*M), P0_res(2,N*N*M), P1_res(2,N*N*M),          &
+              nu_res(2,N*M), chi_res(2,N*M), chi_d_res(2,N*M), P0_res(2,N*N*M), P1_res(2,N*N*M),          &
               prod_res(2,N*N*M), tot(N*M), fluxG(N*M), delta(M, N), totStd(N*M),        &
               fluxGstd(N*M), deltaStd(M, N) )
 
     ! Initialise values
     sumChi = 0    ! to normalise chi
+    sumChi_d = 0
     k      = 1    ! to calculate transport xss
     delta  = ZERO
     deltaStd = ZERO
@@ -516,6 +526,7 @@ contains
       call mem % getResult(scatt, scattStd, addr + SCATT_idx)
       call mem % getResult(nu,    nuStd,    addr + NUBAR_idx)
       call mem % getResult(chi,   chiStd,   addr + CHI_idx)
+      call mem % getResult(chi_d,   chi_d_Std,   addr + CHI_d_idx)
       call mem % getResult(scattProb, scattProbStd, addr + SCATT_EV_idx)
 
       ! Calculate MG constants, being careful to avoid division by zero
@@ -546,12 +557,17 @@ contains
       chi_res(1,i) = chi
       chi_res(2,i) = chiStd
       sumChi = sumChi + chi
+      chi_d_res(1,i) = chi_d
+      chi_d_res(2,i) = chi_d_Std
+      sumChi_d = sumChi_d + chi_d
       ! If this is the last energy group for a material, normalise the spectrum
       if (mod(i,N) == 0) then
         g1   = i+1-N
         gEnd = i
         if (sumChi /= ZERO) chi_res(1:2, g1:gEnd) = chi_res(1:2, g1:gEnd)/sumChi
+        if (sumChi_d /= ZERO) chi_d_res(1:2, g1:gEnd) = chi_d_res(1:2, g1:gEnd)/sumChi_d
         sumChi = 0
+        sumChi_d = 0
       end if
 
       ! Store total cross section and flux for this energy group
@@ -727,7 +743,7 @@ contains
     type(scoreMemory), intent(in)              :: mem
     integer(shortInt),dimension(:),allocatable :: resArrayShape
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
-                                                  nu, chi, P0, P1, P2, P3, P4,  &
+                                                  nu, chi, chi_d, P0, P1, P2, P3, P4,  &
                                                   P5, P6, P7, prod
     character(nameLen)                         :: name
     integer(shortInt)                          :: i
@@ -753,7 +769,7 @@ contains
     end if
 
     ! Process and get results
-    call self % processRes(mem, capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    call self % processRes(mem, capt, fiss, transFL, transOS, nu, chi, chi_d, P0, P1, prod)
 
     ! Print results
     name = 'capture'
@@ -791,10 +807,17 @@ contains
     end do
     call outFile % endArray()
 
-    name = 'chi'
+    name = 'chi_p'
     call outFile % startArray(name, resArrayShape)
     do i=1,product(resArrayShape)
       call outFile % addResult(chi(1,i),chi(2,i))
+    end do
+    call outFile % endArray()
+
+    name = 'chi_d'
+    call outFile % startArray(name, resArrayShape)
+    do i=1,product(resArrayShape)
+      call outFile % addResult(chi_d(1,i),chi_d(2,i))
     end do
     call outFile % endArray()
 
@@ -822,7 +845,7 @@ contains
     call outFile % endArray()
 
     ! Deallocate to limit memory consumption when writing to the output file
-    deallocate(capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    deallocate(capt, fiss, transFL, transOS, nu, chi, chi_d, P0, P1, prod)
 
     ! If high order scattering is requested, print the other matrices
     if (self % PN) then
