@@ -418,8 +418,8 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-    call self % thisCycle % init(10 * self % pop)
-    call self % nextCycle % init(10 * self % pop)
+    call self % thisCycle % init(3 * self % pop)
+    call self % nextCycle % init(3 * self % pop)
 
     ! Generate initial surce
     print *, "GENERATING INITIAL FISSION SOURCE"
@@ -699,8 +699,8 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(5*self % bufferSize)
-      call self % nextTime(i) % init(5*self % bufferSize)
+      call self % currentTime(i) % init(3*self % bufferSize)
+      call self % nextTime(i) % init(3*self % bufferSize)
     end do
 
     ! Size precursor dungeon
