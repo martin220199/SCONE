@@ -1,12 +1,12 @@
 type criticalKineticPhysicsPackage;
 
-pop      100000; // high-fidelity: 50000 //low fidelity: 10000
+pop      1000000; // high-fidelity: 50000 //low fidelity: 10000
 timeSteps   50;
 XSdata   ce;
 dataType ce;
 timeIncrement 20.0e-6;
-cycles 2; // high-fidelity: 50  //low fidelity 5
-buffer 100000; // high-fidelity: 50000  //low fidelity: 10000
+cycles 3; // high-fidelity: 50  //low fidelity 5
+buffer 1000000; // high-fidelity: 50000  //low fidelity: 10000
 active   200;
 inactive 200;
 
