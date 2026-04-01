@@ -608,15 +608,15 @@ contains
     allocate(self % nextTime(self % N_cycles))
 
     do i = 1, self % N_cycles
-      call self % currentTime(i) % init(self % bufferSize)
-      call self % nextTime(i) % init(self % bufferSize)
+      call self % currentTime(i) % init(10* self % bufferSize)
+      call self % nextTime(i) % init(10* self % bufferSize)
     end do
 
     ! Size precursor dungeon
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(self % bufferSize)
+        call self % precursorDungeons(i) % init(10 * self % bufferSize)
       end do
     end if
 
