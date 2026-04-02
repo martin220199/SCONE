@@ -72,8 +72,7 @@ geometry {
 
 
   surfaces {                                                        
-    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (7.565 7.565 51.0);}  
-    //squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (0.445 0.445 29.0);} 
+    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (7.565 7.565 42.5);}  
   }
   
   cells {   }
@@ -97,7 +96,7 @@ geometry {
       id 401;
       type latUniverse;
       origin (0.0 0.0 0.0);
-      pitch (0.89 0.89 102.0);
+      pitch (0.89 0.89 85.0);
       shape (17 17 1);
       padMat sodium;
       map (
@@ -142,8 +141,7 @@ kineticGeom1 {
 
 
   surfaces {                                                        
-    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (7.565 7.565 51.0);}  
-    //squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (0.445 0.445 29.0);} 
+    squareBound  { id 1; type box; origin (0.0 0.0 0.0); halfwidth (7.565 7.565 42.5);}
   }
   
   cells {   }
@@ -167,7 +165,7 @@ kineticGeom1 {
       id 401;
       type latUniverse;
       origin (0.0 0.0 0.0);
-      pitch (0.89 0.89 102.0);
+      pitch (0.89 0.89 85.0);
       shape (17 17 1);
       padMat sodium;
       map (
@@ -225,14 +223,15 @@ nuclearData {
   
   
   
-      boron {
-        temp 8765;
-        composition {
-           5010.03    8.05E-02;
-           5011.03    9.89E-03;
-           6000.03    2.27225E-02;
-       }
-       }
+  
+    boron {
+      temp 8765;
+      composition {
+        5010.03    8.67744E-02;
+        5011.03    3.61560E-03;
+        6000.03    2.25975E-02;
+      }
+    }
   
   
   
@@ -278,13 +277,13 @@ nuclearData {
 
     // Uranium
     92238.09  2.22E-02;
-    92235.09  2.30E-04;
+    92235.09  2.50E-04;
     92234.09  2.50E-06;
 
     // TRU
-    94239.09  2.71E-03;
+    94239.09  3.2E-03;
     94240.09  1.50E-03;
-    94241.09  7.0E-04;
+    94241.09  7.2E-04;
     94242.09  4.80E-04;
 
     // Zr
