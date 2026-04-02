@@ -709,14 +709,14 @@ contains
     if (self % usePrecursors) then
       allocate(self % precursorDungeons(self % N_cycles))
       do i = 1, self % N_cycles
-        call self % precursorDungeons(i) % init(3*self % bufferSize)
+        call self % precursorDungeons(i) % init(5*self % bufferSize)
       end do
     end if
 
     allocate(self % currentTimeCycle)
     allocate(self % nextTimeCycle)
-    call self % currentTimeCycle % init(3*self % bufferSize)
-    call self % nextTimeCycle % init(3*self % bufferSize)
+    call self % currentTimeCycle % init(5*self % bufferSize)
+    call self % nextTimeCycle % init(5*self % bufferSize)
 
     call self % printSettingsKinetic()
 
