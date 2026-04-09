@@ -223,6 +223,7 @@ contains
 
       self % maxFetOrder = maxFetOrder
       self % piecewise = piecewise
+      !print *, 'heeeere', size(piecewise), piecewise
       self % deltaT = maxT - minT
 
       allocate(self % minT(size(maxFetOrder)))
@@ -1478,15 +1479,17 @@ end function orthonormalisationStandard_Jacobi
 
     if (t <= self % piecewise(1)) then
       piecewise_idx = 1_shortInt
-    else if (t > self % piecewise(1) .and. t <= self % piecewise(2)) then 
-      piecewise_idx = 2_shortInt
-    else if (t > self % piecewise(2) .and. t <= self % piecewise(3)) then 
-      piecewise_idx = 3_shortInt
-    else if (t > self % piecewise(3)) then 
-      piecewise_idx = 4_shortInt
+    !else if (t > self % piecewise(1) .and. t <= self % piecewise(2)) then 
+    !  piecewise_idx = 2_shortInt
+    !else if (t > self % piecewise(2) .and. t <= self % piecewise(3)) then 
+    !  piecewise_idx = 3_shortInt
+    !else if (t > self % piecewise(3)) then 
+    !  piecewise_idx = 4_shortInt
     else
-      piecewise_idx = 1_shortInt
+      piecewise_idx = 2_shortInt
     end if
+
+    !print *, t, piecewise_idx
 
   end function mapPiecewise
 
