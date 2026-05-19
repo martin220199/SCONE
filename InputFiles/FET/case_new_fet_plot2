@@ -1,0 +1,392 @@
+type criticalKineticPhysicsPackage;
+
+pop      50000; //500000
+timeSteps   50;
+XSdata   ce;
+dataType ce;
+timeIncrement 20.0e-6;
+cycles 3; //3
+buffer 50000; //500000
+active   200;
+inactive 200;
+
+combing 1;
+precursors 1;
+useForcedPrecursorDecay 1;
+criticalWgtNorm 1;
+kineticGeometry{enable 1; timeSteps (1 30 51); }
+decorrelationCycles 300;
+
+outputFormat asciiJSON;
+collisionOperatorCritical { neutronCE {type neutronCEimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1; couplingRatio 0.1;}}
+
+transportOperatorCritical { type transportOperatorDT;
+                  }
+
+collisionOperatorKinetic { neutronCE {type neutronCEkineticimp; minEnergy 1.0e-11; maxEnergy 20; precursors 1;}}
+
+transportOperatorKinetic { type transportOperatorKineticDT;
+}
+
+tally  {
+
+  basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
+  a 0;
+  b 0;
+  maxFetOrder (1000 1000);
+  piecewise (580.0e-6);
+  maxT (580.0e-6 1000.0E-06);
+  minT (0.0 580.0e-6 );
+  evalpoints 1000;
+
+  flux_time { type collisionClerk;
+    response (flux); flux {type fluxResponse;}
+    //handleVirtual 1;
+  }
+
+  }
+  
+
+  inactiveTally {
+
+  }
+activeTally  {
+
+    display (k_eff);
+    k_eff { type keffAnalogClerk;}
+}
+
+
+
+
+geometry {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 60.0);}
+  }
+
+  cells {
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (UO2  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water alClad water);} 
+    pin22 {id 22; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (boron alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 120.0);
+      shape (17 17 1);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31         
+        
+        ); }
+  }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+kineticGeom1 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 60.0);}
+  }
+
+  cells {
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (UO2  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water alClad water);} 
+    pin22 {id 22; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (boron alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 120.0);
+      shape (17 17 1);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31     
+        
+        ); }
+  }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+kineticGeom2 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 60.0);}
+  }
+
+  cells {
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (UO2  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water alClad water);} 
+    pin22 {id 22; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (boron alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 120.0);
+      shape (17 17 1);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 21 31 31 21 31 31 21 31 31 31 31 31
+        31 31 31 21 31 31 31 31 31 31 31 31 31 21 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 21 31 31 22 31 31 22 31 31 22 31 31 21 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 21 31 31 22 31 31 22 31 31 22 31 31 21 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 21 31 31 22 31 31 22 31 31 22 31 31 21 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 21 31 31 31 31 31 31 31 31 31 21 31 31 31
+        31 31 31 31 31 21 31 31 21 31 31 21 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31     
+        
+        ); }
+  }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+kineticGeom3 {
+  type geometryStd;
+  boundary ( 1 1 1 1 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 60.0);}
+  }
+
+  cells {
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (UO2  void   clad   void   alClad water);}
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water alClad water);} 
+    pin22 {id 22; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (boron alClad water);}
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 120.0);
+      shape (17 17 1);
+      padMat water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 22 31 31 22 31 31 22 31 31 22 31 31 22 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 22 31 31 31 31 31 31 31 31 31 22 31 31 31
+        31 31 31 31 31 22 31 31 22 31 31 22 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31     
+        
+        ); }
+  }
+
+
+
+}
+
+
+
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-150 -150 -150);
+    width (300 300 300);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+
+nuclearData {
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+  materials {
+
+      boron {
+        temp 8765;
+        composition {
+           5010.03    8.90E-02;
+           5011.03    9.89E-03;
+           6000.03    2.47E-02;
+       }
+       }
+
+    water {
+      temp 75675;
+      //moder { 1001.03 hh2o.00; }
+      composition {
+      1001.03    2.2333E-002;
+      08016.03   1.1167E-002;
+
+      5010.03    5.532E-006;
+      5011.03    2.227E-005;
+      }
+      }
+
+     clad {
+       temp 12345;
+       composition {
+       40090.03  2.21235E-002;
+       40091.03  4.82460E-003;
+       40092.03  7.37450E-003;
+       40094.03  7.47340E-003;
+       40096.03  1.20400E-003;}
+       }
+     alClad {
+       temp 9876;
+      composition {
+      13027.03  6.00E-2;}
+      }
+
+    UO2 {
+      temp 87476;
+       composition {
+      92235.03  8.65E-004;
+      92238.03  2.225E-002;
+       8016.03  4.622E-002; }
+      }
+
+
+}
+
+}
+
+
+
+
+  
+  
+  
