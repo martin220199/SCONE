@@ -58,7 +58,7 @@ viz {
     type bmp; 
     output pinVeryFresh; 
     what material; 
-    centre (0.0 0.0 0.0); 
+    centre (0.0 0.0 51.0); 
     //width (25.0 25.0); 
     axis z; 
     res (500 500); 
