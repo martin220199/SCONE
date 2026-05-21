@@ -1,8 +1,8 @@
 type eigenPhysicsPackage; 
 
-pop      10000000; // high-fidelity 1000000
-active   100; // high-fidelity 100
-inactive 300;
+pop      50000000; // high-fidelity 100000000
+active   200; // high-fidelity 200
+inactive 200; //200
 XSdata   ce; 
 dataType ce;
 outputFormat asciiJSON;
@@ -21,9 +21,9 @@ activeTally {
   basis Legendre;  //Jacobi -> Legendre: a,b = 0. Chebyshev 1st: a, b=-0.5. Chebyshev 2nd: a, b=0.5. a,b > -1
   a 1;
   b 0;
-  maxFetOrder 50;
+  maxFetOrder 1000;
   minT 0.0;
-  maxT 400.0;
+  maxT 350.0;
   evalpoints 1000;
 
   flux { type collisionClerk;
@@ -39,20 +39,20 @@ geometry {
 
 
   surfaces { 
-    boundtotal  { id 102; type box; origin (0.0 0.0 200.0); halfwidth (0.665 0.665 200.0);} 
-    bound1 { id 1; type box; origin (0.0 0.0 20.0); halfwidth (0.665 0.665 20);} 
-    bound2 { id 2; type box; origin (0.0 0.0 60.0); halfwidth (0.665 0.665 20);}
-    bound3 { id 3; type box; origin (0.0 0.0 100.0); halfwidth (0.665 0.665 20);}
-    bound4 { id 4; type box; origin (0.0 0.0 140.0); halfwidth (0.665 0.665 20);}
-    bound5 { id 5; type box; origin (0.0 0.0 180.0); halfwidth (0.665 0.665 20);}
-    bound6 { id 6; type box; origin (0.0 0.0 220.0); halfwidth (0.665 0.665 20);}
-    bound7 { id 7; type box; origin (0.0 0.0 260.0); halfwidth (0.665 0.665 20);}
-    bound8 { id 8; type box; origin (0.0 0.0 300.0); halfwidth (0.665 0.665 20);}
-    bound9 { id 9; type box; origin (0.0 0.0 340.0); halfwidth (0.665 0.665 20);}
-    bound10 { id 10; type box; origin (0.0 0.0 380.0); halfwidth (0.665 0.665 20);}
+    boundtotal  { id 102; type box; origin (0.0 0.0 175.0); halfwidth (0.665 0.665 175.0);} 
+    bound1 { id 1; type box; origin (0.0 0.0 17.5); halfwidth (0.665 0.665 17.5);} 
+    bound2 { id 2; type box; origin (0.0 0.0 52.5); halfwidth (0.665 0.665 17.5);}
+    bound3 { id 3; type box; origin (0.0 0.0 87.5); halfwidth (0.665 0.665 17.5);}
+    bound4 { id 4; type box; origin (0.0 0.0 122.5); halfwidth (0.665 0.665 17.5);}
+    bound5 { id 5; type box; origin (0.0 0.0 157.5); halfwidth (0.665 0.665 17.5);}
+    bound6 { id 6; type box; origin (0.0 0.0 192.5); halfwidth (0.665 0.665 17.5);}
+    bound7 { id 7; type box; origin (0.0 0.0 227.5); halfwidth (0.665 0.665 17.5);}
+    bound8 { id 8; type box; origin (0.0 0.0 262.5); halfwidth (0.665 0.665 17.5);}
+    bound9 { id 9; type box; origin (0.0 0.0 297.5); halfwidth (0.665 0.665 17.5);}
+    bound10 { id 10; type box; origin (0.0 0.0 332.5); halfwidth (0.665 0.665 17.5);}
 
-    fuel { id 100; type zTruncCylinder; origin (0.0 0.0 200.0); halfwidth 200.0; radius 0.4025;} 
-    clad { id 101; type zTruncCylinder; origin (0.0 0.0 200.0); halfwidth 200.0; radius 0.4750;} 
+    fuel { id 100; type zTruncCylinder; origin (0.0 0.0 175.0); halfwidth 200.0; radius 0.4025;} 
+    clad { id 101; type zTruncCylinder; origin (0.0 0.0 175.0); halfwidth 200.0; radius 0.4750;} 
   }
   
   cells { 
