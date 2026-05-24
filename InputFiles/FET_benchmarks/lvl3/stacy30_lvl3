@@ -1,12 +1,12 @@
 type timeDependentPhysicsPackage;
 
-pop      10000; //high fidelity 100000  //low fidelity 10000
+pop      10000000; //high fidelity 100000  //low fidelity 10000
 timeSteps   1; //500
 XSdata   ce;
 dataType ce;
 timeIncrement 1.0E-04; //30.0
-cycles 3; //high fidelity 10  //low fidelity 3
-buffer 100000; //high fidelity 1000000 //low fidelity 100000
+cycles 10; //high fidelity 10  //low fidelity 3
+buffer 15000000; //high fidelity 1000000 //low fidelity 100000
 combing 0; //toggle on or off
 //precursors 0; //toggle on or off
 // need to implement number of batches!! and compute statistics thereof, look at fixed source
@@ -77,9 +77,14 @@ geometry {
     }
 }
 
+
 nuclearData {
-  handles {
-    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} }
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+
+    
+    
   materials {
 
     m1 {
