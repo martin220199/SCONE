@@ -32,6 +32,7 @@ module tallyMap1DFactory_func
   use weightMap_class,   only : weightMap
   use cellMap_class,     only : cellMap
   use testMap_class,     only : testMap
+  use directionMap_class, only : directionMap
 
   implicit none
   private
@@ -43,13 +44,14 @@ module tallyMap1DFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter, public :: AVALIBLE_tallyMaps1D = [ 'energyMap  ',&
-                                                                                'spaceMap   ',&
-                                                                                'materialMap',&
-                                                                                'homogMatMap',&
-                                                                                'weightMap  ',&
-                                                                                'cellMap    ',&
-                                                                                'testMap    ']
+  character(nameLen),dimension(*),parameter, public :: AVALIBLE_tallyMaps1D = [ 'energyMap   ',&
+                                                                                'spaceMap    ',&
+                                                                                'materialMap ',&
+                                                                                'homogMatMap ',&
+                                                                                'weightMap   ',&
+                                                                                'cellMap     ',&
+                                                                                'testMap     ',&
+                                                                                'directionMap']
 
 contains
 
@@ -99,6 +101,9 @@ contains
 
       case('testMap')
         allocate(testMap :: new)
+
+      case('directionMap')
+        allocate(directionMap :: new)
 
       case default
         print *, AVALIBLE_tallyMaps1D
