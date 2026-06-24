@@ -54,6 +54,7 @@ module collisionClerk_class
     private
     ! Filter, Map & Vector of Responses
     class(tallyFilter), allocatable                  :: filter
+    class(tallyFilter), allocatable                  :: filter2
     class(tallyMap), allocatable                     :: map
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
@@ -96,6 +97,10 @@ contains
     ! Load filetr
     if( dict % isPresent('filter')) then
       call new_tallyFilter(self % filter, dict % getDictPtr('filter'))
+    end if
+
+    if( dict % isPresent('filter2')) then
+      call new_tallyFilter(self % filter2, dict % getDictPtr('filter2'))
     end if
 
     ! Load map
@@ -186,15 +191,20 @@ contains
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
-    real(defReal)                         :: scoreVal, flx
+    real(defReal)                         :: scoreVal, flx, theta, x, y
     character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
 
     ! Get current particle state
     state = p
 
     ! Check if within filter
+    !print *, '****', allocated( self % filter), allocated( self % filter2)
     if(allocated( self % filter)) then
       if(self % filter % isFail(state)) return
+    end if
+
+    if(allocated( self % filter2)) then
+      if(self % filter2 % isFail(state)) return
     end if
 
     ! Find bin index
@@ -216,7 +226,14 @@ contains
     ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w *flx
-      call mem % scoreFET(scoreVal, state % r(3))
+      !call mem % scoreFET(scoreVal, state % r(3))
+
+      x = state % dir(1)
+      y = state % dir(2)
+      theta = atan2(y,x)
+      !print *, '---', theta
+       !print *, state % r(1), state % r(2), state % E
+      call mem % scoreFET(scoreVal, theta)
 
     end do
 

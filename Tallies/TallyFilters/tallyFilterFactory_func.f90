@@ -9,6 +9,7 @@ module tallyFilterFactory_func
 
   ! tallyFilter implementations
   use energyFilter_class,   only : energyFilter
+  use spaceFilter_class,   only : spaceFilter
   use testFilter_class,     only : testFilter
 
 
@@ -21,7 +22,7 @@ module tallyFilterFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyFilters = [ 'energyFilter']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyFilters = [ 'energyFilter','spaceFilter ']
 
 contains
 
@@ -45,6 +46,9 @@ contains
     select case(type)
       case('energyFilter')
         allocate(energyFilter :: new)
+
+      case('spaceFilter')
+        allocate(spaceFilter :: new)
 
       case('testFilter')
         allocate(testFilter :: new)

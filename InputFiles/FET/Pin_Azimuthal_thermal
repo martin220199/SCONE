@@ -1,0 +1,191 @@
+type eigenPhysicsPackage;
+pop      1000000; //10000000 high fid
+active   100; //100 high-fid
+inactive 10;
+XSdata   ce;
+dataType ce;
+outputFormat asciiJSON;
+
+
+
+collisionOperator { neutronCE {type neutronCEstd; } } 
+
+transportOperator { type transportOperatorDT;} 
+
+inactiveTally {
+      } 
+
+
+//Emin 0.0; Emax 6.25E-7;
+
+//Emin 0.1; Emax 20.0;
+
+
+activeTally {
+
+basis Legendre;
+a -0.5;
+b 1;
+maxFetOrder 1000;
+minT -3.14159265359;
+maxT 3.14159265359;
+evalpoints 1000;
+
+
+flux {
+  type collisionClerk;
+  response (flux);
+  flux { type fluxResponse; }
+
+  //map {
+  //  type multiMap;
+  //  maps (xpos ypos direction);
+
+  //  xpos {
+  //    type spaceMap;
+  //    axis x;
+  //    grid unstruct;
+  //    bins (0.405 0.545);  //0.4750
+  //  }
+
+  //  ypos {
+  //    type spaceMap;
+  //    axis y;
+  //    grid unstruct;
+  //    bins (-0.07 0.07); //
+  //  }
+
+  //  direction {
+  //    type directionMap;
+  //    axis xy;
+  //    min -180.0;
+  //    max 180.0;
+  //    N 1500; //1000
+  //  }
+  //}
+
+  filter { type energyFilter; Emin 0.0; Emax 6.25E-7; }
+  filter2 { type spaceFilter; Xmin 0.405; Xmax 0.545; Ymin -0.07; Ymax 0.07;}
+}
+
+}
+
+
+geometry {
+  type geometryStd;
+  boundary ( 1 1 1 1 1 1);
+  graph {type shrunk;}
+
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.63 0.63 0.0);}
+  }
+
+  cells {
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes 
+    pin31 { id 31; type pinUniverse; radii (0.4025 0.4750 0.0 );
+                                     fills (UO2   clad   water);}  
+
+
+
+
+
+
+    // Lattices
+    latMox {
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (1 1 0);
+      padMat water;
+      map (
+            31  
+        
+        ); }
+  }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-150 -150 -150);
+    width (300 300 300);
+    vox (700 700 1);
+  }
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (500 500);
+  }
+}
+
+
+nuclearData {
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+
+  materials { 
+      
+    water { 
+      temp 600;
+      composition { 
+      1001.06    4.8132E-02;                                                  
+      8016.06    2.4066E-02;
+      5010.06    3.6487E-06;
+      5011.06    1.4686E-05; }
+      moder { 1001.06 hh2o.06; }
+      }
+        
+     clad { 
+       temp 600;
+       composition { 
+	   24050.06  2.93909E-006;
+	   24052.06  5.66774E-005;
+	   24053.06  6.42676E-006;
+	   24054.06  1.59976E-006;
+	   26054.06  7.73663E-006;
+	   26056.06  1.21339E-004;
+	   26057.06  2.80370E-006;
+	   26058.06  3.70300E-007;
+       40090.06  1.97105E-002;
+       40091.06  4.29838E-003;
+       40092.06  6.57017E-003;
+       40094.06  6.65828E-003;
+       40096.06  1.07268E-003;} 
+       }	   
+	  
+
+
+     UO2 {
+       temp 900; 
+       composition { 
+       92234.09  9.1361E-06;
+	   92235.09  9.3472E-04;
+	   92238.09  2.1523E-02;
+	    8016.09  4.4935E-02;	}   }
+
+}
+}
