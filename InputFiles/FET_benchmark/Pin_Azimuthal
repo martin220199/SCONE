@@ -1,5 +1,5 @@
 type eigenPhysicsPackage;
-pop      1000000; //10000000 high fid
+pop      100000000; //100000000 high fid
 active   100; //100 high-fid
 inactive 10;
 XSdata   ce;
@@ -51,7 +51,7 @@ angular_thermal {
       axis xy;
       min -180.0;
       max 180.0;
-      N 1500; //1000
+      N 1000; //1000
     }
   }
 
@@ -86,7 +86,7 @@ angular_fast {
       axis xy;
       min -180.0;
       max 180.0;
-      N 1500; //1000
+      N 1000; //1000
     }
   }
 
