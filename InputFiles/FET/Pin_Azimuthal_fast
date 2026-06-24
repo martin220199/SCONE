@@ -1,5 +1,5 @@
 type eigenPhysicsPackage;
-pop      1000000; //10000000 high fid
+pop      10000000; //100000000 high fid
 active   100; //100 high-fid
 inactive 10;
 XSdata   ce;
