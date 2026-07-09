@@ -1,18 +1,18 @@
 type eigenPhysicsPackage;
 
-pop      20000;
-active   200;
-inactive 100;
+pop      10000000; //10000000   high-fidelity
+active   100;
+inactive 300;
 XSdata ce;
 dataType ce;
 
 // Specify output format default asciiMATLAB
-//outputFormat asciiJSON;
+outputFormat asciiJSON;
 
 collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} }
 
-transportOperator { type transportOperatorST;
+transportOperator { type transportOperatorDT;
                     cache 1;
                    // type transportOperatorDT;
                    // type transportOperatorHT;
@@ -21,27 +21,19 @@ transportOperator { type transportOperatorST;
 inactiveTally {}
 
 activeTally {
-  norm totalPow;
-  normVal 100.0;
-  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}}
-  ResMap {type collisionClerk;
-         map {type multiMap;
-              maps (ene mat);
-              ene { type energyMap; grid log; min 1.0E-11; max 20.0; N 300;}
-              mat { type materialMap; materials (water mox87 mox70 mox43);}
-              }
-         response (flux);
-         flux { type fluxResponse;}
-         }
+  flux { type collisionClerk; 
+    //map { type spaceMap;  axis x;  grid lin;  min -10.71;  max 10.71;  N 1000; } //high fidelity 1000
+    map { type spaceMap;  axis z;  grid lin;  min -48.195;  max 48.195;  N 1000; } //high fidelity 1000
+       response (flux); flux {type fluxResponse;}     } 
 }
 
 geometry {
   type geometryStd;
-  boundary ( 2 2 2 2 0 0);
+  boundary ( 2 2 2 2 1 0); //1 0
   graph {type shrunk;}
 
   surfaces {
-    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
+    squareBound { id 1; type box; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 48.195);}
   }
 
   cells {
@@ -66,8 +58,8 @@ geometry {
       id 401;
       type latUniverse;
       origin (0.0 0.0 0.0);
-      pitch (1.26 1.26 0.0);
-      shape (17 17 0);
+      pitch (1.26 1.26 96.39); //64.26
+      shape (17 17 1);
       padMat water;
       map (
         31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
@@ -105,21 +97,23 @@ viz {
     what material;
     centre (0.0 0.0 0.0);
     //width (25.0 25.0);
-    axis z;
+    axis x;
     res (500 500);
   }
 }
 
 
 nuclearData {
-  handles {
-    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
-  }
+  handles { 
+    ce {type aceNeutronDatabase; aceLibrary /home/mjs298/NuclearData/SerpentFormattedNuclearData/lib.xsfile;}
+  } 
+
+
   materials {
 
     water {
       temp 75675;
-      moder { 1001.03 h-h2o.42; }
+      moder { 1001.06 hh2o.06; }
       composition {
       1001.03    6.700E-002;
       8016.03    3.350E-002;
