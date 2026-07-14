@@ -1,6 +1,6 @@
 type eigenPhysicsPackage;
 
-pop      1000000; //10000000   high-fidelity
+pop      5000; //low fidelity:1000000  //10000000   high-fidelity
 active   100;
 inactive 300;
 XSdata ce;
@@ -38,7 +38,7 @@ inactiveTally {}
 
 activeTally {
   basis Legendre;
-  maxFetOrder 10000;
+  maxFetOrder 5000;
   minT -10.71;
   maxT 10.71;
   evalpoints 1000;
