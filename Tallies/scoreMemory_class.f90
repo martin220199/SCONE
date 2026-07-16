@@ -93,6 +93,11 @@ module scoreMemory_class
       real(defReal), dimension(:), allocatable   :: FET_evalPoints  
       procedure(scoreFET_signature), pointer     :: scoreFET => null()
       procedure(getFETResult_signature), pointer :: getFETResult => null()
+
+      real(defReal)                            :: invDeltaT
+      real(defReal), dimension(:), allocatable :: legendreA
+      real(defReal), dimension(:), allocatable :: legendreB
+
   contains
     ! Interface procedures
     procedure :: init
@@ -239,6 +244,21 @@ contains
       self % deltaT = maxT - minT
       self % minT = minT
       self % maxT = maxT
+
+      self % invDeltaT = ONE / self % deltaT
+
+      if (basisFlag == 0 .and. maxFetOrder >= 2) then
+        allocate(self % legendreA(2:maxFetOrder))
+        allocate(self % legendreB(2:maxFetOrder))
+
+        do i = 2, maxFetOrder
+          self % legendreA(i) = &
+            (TWO * real(i, defReal) - ONE) / real(i, defReal)
+
+          self % legendreB(i) = &
+            real(i - 1, defReal) / real(i, defReal)
+        end do
+      end if
 
       allocate(self % FET_evalPoints(FET_evalPoints))
       deltaEval = (maxT - minT) / real(FET_evalPoints)
@@ -532,45 +552,48 @@ contains
   end subroutine scoreFET_signature
 
   subroutine scoreFET_Legendre(self, score, t)
-    class(scoreMemory),intent(inout)  :: self
+    class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score, t
-    integer(shortInt)                 :: k
-    integer(shortInt)                 :: thread_idx
-    real(defReal), save               :: t_trans, phi = ONE
-    real(defReal)                     :: p_k, p_prev, p_curr, p_next
-    character(100),parameter :: Here = 'scoreFET_Legendre (scoreMemory_class.f90)'
-    !$omp threadprivate(t_trans, phi)
 
-    !time transform
-    t_trans = self % transDomain_Legendre(t)
+    integer(shortInt) :: k
+    integer(shortInt) :: thread_idx
 
-    !basis weight
-    call self % weight_Legendre(t_trans, phi)
+    real(defReal) :: x
+    real(defReal) :: p_prev
+    real(defReal) :: p_curr
+    real(defReal) :: p_next
+
+    ! Transform from [minT,maxT] to [-1,1].
+    ! Multiplication by the precomputed inverse avoids division here.
+    x = TWO * (t - self % minT) * self % invDeltaT - ONE
 
     thread_idx = ompGetThreadNum() + 1
-    do k = 0, self % maxFetOrder
 
-      ! Handle base cases
-      if (k == 0) then
-        p_k = 1.0_defReal
-        
-      else if (k == 1) then
-        p_k = t_trans
+    ! P_0(x) = 1
+    self % parallelBins(1, thread_idx) = &
+      self % parallelBins(1, thread_idx) + score
 
-        p_prev = 1.0_defReal
-        p_curr = t_trans
-        
-      else
-        p_next = ((2.0_defReal * real(k) - 1.0_defReal) * t_trans * p_curr - (real(k) - 1.0_defReal) * p_prev) / real(k)
-        p_prev = p_curr
-        p_curr = p_next
-        p_k = p_curr
+    if (self % maxFetOrder == 0) return
 
-      end if
+    ! P_1(x) = x
+    self % parallelBins(2, thread_idx) = &
+      self % parallelBins(2, thread_idx) + score * x
 
-      ! Add the score
-      self % parallelBins(k+1, thread_idx) = &
-              self % parallelBins(k+1, thread_idx) + score * phi * p_k
+    if (self % maxFetOrder == 1) return
+
+    p_prev = ONE
+    p_curr = x
+
+    ! P_k(x) = ((2k-1)/k)xP_{k-1}(x) - ((k-1)/k)P_{k-2}(x)
+    do k = 2, self % maxFetOrder
+      p_next = self % legendreA(k) * x * p_curr &
+             - self % legendreB(k) * p_prev
+
+      self % parallelBins(k + 1, thread_idx) = &
+        self % parallelBins(k + 1, thread_idx) + score * p_next
+
+      p_prev = p_curr
+      p_curr = p_next
     end do
 
   end subroutine scoreFET_Legendre

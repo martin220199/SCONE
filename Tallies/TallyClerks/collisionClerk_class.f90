@@ -216,7 +216,7 @@ contains
     ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w *flx
-      call mem % scoreFET(scoreVal, state % r(3))
+      call mem % scoreFET(scoreVal, state % r(1))
 
     end do
 
