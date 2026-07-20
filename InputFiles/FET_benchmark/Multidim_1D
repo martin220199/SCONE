@@ -1,6 +1,6 @@
 type eigenPhysicsPackage;
 
-pop      1000000; //10000000   high-fidelity
+pop      100; //10000000   high-fidelity for 1D.   1000000 high-fidelity for 3D 
 active   100;
 inactive 300;
 XSdata ce;
@@ -24,7 +24,12 @@ activeTally {
   flux { type collisionClerk; 
     //map { type spaceMap;  axis x;  grid lin;  min -10.71;  max 10.71;  N 1000; } //high fidelity 1000
     //map { type spaceMap;  axis z;  grid lin;  min -48.195;  max 48.195;  N 1000; } //high fidelity 1000
-    map { type spaceMap;  axis x;  grid lin;  min -10.71;  max 10.71;  N 10600; } //high fidelity 1000
+    map { type multiMap;
+                          maps (mapx mapy mapz);
+                          mapx {type spaceMap;  axis x;  grid lin;  min -10.71;  max 10.71;  N 52;}   //100 highf
+                          mapy {type spaceMap;  axis y;  grid lin;  min -10.71;  max 10.71;  N 52;}   // 100 highf
+                          mapz {type spaceMap;  axis z;  grid lin;  min -48.195;  max 48.195;  N 52; }// 100 highf
+        }
        response (flux); flux {type fluxResponse;}     } 
 }
 
