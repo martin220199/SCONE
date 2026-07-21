@@ -169,6 +169,7 @@ contains
     integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
     integer(longInt)                            :: memSize, memLoc
     real(defReal)                               :: minT, maxT, a, b
+    real(defReal)                               :: minx, maxx, miny, maxy, minz, maxz
     integer(shortInt)                           :: FET_evalPoints, basisFlag
     character(10)                               :: basis
     character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
@@ -250,22 +251,39 @@ contains
       !Read max FET order
       call dict % get(maxFetOrder,'maxFetOrder')
 
-      !Read min/max times for time domain transform, and evalTimes
-      call dict % get(maxT,'maxT')
-      call dict % getOrDefault(minT,'minT', ZERO)
-      call dict % get(FET_evalPoints, 'evalpoints')
-
-
       ! Initialise score memory
       ! Calculate required size.
       memSize = sum( self % tallyClerks % getSize() )
 
-      if (basisFlag == 6) then
+      if (basisFlag == 0) then
+        ! 3D Legendre FET: read only the spatial limits. Evaluation is done
+        ! in postprocessing, so no evalpoints are read or stored.
+        call dict % get(minx,'minx')
+        call dict % get(maxx,'maxx')
+        call dict % get(miny,'miny')
+        call dict % get(maxy,'maxy')
+        call dict % get(minz,'minz')
+        call dict % get(maxz,'maxz')
+
         call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
-                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag, a = a, b = b)
+                            basisFlag = basisFlag, minx = minx, maxx = maxx, &
+                            miny = miny, maxy = maxy, minz = minz, maxz = maxz)
+
       else
-        call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
-                            minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, basisFlag = basisFlag)
+        ! Preserve the original 1D initialisation for every other basis.
+        call dict % get(maxT,'maxT')
+        call dict % getOrDefault(minT,'minT', ZERO)
+        call dict % get(FET_evalPoints, 'evalpoints')
+
+        if (basisFlag == 6) then
+          call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
+                              minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, &
+                              basisFlag = basisFlag, a = a, b = b)
+        else
+          call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
+                              minT = minT, maxT = maxT, FET_evalPoints = FET_evalPoints, &
+                              basisFlag = basisFlag)
+        end if
       end if
 
     else

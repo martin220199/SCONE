@@ -98,6 +98,15 @@ module scoreMemory_class
       real(defReal), dimension(:), allocatable :: legendreA
       real(defReal), dimension(:), allocatable :: legendreB
 
+      ! Additional storage used only by the 3D tensor-product Legendre FET.
+      integer(shortInt) :: FETdim = 1
+      integer(longInt)  :: nFet1D = 0_longInt
+      integer(longInt)  :: nFetModes = 0_longInt
+      integer(longInt)  :: nFetChannels = 0_longInt
+      real(defReal)     :: minXYZ(3), maxXYZ(3)
+      real(defReal)     :: invDeltaXYZ(3), mapScale(3), mapShift(3)
+      real(defReal), dimension(:,:,:), allocatable :: legendreWork
+
   contains
     ! Interface procedures
     procedure :: init
@@ -111,6 +120,8 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: getResult_Inactive
+    procedure :: scoreFET3D => scoreFET_Legendre3D
+    procedure :: getFETIndex
 
     ! Public procedures required for Fourier FET
     procedure :: getResult_Fourier_b
@@ -191,7 +202,8 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag, a, b)
+  subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag, a, b, &
+                  minx, maxx, miny, maxy, minz, maxz)
     class(scoreMemory),intent(inout)       :: self
     integer(longInt),intent(in)            :: N
     integer(shortInt),intent(in)           :: id
@@ -200,15 +212,18 @@ contains
     integer(shortInt), optional,intent(in) :: FET_evalPoints
     integer(shortInt), optional,intent(in) :: basisFlag
     real(defReal), optional,intent(in)     :: a, b
+    real(defReal), optional,intent(in)     :: minx, maxx, miny, maxy, minz, maxz
     integer(shortInt)                      :: i
     real(defReal)                          :: offset, deltaEval
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     self % nThreads = ompGetMaxThreads()
-    
+
     if (present(maxFetOrder)) then
       self % FETmode = 1
       self % basis = basisFlag
+      self % maxFetOrder = maxFetOrder
+
       select case(basisFlag)
         case(0)
           self % scoreFET => scoreFET_Legendre
@@ -227,9 +242,9 @@ contains
           self % getFETResult => getFETResult_Hermite
         case(5)
           self % scoreFET => scoreFET_Fourier
-          allocate( self % parallelBins_b(maxFetOrder + 1, self % nThreads))
+          allocate(self % parallelBins_b(maxFetOrder + 1, self % nThreads))
           self % parallelBins_b = ZERO
-          allocate( self % bins_b(maxFetOrder + 1, DIM2))
+          allocate(self % bins_b(maxFetOrder + 1, DIM2))
           self % bins_b = ZERO
         case(6)
           self % scoreFET => scoreFET_Jacobi
@@ -240,54 +255,99 @@ contains
           call fatalError(Here, 'Need to define the basis function')
       end select
 
-      self % maxFetOrder = maxFetOrder
-      self % deltaT = maxT - minT
-      self % minT = minT
-      self % maxT = maxT
+      ! New 3D path: only selected when Legendre and all six spatial bounds
+      ! are supplied. No evaluation points are read or allocated in this path.
+      if (basisFlag == 0 .and. present(minx) .and. present(maxx) .and. &
+          present(miny) .and. present(maxy) .and. present(minz) .and. present(maxz)) then
 
-      self % invDeltaT = ONE / self % deltaT
+        self % FETdim = 3
+        self % nFet1D = int(maxFetOrder, longInt) + 1_longInt
+        self % nFetModes = self % nFet1D * self % nFet1D * self % nFet1D
+        self % nFetChannels = N
 
-      if (basisFlag == 0 .and. maxFetOrder >= 2) then
-        allocate(self % legendreA(2:maxFetOrder))
-        allocate(self % legendreB(2:maxFetOrder))
+        self % minXYZ = [minx, miny, minz]
+        self % maxXYZ = [maxx, maxy, maxz]
 
-        do i = 2, maxFetOrder
-          self % legendreA(i) = &
-            (TWO * real(i, defReal) - ONE) / real(i, defReal)
+        if (any(self % maxXYZ <= self % minXYZ)) then
+          call fatalError(Here, 'Each FET maximum coordinate must be greater than its minimum coordinate')
+        end if
 
-          self % legendreB(i) = &
-            real(i - 1, defReal) / real(i, defReal)
-        end do
+        self % invDeltaXYZ = ONE / (self % maxXYZ - self % minXYZ)
+        self % mapScale = TWO * self % invDeltaXYZ
+        self % mapShift = -ONE - self % mapScale * self % minXYZ
+
+        if (maxFetOrder >= 2) then
+          allocate(self % legendreA(2:maxFetOrder))
+          allocate(self % legendreB(2:maxFetOrder))
+
+          do i = 2, maxFetOrder
+            self % legendreA(i) = &
+              (TWO * real(i, defReal) - ONE) / real(i, defReal)
+            self % legendreB(i) = &
+              real(i - 1, defReal) / real(i, defReal)
+          end do
+        end if
+
+        allocate(self % legendreWork(maxFetOrder + 1, 3, self % nThreads))
+        self % legendreWork = ZERO
+
+        self % N = self % nFetChannels * self % nFetModes
+
+        allocate(self % bins(self % N, DIM2))
+        self % bins = ZERO
+
+        allocate(self % parallelBins(self % N + array_pad, self % nThreads))
+        self % parallelBins = ZERO
+
+      else
+        ! Original 1D FET initialisation is retained unchanged for all legacy paths.
+        self % FETdim = 1
+        self % deltaT = maxT - minT
+        self % minT = minT
+        self % maxT = maxT
+        self % invDeltaT = ONE / self % deltaT
+
+        if (basisFlag == 0 .and. maxFetOrder >= 2) then
+          allocate(self % legendreA(2:maxFetOrder))
+          allocate(self % legendreB(2:maxFetOrder))
+
+          do i = 2, maxFetOrder
+            self % legendreA(i) = &
+              (TWO * real(i, defReal) - ONE) / real(i, defReal)
+            self % legendreB(i) = &
+              real(i - 1, defReal) / real(i, defReal)
+          end do
+        end if
+
+        if (present(FET_evalPoints)) then
+          allocate(self % FET_evalPoints(FET_evalPoints))
+          deltaEval = (maxT - minT) / real(FET_evalPoints)
+          offset = minT + deltaEval / TWO
+          do i = 1, FET_evalPoints
+            self % FET_evalPoints(i) = offset
+            offset = offset + deltaEval
+          end do
+        end if
+
+        allocate(self % bins(maxFetOrder + 1, DIM2))
+        self % bins = ZERO
+
+        allocate(self % parallelBins(maxFetOrder + 1, self % nThreads))
+        self % parallelBins = ZERO
+
+        self % N = N
       end if
 
-      allocate(self % FET_evalPoints(FET_evalPoints))
-      deltaEval = (maxT - minT) / real(FET_evalPoints)
-      offset = minT + deltaEval / TWO
-      do i = 1, FET_evalPoints
-        self % FET_evalPoints(i) = offset
-        offset = offset + deltaEval
-      end do
-
-      ! Allocate space and zero all bins
-      allocate( self % bins(maxFetOrder + 1, DIM2))
-      self % bins = ZERO
-
-      ! Note the array padding to avoid false sharing
-      allocate( self % parallelBins(maxFetOrder + 1, self % nThreads))
-      self % parallelBins = ZERO
-      
     else
-      ! Allocate space and zero all bins
-      allocate( self % bins(N, DIM2))
+      ! Original non-FET initialisation.
+      allocate(self % bins(N, DIM2))
       self % bins = ZERO
-    
-      allocate( self % parallelBins(N + array_pad, self % nThreads))
-      self % parallelBins = ZERO
-    
-    end if
 
-    ! Save size of memory
-    self % N = N
+      allocate(self % parallelBins(N + array_pad, self % nThreads))
+      self % parallelBins = ZERO
+
+      self % N = N
+    end if
 
     ! Assign memory id
     self % id = id
@@ -315,9 +375,24 @@ contains
 
    if(allocated(self % bins)) deallocate(self % bins)
    if(allocated(self % parallelBins)) deallocate(self % parallelBins)
+   if(allocated(self % bins_b)) deallocate(self % bins_b)
+   if(allocated(self % parallelBins_b)) deallocate(self % parallelBins_b)
+   if(allocated(self % FET_evalPoints)) deallocate(self % FET_evalPoints)
+   if(allocated(self % legendreA)) deallocate(self % legendreA)
+   if(allocated(self % legendreB)) deallocate(self % legendreB)
+   if(allocated(self % legendreWork)) deallocate(self % legendreWork)
+
+   nullify(self % scoreFET)
+   nullify(self % getFETResult)
+
    self % N = 0
    self % nThreads = 0
    self % batchN = 0
+   self % FETmode = 0
+   self % FETdim = 1
+   self % nFet1D = 0_longInt
+   self % nFetModes = 0_longInt
+   self % nFetChannels = 0_longInt
 
   end subroutine kill
 
@@ -425,65 +500,85 @@ contains
     integer(longInt)                  :: i
     real(defReal), save               :: res
     !$omp threadprivate(res)
-  
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
-    
+
       if (self % FETmode == 1) then
 
-        !$omp parallel do
-        do k = 1, self % maxFetOrder + 1
-        
-          ! Normalise scores
-          !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
-          res = sum(self % parallelBins(k,:))
-        
-          ! Zero all score bins
-          self % parallelBins(k,:) = ZERO
-       
-          ! Increment cumulative sums 
-          self % bins(k,CSUM)  = self % bins(k, CSUM) + res
-          self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
+        if (self % FETdim == 3) then
+          ! The 3D Legendre tally stores one flattened coefficient tensor for
+          ! every response/map channel, so every allocated coefficient is closed.
+          !$omp parallel do
+          do i = 1, self % N
 
-          if (self % basis == 5) then
-            res = sum(self % parallelBins_b(k,:))
+            ! Preserve the original FET normalisation behavior.
+            res = sum(self % parallelBins(i,:))
+
+            self % parallelBins(i,:) = ZERO
+
+            self % bins(i,CSUM)  = self % bins(i,CSUM) + res
+            self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
+
+          end do
+          !$omp end parallel do
+
+        else
+          ! Original 1D FET path.
+          !$omp parallel do
+          do k = 1, self % maxFetOrder + 1
+
+            ! Normalise scores
+            !self % parallelBins(k,:) = self % parallelBins(k,:) * normFactor
+            res = sum(self % parallelBins(k,:))
 
             ! Zero all score bins
-            self % parallelBins_b(k,:) = ZERO
+            self % parallelBins(k,:) = ZERO
 
-            ! Increment cumulative sums 
-            self % bins_b(k,CSUM)  = self % bins_b(k, CSUM) + res
-            self % bins_b(k,CSUM2) = self % bins_b(k, CSUM2) + res * res
-          end if
+            ! Increment cumulative sums
+            self % bins(k,CSUM)  = self % bins(k, CSUM) + res
+            self % bins(k,CSUM2) = self % bins(k, CSUM2) + res * res
 
-        end do
-        !$omp end parallel do
+            if (self % basis == 5) then
+              res = sum(self % parallelBins_b(k,:))
+
+              ! Zero all score bins
+              self % parallelBins_b(k,:) = ZERO
+
+              ! Increment cumulative sums
+              self % bins_b(k,CSUM)  = self % bins_b(k, CSUM) + res
+              self % bins_b(k,CSUM2) = self % bins_b(k, CSUM2) + res * res
+            end if
+
+          end do
+          !$omp end parallel do
+        end if
+
         self % batchN = self % batchN + 1
 
       else
 
         !$omp parallel do
         do i = 1, self % N
-        
+
           ! Normalise scores
           self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
           res = sum(self % parallelBins(i,:))
-        
+
           ! Zero all score bins
           self % parallelBins(i,:) = ZERO
-       
-          ! Increment cumulative sums 
+
+          ! Increment cumulative sums
           self % bins(i,CSUM)  = self % bins(i,CSUM) + res
           self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
 
         end do
         !$omp end parallel do
-        
+
         self % batchN = self % batchN + 1
-      
+
       end if
 
     end if
@@ -545,6 +640,84 @@ contains
 
 
   ! FET LEGENDRE FUNCTIONS
+
+  pure function getFETIndex(self, channelIdx, kx, ky, kz) result(idx)
+    class(scoreMemory), intent(in) :: self
+    integer(longInt), intent(in)   :: channelIdx
+    integer(shortInt), intent(in)  :: kx, ky, kz
+    integer(longInt)               :: idx
+
+    if (channelIdx < 1_longInt .or. channelIdx > self % nFetChannels .or. &
+        kx < 0 .or. kx > self % maxFetOrder .or. &
+        ky < 0 .or. ky > self % maxFetOrder .or. &
+        kz < 0 .or. kz > self % maxFetOrder) then
+      idx = 0_longInt
+      return
+    end if
+
+    idx = (channelIdx - 1_longInt) * self % nFetModes + 1_longInt &
+        + int(kx, longInt) &
+        + self % nFet1D * (int(ky, longInt) + self % nFet1D * int(kz, longInt))
+
+  end function getFETIndex
+
+  subroutine scoreFET_Legendre3D(self, score, r, channelIdx)
+    class(scoreMemory), intent(inout) :: self
+    real(defReal), intent(in)         :: score
+    real(defReal), intent(in)         :: r(3)
+    integer(longInt), intent(in)      :: channelIdx
+
+    integer(shortInt) :: threadIdx
+    integer(shortInt) :: d, k
+    integer(shortInt) :: kx, ky, kz
+    integer(longInt)  :: channelBase
+    integer(longInt)  :: modeBase
+    real(defReal)     :: u(3)
+    real(defReal)     :: scoreYZ
+
+    threadIdx = ompGetThreadNum() + 1
+
+    u = self % mapScale * r + self % mapShift
+
+    ! Evaluate P_0,...,P_K once in each coordinate.
+    do d = 1, 3
+      self % legendreWork(1, d, threadIdx) = ONE
+
+      if (self % maxFetOrder >= 1) then
+        self % legendreWork(2, d, threadIdx) = u(d)
+      end if
+
+      do k = 2, self % maxFetOrder
+        self % legendreWork(k + 1, d, threadIdx) = &
+          self % legendreA(k) * u(d) * self % legendreWork(k, d, threadIdx) &
+          - self % legendreB(k) * self % legendreWork(k - 1, d, threadIdx)
+      end do
+    end do
+
+    channelBase = (channelIdx - 1_longInt) * self % nFetModes
+
+    ! kx is innermost so coefficient updates are contiguous in memory.
+    do kz = 0, self % maxFetOrder
+      do ky = 0, self % maxFetOrder
+
+        scoreYZ = score &
+          * self % legendreWork(ky + 1, 2, threadIdx) &
+          * self % legendreWork(kz + 1, 3, threadIdx)
+
+        modeBase = channelBase + 1_longInt &
+          + self % nFet1D * (int(ky, longInt) + self % nFet1D * int(kz, longInt))
+
+        !$omp simd
+        do kx = 0, self % maxFetOrder
+          self % parallelBins(modeBase + int(kx, longInt), threadIdx) = &
+            self % parallelBins(modeBase + int(kx, longInt), threadIdx) &
+            + scoreYZ * self % legendreWork(kx + 1, 1, threadIdx)
+        end do
+
+      end do
+    end do
+
+  end subroutine scoreFET_Legendre3D
 
   subroutine scoreFET_signature(self, score, t)
     class(scoreMemory), intent(inout) :: self
@@ -1546,10 +1719,18 @@ end function orthonormalisationStandard_Jacobi
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx - 1 < 0_longInt .or. idx - 1 > self % maxFetOrder) then
-      mean = ZERO
-      STD = ZERO
-      return
+    if (self % FETmode == 1 .and. self % FETdim == 1) then
+      if( idx - 1 < 0_longInt .or. idx - 1 > self % maxFetOrder) then
+        mean = ZERO
+        STD = ZERO
+        return
+      end if
+    else
+      if( idx < 1_longInt .or. idx > self % N) then
+        mean = ZERO
+        STD = ZERO
+        return
+      end if
     end if
 
     ! Check if # of samples is provided
@@ -1699,11 +1880,20 @@ end function orthonormalisationStandard_Jacobi
     class(scoreMemory), intent(in) :: self
     integer(longInt), intent(in)   :: idx
     real(defReal)                  :: score
+    integer(longInt)               :: idx_loc
 
-    if(idx <= 0_longInt .or. idx > self % N) then
+    if (self % FETmode == 1 .and. self % FETdim == 3) then
+      ! Tally-admin addresses remain channel addresses. For normalisation,
+      ! the score of a 3D FET channel is its constant P_0 P_0 P_0 mode.
+      idx_loc = self % getFETIndex(idx, 0_shortInt, 0_shortInt, 0_shortInt)
+    else
+      idx_loc = idx
+    end if
+
+    if(idx_loc <= 0_longInt .or. idx_loc > self % N) then
       score = ZERO
     else
-      score = sum(self % parallelBins(idx, :))
+      score = sum(self % parallelBins(idx_loc, :))
     end if
 
   end function getScore

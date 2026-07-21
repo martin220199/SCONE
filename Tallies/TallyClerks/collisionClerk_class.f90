@@ -208,7 +208,7 @@ contains
     if (binIdx == 0) return
 
     ! Calculate bin address
-    !adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
+    adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Calculate flux sample 1/totXs
     flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
@@ -216,8 +216,7 @@ contains
     ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p, xsData) * p % w *flx
-      call mem % scoreFET(scoreVal, state % r(1))
-
+      call mem % scoreFET3D(scoreVal, state % r(1:3), adrr + int(i, longInt))
     end do
 
   end subroutine reportInColl
@@ -238,18 +237,15 @@ contains
   !!
   !! Write contents of the clerk to output file
   !!
-  !! See tallyClerk_inter for details
-  !!
   subroutine print(self, outFile, mem)
     class(collisionClerk), intent(in)          :: self
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
-    integer(longInt)                          :: i
-    integer(shortInt),dimension(:),allocatable :: resArrayShape
-    real(defReal), dimension(mem % maxFetOrder + 1) :: fet_coeff_arr, fet_coeff_std_arr 
-    real(defReal), dimension(mem % maxFetOrder + 1) :: fet_coeff_arr_b, fet_coeff_std_arr_b 
-    character(nameLen)                          :: name
+    integer(shortInt)                          :: localChannel, kx, ky, kz
+    integer(longInt)                           :: globalChannel, coeffIdx
+    integer(shortInt),dimension(4)              :: resArrayShape
+    character(nameLen)                         :: name
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -259,59 +255,28 @@ contains
       call self % map % print(outFile)
     end if
 
-    ! Start array
+    ! Coefficients are written as [channel, kz, ky, kx], with kx fastest.
+    resArrayShape = [self % getSize(), mem % maxFetOrder + 1_shortInt, &
+                     mem % maxFetOrder + 1_shortInt, mem % maxFetOrder + 1_shortInt]
+
     name ='FET_coeff'
-    call outFile % startArray(name, [1, mem % maxFetOrder + 1])
-    do i = 1, mem % maxFetOrder + 1
-      call mem % getResult(val, std, i)
-      fet_coeff_arr(i) = val
-      fet_coeff_std_arr(i) = std
-      call outFile % addResult(val, std)
+    call outFile % startArray(name, resArrayShape)
+
+    do localChannel = 1, self % getSize()
+      globalChannel = self % getMemAddress() + int(localChannel - 1, longInt)
+
+      do kz = 0, mem % maxFetOrder
+        do ky = 0, mem % maxFetOrder
+          do kx = 0, mem % maxFetOrder
+            coeffIdx = mem % getFETIndex(globalChannel, kx, ky, kz)
+            call mem % getResult(val, std, coeffIdx)
+            call outFile % addResult(val, std)
+          end do
+        end do
+      end do
     end do
-    call outFile % endArray()
-
-    if (mem % basis == 5) then
-      !allocate(fet_coeff_arr_b(mem % maxFetOrder))
-      !allocate(fet_coeff_std_arr_b(mem % maxFetOrder))
-      ! Start array
-      name ='FET_coeff_b'
-      call outFile % startArray(name, [1, mem % maxFetOrder + 1])
-      do i = 1, mem % maxFetOrder + 1
-        call mem % getResult_Fourier_b(val, std, i)
-        fet_coeff_arr_b(i) = val
-        fet_coeff_std_arr_b(i) = std
-        call outFile % addResult(val, std)
-      end do
-      call outFile % endArray()
-    end if
-
-    ! Start array
-    name ='evalPts'
-    call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
-    do i = 1, size(mem % FET_evalPoints)
-      call outFile % addValue(mem % FET_evalPoints(i))
-    end do
-    call outFile % endArray()
-
-    ! Start array
-    name ='Res'
-    call outFile % startArray(name, [1, size(mem % FET_evalPoints)])
-
-    if (mem % basis == 5) then
-      do i = 1, size(mem % FET_evalPoints)
-        call mem % getFETResult_Fourier(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_arr_b, &
-                                        fet_coeff_std_arr, fet_coeff_std_arr_b)
-        call outFile % addResult(val, std)
-      end do
-    else
-      do i = 1, size(mem % FET_evalPoints)
-        call mem % getFETResult(val, std, mem % FET_evalPoints(i), fet_coeff_arr, fet_coeff_std_arr)
-        call outFile % addResult(val, std)
-      end do
-    end if
 
     call outFile % endArray()
-
     call outFile % endBlock()
 
   end subroutine print
