@@ -256,8 +256,9 @@ contains
     end if
 
     ! Coefficients are written as [channel, kz, ky, kx], with kx fastest.
-    resArrayShape = [self % getSize(), mem % maxFetOrder + 1_shortInt, &
-                     mem % maxFetOrder + 1_shortInt, mem % maxFetOrder + 1_shortInt]
+    resArrayShape = [self % getSize(), mem % maxFetOrderXYZ(3) + 1_shortInt, &
+                     mem % maxFetOrderXYZ(2) + 1_shortInt, &
+                     mem % maxFetOrderXYZ(1) + 1_shortInt]
 
     name ='FET_coeff'
     call outFile % startArray(name, resArrayShape)
@@ -265,9 +266,9 @@ contains
     do localChannel = 1, self % getSize()
       globalChannel = self % getMemAddress() + int(localChannel - 1, longInt)
 
-      do kz = 0, mem % maxFetOrder
-        do ky = 0, mem % maxFetOrder
-          do kx = 0, mem % maxFetOrder
+      do kz = 0, mem % maxFetOrderXYZ(3)
+        do ky = 0, mem % maxFetOrderXYZ(2)
+          do kx = 0, mem % maxFetOrderXYZ(1)
             coeffIdx = mem % getFETIndex(globalChannel, kx, ky, kz)
             call mem % getResult(val, std, coeffIdx)
             call outFile % addResult(val, std)

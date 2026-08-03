@@ -167,6 +167,7 @@ contains
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: names
     integer(shortInt)                           :: i, j, cyclesPerBatch, maxFetOrder
+    integer(shortInt)                           :: maxFetOrderX, maxFetOrderY, maxFetOrderZ
     integer(longInt)                            :: memSize, memLoc
     real(defReal)                               :: minT, maxT, a, b
     real(defReal)                               :: minx, maxx, miny, maxy, minz, maxz
@@ -248,14 +249,26 @@ contains
 
       end select
 
-      !Read max FET order
-      call dict % get(maxFetOrder,'maxFetOrder')
-
       ! Initialise score memory
       ! Calculate required size.
       memSize = sum( self % tallyClerks % getSize() )
 
       if (basisFlag == 0) then
+        ! Allow independent tensor-product orders. For backward compatibility,
+        ! the original maxFetOrder input still sets all three directions.
+        if (dict % isPresent('maxFetOrderX') .or. &
+            dict % isPresent('maxFetOrderY') .or. &
+            dict % isPresent('maxFetOrderZ')) then
+          call dict % get(maxFetOrderX,'maxFetOrderX')
+          call dict % get(maxFetOrderY,'maxFetOrderY')
+          call dict % get(maxFetOrderZ,'maxFetOrderZ')
+          maxFetOrder = max(maxFetOrderX, maxFetOrderY, maxFetOrderZ)
+        else
+          call dict % get(maxFetOrder,'maxFetOrder')
+          maxFetOrderX = maxFetOrder
+          maxFetOrderY = maxFetOrder
+          maxFetOrderZ = maxFetOrder
+        end if
         ! 3D Legendre FET: read only the spatial limits. Evaluation is done
         ! in postprocessing, so no evalpoints are read or stored.
         call dict % get(minx,'minx')
@@ -267,10 +280,14 @@ contains
 
         call self % mem % init(memSize, 1, maxFetOrder, batchSize = cyclesPerBatch, &
                             basisFlag = basisFlag, minx = minx, maxx = maxx, &
-                            miny = miny, maxy = maxy, minz = minz, maxz = maxz)
+                            miny = miny, maxy = maxy, minz = minz, maxz = maxz, &
+                            maxFetOrderX = maxFetOrderX, &
+                            maxFetOrderY = maxFetOrderY, &
+                            maxFetOrderZ = maxFetOrderZ)
 
       else
         ! Preserve the original 1D initialisation for every other basis.
+        call dict % get(maxFetOrder,'maxFetOrder')
         call dict % get(maxT,'maxT')
         call dict % getOrDefault(minT,'minT', ZERO)
         call dict % get(FET_evalPoints, 'evalpoints')

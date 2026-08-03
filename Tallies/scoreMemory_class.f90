@@ -100,7 +100,9 @@ module scoreMemory_class
 
       ! Additional storage used only by the 3D tensor-product Legendre FET.
       integer(shortInt) :: FETdim = 1
+      integer(shortInt) :: maxFetOrderXYZ(3) = 0_shortInt
       integer(longInt)  :: nFet1D = 0_longInt
+      integer(longInt)  :: nFetXYZ(3) = 0_longInt
       integer(longInt)  :: nFetModes = 0_longInt
       integer(longInt)  :: nFetChannels = 0_longInt
       real(defReal)     :: minXYZ(3), maxXYZ(3)
@@ -203,7 +205,8 @@ contains
   !! Optionaly change batchSize from 1 to any +ve number
   !!
   subroutine init(self, N, id, maxFetOrder, batchSize, minT, maxT, FET_evalPoints, basisFlag, a, b, &
-                  minx, maxx, miny, maxy, minz, maxz)
+                  minx, maxx, miny, maxy, minz, maxz, &
+                  maxFetOrderX, maxFetOrderY, maxFetOrderZ)
     class(scoreMemory),intent(inout)       :: self
     integer(longInt),intent(in)            :: N
     integer(shortInt),intent(in)           :: id
@@ -213,6 +216,7 @@ contains
     integer(shortInt), optional,intent(in) :: basisFlag
     real(defReal), optional,intent(in)     :: a, b
     real(defReal), optional,intent(in)     :: minx, maxx, miny, maxy, minz, maxz
+    integer(shortInt), optional,intent(in) :: maxFetOrderX, maxFetOrderY, maxFetOrderZ
     integer(shortInt)                      :: i
     real(defReal)                          :: offset, deltaEval
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
@@ -261,8 +265,25 @@ contains
           present(miny) .and. present(maxy) .and. present(minz) .and. present(maxz)) then
 
         self % FETdim = 3
-        self % nFet1D = int(maxFetOrder, longInt) + 1_longInt
-        self % nFetModes = self % nFet1D * self % nFet1D * self % nFet1D
+
+        ! Preserve the original single-order input as a fallback. When the
+        ! three directional orders are supplied, use them independently.
+        self % maxFetOrderXYZ = [maxFetOrder, maxFetOrder, maxFetOrder]
+        if (present(maxFetOrderX) .and. present(maxFetOrderY) .and. &
+            present(maxFetOrderZ)) then
+          self % maxFetOrderXYZ = [maxFetOrderX, maxFetOrderY, maxFetOrderZ]
+        end if
+
+        if (any(self % maxFetOrderXYZ < 0_shortInt)) then
+          call fatalError(Here, 'Each directional FET order must be non-negative')
+        end if
+
+        ! maxFetOrder is retained for the legacy 1D code and for allocating
+        ! recurrence constants up to the largest directional order.
+        self % maxFetOrder = maxval(self % maxFetOrderXYZ)
+        self % nFetXYZ = int(self % maxFetOrderXYZ, longInt) + 1_longInt
+        self % nFet1D = self % nFetXYZ(1)
+        self % nFetModes = self % nFetXYZ(1) * self % nFetXYZ(2) * self % nFetXYZ(3)
         self % nFetChannels = N
 
         self % minXYZ = [minx, miny, minz]
@@ -276,11 +297,11 @@ contains
         self % mapScale = TWO * self % invDeltaXYZ
         self % mapShift = -ONE - self % mapScale * self % minXYZ
 
-        if (maxFetOrder >= 2) then
-          allocate(self % legendreA(2:maxFetOrder))
-          allocate(self % legendreB(2:maxFetOrder))
+        if (self % maxFetOrder >= 2) then
+          allocate(self % legendreA(2:self % maxFetOrder))
+          allocate(self % legendreB(2:self % maxFetOrder))
 
-          do i = 2, maxFetOrder
+          do i = 2, self % maxFetOrder
             self % legendreA(i) = &
               (TWO * real(i, defReal) - ONE) / real(i, defReal)
             self % legendreB(i) = &
@@ -288,7 +309,7 @@ contains
           end do
         end if
 
-        allocate(self % legendreWork(maxFetOrder + 1, 3, self % nThreads))
+        allocate(self % legendreWork(self % maxFetOrder + 1, 3, self % nThreads))
         self % legendreWork = ZERO
 
         self % N = self % nFetChannels * self % nFetModes
@@ -390,7 +411,9 @@ contains
    self % batchN = 0
    self % FETmode = 0
    self % FETdim = 1
+   self % maxFetOrderXYZ = 0_shortInt
    self % nFet1D = 0_longInt
+   self % nFetXYZ = 0_longInt
    self % nFetModes = 0_longInt
    self % nFetChannels = 0_longInt
 
@@ -648,16 +671,16 @@ contains
     integer(longInt)               :: idx
 
     if (channelIdx < 1_longInt .or. channelIdx > self % nFetChannels .or. &
-        kx < 0 .or. kx > self % maxFetOrder .or. &
-        ky < 0 .or. ky > self % maxFetOrder .or. &
-        kz < 0 .or. kz > self % maxFetOrder) then
+        kx < 0 .or. kx > self % maxFetOrderXYZ(1) .or. &
+        ky < 0 .or. ky > self % maxFetOrderXYZ(2) .or. &
+        kz < 0 .or. kz > self % maxFetOrderXYZ(3)) then
       idx = 0_longInt
       return
     end if
 
     idx = (channelIdx - 1_longInt) * self % nFetModes + 1_longInt &
         + int(kx, longInt) &
-        + self % nFet1D * (int(ky, longInt) + self % nFet1D * int(kz, longInt))
+        + self % nFetXYZ(1) * (int(ky, longInt) + self % nFetXYZ(2) * int(kz, longInt))
 
   end function getFETIndex
 
@@ -679,15 +702,15 @@ contains
 
     u = self % mapScale * r + self % mapShift
 
-    ! Evaluate P_0,...,P_K once in each coordinate.
+    ! Evaluate only the required Legendre sequence in each coordinate.
     do d = 1, 3
       self % legendreWork(1, d, threadIdx) = ONE
 
-      if (self % maxFetOrder >= 1) then
+      if (self % maxFetOrderXYZ(d) >= 1) then
         self % legendreWork(2, d, threadIdx) = u(d)
       end if
 
-      do k = 2, self % maxFetOrder
+      do k = 2, self % maxFetOrderXYZ(d)
         self % legendreWork(k + 1, d, threadIdx) = &
           self % legendreA(k) * u(d) * self % legendreWork(k, d, threadIdx) &
           - self % legendreB(k) * self % legendreWork(k - 1, d, threadIdx)
@@ -697,18 +720,18 @@ contains
     channelBase = (channelIdx - 1_longInt) * self % nFetModes
 
     ! kx is innermost so coefficient updates are contiguous in memory.
-    do kz = 0, self % maxFetOrder
-      do ky = 0, self % maxFetOrder
+    do kz = 0, self % maxFetOrderXYZ(3)
+      do ky = 0, self % maxFetOrderXYZ(2)
 
         scoreYZ = score &
           * self % legendreWork(ky + 1, 2, threadIdx) &
           * self % legendreWork(kz + 1, 3, threadIdx)
 
         modeBase = channelBase + 1_longInt &
-          + self % nFet1D * (int(ky, longInt) + self % nFet1D * int(kz, longInt))
+          + self % nFetXYZ(1) * (int(ky, longInt) + self % nFetXYZ(2) * int(kz, longInt))
 
         !$omp simd
-        do kx = 0, self % maxFetOrder
+        do kx = 0, self % maxFetOrderXYZ(1)
           self % parallelBins(modeBase + int(kx, longInt), threadIdx) = &
             self % parallelBins(modeBase + int(kx, longInt), threadIdx) &
             + scoreYZ * self % legendreWork(kx + 1, 1, threadIdx)
